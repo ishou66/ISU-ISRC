@@ -440,27 +440,27 @@ export default function App() {
                         handleLog('DELETE', `Activity Part.`, 'SUCCESS');
                     } else notify('權限不足', 'alert');
                 }}
+                onAddEvent={handleAddEvent}
+                hasPermission={(action) => checkPermission(ModuleId.ACTIVITY, action)}
                 onUpdateActivity={(actId, hours) => {
                     if(checkPermission(ModuleId.ACTIVITY, 'edit')) {
                         setActivities(prev => prev.map(a => a.id === actId ? { ...a, hours } : a));
                     }
                 }}
                 onBatchConfirm={handleBatchConfirmActivity}
-                onAddEvent={handleAddEvent}
-                hasPermission={(action) => checkPermission(ModuleId.ACTIVITY, action)}
             />
         );
       default:
-        return <Dashboard students={students} scholarships={scholarships} configs={configs} onNavigate={handleNavigate} counselingLogs={counselingLogs} />;
+        return <div>Not Found</div>;
     }
   };
 
   if (!currentUser) {
       return (
           <Login 
-            users={users} 
-            onLoginSuccess={handleLoginSuccess}
-            onUpdatePassword={handleUpdateUserPassword}
+              users={users} 
+              onLoginSuccess={handleLoginSuccess}
+              onUpdatePassword={handleUpdateUserPassword}
           />
       );
   }
@@ -476,17 +476,13 @@ export default function App() {
       onResetSystem={handleResetSystem}
       checkPermission={checkPermission}
     >
-      {renderContent()}
-
-      {toast && (
-        <div className={`
-            fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg text-white font-medium flex items-center gap-3 transition-all transform animate-bounce-in z-50
-            ${toast.type === 'alert' ? 'bg-gray-800' : 'bg-green-600'}
-        `}>
-            {toast.type === 'alert' ? <ICONS.Alert size={20} /> : <ICONS.Check size={20} />}
-            {toast.message}
-        </div>
-      )}
+        {renderContent()}
+        {toast && (
+            <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-bold animate-fade-in-up z-50 flex items-center gap-2 ${toast.type === 'alert' ? 'bg-red-600' : 'bg-green-600'}`}>
+                {toast.type === 'alert' ? <ICONS.Alert size={20} /> : <ICONS.CheckCircle size={20} />}
+                {toast.message}
+            </div>
+        )}
     </Layout>
   );
 }

@@ -317,7 +317,7 @@ export const MOCK_COUNSELING_LOGS: CounselingLog[] = [
     counselorName: '李心心 (心理師)',
     categories: ['MENTAL'],
     method: 'FACE',
-    content: '【敏感資料隱藏】已進行轉介評估，案號 REF-2023-999。',
+    content: '【敏感資料】已進行轉介評估，案號 REF-2023-999。',
     recommendations: ['REFER_COUNSEL'],
     isHighRisk: true,
     needsTracking: true,

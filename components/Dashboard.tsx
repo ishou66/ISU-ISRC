@@ -34,7 +34,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ students, scholarships, co
   const totalStudents = students.length;
   const criticalStudents = students.filter(s => s.highRisk === HighRiskStatus.CRITICAL).length;
   const pendingScholarships = scholarships.filter(s => s.status === 'PENDING').length;
-  const counselingCount = counselingLogs.length;
+  const counselingCount = counselingLogs.length; // Use real count
   
   // Calculate students per department
   const deptConfig = configs.filter(c => c.category === 'DEPT' && c.isActive);
