@@ -26,6 +26,65 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #94a3b8; 
       }
+
+      /* PRINT STYLES - A4 Optimized */
+      @media print {
+        @page {
+          size: A4;
+          margin: 1cm;
+        }
+        body {
+          background-color: white;
+          font-size: 12pt;
+        }
+        /* Hide UI elements */
+        .no-print, aside, header, button, input, select, .shadow-sm, .border-b, .pagination {
+          display: none !important;
+        }
+        /* Layout resets */
+        .flex-col, .overflow-auto {
+          display: block !important;
+          overflow: visible !important;
+          height: auto !important;
+        }
+        /* Table enhancements */
+        table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          font-size: 10pt;
+        }
+        th, td {
+          border: 1px solid #000 !important;
+          padding: 8px !important;
+          color: black !important;
+        }
+        thead {
+          background-color: #f0f0f0 !important;
+          -webkit-print-color-adjust: exact;
+        }
+        /* Report Header */
+        .print-only {
+          display: block !important;
+          margin-bottom: 20px;
+        }
+        /* Signature Area */
+        .print-signature {
+          display: flex !important;
+          justify-content: space-between;
+          margin-top: 50px;
+          page-break-inside: avoid;
+        }
+        /* Tag adjustments */
+        .bg-blue-50, .bg-red-50, .bg-green-100 {
+          background-color: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+        }
+      }
+      
+      .print-only, .print-signature {
+        display: none;
+      }
     </style>
     <script>
       tailwind.config = {

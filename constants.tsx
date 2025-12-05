@@ -7,7 +7,7 @@ import {
   Users, LayoutDashboard, FileText, Settings, Heart, Database, 
   GraduationCap, AlertTriangle, Eye, EyeOff, Search, Plus, Filter,
   ChevronRight, Home, Phone, MapPin, Download, Save, X, Edit2, Check,
-  ArrowRightLeft, UserCheck, UserMinus, Calendar, ShieldAlert, Lock, Printer, LogIn, Key, Menu, Clock, CheckCircle, ClipboardList, Briefcase, FileCheck, Send, DollarSign, Upload, Image
+  ArrowRightLeft, UserCheck, UserMinus, Calendar, ShieldAlert, Lock, Printer, LogIn, Key, Menu, Clock, CheckCircle, ClipboardList, Briefcase, FileCheck, Send, DollarSign, Upload, Image, CreditCard
 } from 'lucide-react';
 
 export const ICONS = {
@@ -52,7 +52,8 @@ export const ICONS = {
   Send: Send,
   Money: DollarSign,
   Upload: Upload,
-  Image: Image
+  Image: Image,
+  Bank: CreditCard
 };
 
 // --- DEFAULT PERMISSIONS HELPER ---
@@ -233,7 +234,13 @@ export const MOCK_STUDENTS: Student[] = [
     guardianPhone: '0911222333',
     economicStatus: '一般',
     avatarUrl: 'https://picsum.photos/200/200?random=1',
-    statusHistory: []
+    statusHistory: [],
+    bankInfo: {
+        bankCode: '822',
+        accountNumber: '123456789012',
+        accountName: '林小美',
+        lastUpdated: '2023-09-01'
+    }
   },
   {
     id: 's2',
@@ -262,7 +269,13 @@ export const MOCK_STUDENTS: Student[] = [
     avatarUrl: 'https://picsum.photos/200/200?random=2',
     statusHistory: [
         { date: '2023-09-01', oldStatus: '休學', newStatus: '在學', reason: '復學', editor: '系統管理員' }
-    ]
+    ],
+    bankInfo: {
+        bankCode: '700',
+        accountNumber: '0001234567890',
+        accountName: '陳志豪',
+        lastUpdated: '2023-09-10'
+    }
   },
   {
     id: 's3',

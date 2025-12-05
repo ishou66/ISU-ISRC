@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 import { User, RoleDefinition, ModuleId } from '../types';
-import { usePermission } from '../hooks/usePermission';
 import { StorageService } from '../services/StorageService';
+import { usePermission } from '../hooks/usePermission';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,8 +20,8 @@ export const Layout: React.FC<LayoutProps> = ({
     children, currentView, onNavigate, currentUser, allUsers, roles, onSwitchUser, onResetSystem 
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { can } = usePermission(); // Use Hook
   const currentRole = roles.find(r => r.id === currentUser.roleId);
+  const { can } = usePermission();
 
   const handleNavigate = (view: string) => {
     onNavigate(view);
@@ -29,7 +29,8 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   const NavItem = ({ view, moduleId, label, icon: Icon }: { view: string, moduleId: ModuleId, label: string, icon: any }) => {
-      if (!can(moduleId, 'view')) return null; // Use Hook
+      // Permission Check using Context Hook
+      if (!can(moduleId, 'view')) return null;
 
       return (
         <button
@@ -65,7 +66,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-100">
-      
+      {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
@@ -73,6 +74,7 @@ export const Layout: React.FC<LayoutProps> = ({
         />
       )}
 
+      {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-30 w-64 bg-isu-dark flex flex-col shrink-0 text-white shadow-xl transition-transform duration-300 ease-in-out
         md:relative md:translate-x-0
@@ -136,8 +138,8 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 shadow-sm z-10">
+      <main className="flex-1 flex flex-col min-w-0 print:block print:w-full print:h-auto print:overflow-visible">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 shadow-sm z-10 no-print">
             <div className="flex items-center gap-4">
                <button 
                  onClick={() => setIsMobileMenuOpen(true)}
@@ -175,7 +177,7 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 md:p-6 bg-gray-100">
+        <div className="flex-1 overflow-auto p-4 md:p-6 bg-gray-100 print:bg-white print:p-0 print:overflow-visible">
             {children}
         </div>
       </main>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
@@ -11,49 +11,90 @@ import { AuditLogManager } from './components/AuditLogManager';
 import { RoleManager } from './components/RoleManager';
 import { UserManager } from './components/UserManager';
 import { CounselingManager } from './components/CounselingManager';
-import { createCRUDExecutor } from './utils/CRUDExecutor';
 import { PermissionProvider } from './contexts/PermissionContext';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import { StorageService } from './services/StorageService';
 
 import { 
     Student, ConfigItem, ScholarshipRecord, ActivityRecord, Event, CounselingLog, SystemLog, 
-    LogAction, LogStatus, User, RoleDefinition, ModuleId, HighRiskStatus, ScholarshipConfig 
+    LogAction, LogStatus, User, RoleDefinition, ModuleId, PermissionMatrix, HighRiskStatus, ScholarshipConfig 
 } from './types';
 import { 
     MOCK_STUDENTS, MOCK_CONFIGS, MOCK_SCHOLARSHIPS, MOCK_ACTIVITIES, MOCK_EVENTS, 
     MOCK_COUNSELING_LOGS, ICONS, DEFAULT_USERS, DEFAULT_ROLES, MOCK_SCHOLARSHIP_CONFIGS
 } from './constants';
 
+const STORAGE_KEYS = {
+    STUDENTS: 'isu_students_v3',
+    CONFIGS: 'isu_configs_v3',
+    SCHOLARSHIPS: 'isu_scholarships_v3',
+    SCHOLARSHIP_CONFIGS: 'isu_scholarship_configs_v3',
+    ACTIVITIES: 'isu_activities_v3',
+    EVENTS: 'isu_events_v3',
+    LOGS: 'isu_counseling_logs_v3',
+    SYSTEM_LOGS: 'isu_system_audit_logs_v3',
+    USERS: 'isu_users_v3',
+    ROLES: 'isu_roles_v3'
+};
+
 export default function App() {
-  const KEYS = StorageService.getKeys();
+  const [users, setUsers] = useState<User[]>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.USERS);
+      return saved ? JSON.parse(saved) : DEFAULT_USERS;
+  });
+  const [roles, setRoles] = useState<RoleDefinition[]>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.ROLES);
+      return saved ? JSON.parse(saved) : DEFAULT_ROLES;
+  });
 
-  // --- STATE MANAGEMENT WITH useLocalStorage ---
-  const [users, setUsers] = useLocalStorage<User[]>(KEYS.USERS, DEFAULT_USERS);
-  const [roles, setRoles] = useLocalStorage<RoleDefinition[]>(KEYS.ROLES, DEFAULT_ROLES);
-  const [currentUser, setCurrentUser] = useState<User | null>(null); // Session state, not LS
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
+  const [students, setStudents] = useState<Student[]>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.STUDENTS);
+      return saved ? JSON.parse(saved) : MOCK_STUDENTS;
+  });
+  const [configs, setConfigs] = useState<ConfigItem[]>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.CONFIGS);
+      return saved ? JSON.parse(saved) : MOCK_CONFIGS;
+  });
+  const [scholarshipConfigs, setScholarshipConfigs] = useState<ScholarshipConfig[]>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.SCHOLARSHIP_CONFIGS);
+      return saved ? JSON.parse(saved) : MOCK_SCHOLARSHIP_CONFIGS;
+  });
+  const [scholarships, setScholarships] = useState<ScholarshipRecord[]>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.SCHOLARSHIPS);
+      return saved ? JSON.parse(saved) : MOCK_SCHOLARSHIPS;
+  });
+  const [activities, setActivities] = useState<ActivityRecord[]>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.ACTIVITIES);
+      return saved ? JSON.parse(saved) : MOCK_ACTIVITIES;
+  });
+  const [events, setEvents] = useState<Event[]>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.EVENTS);
+      return saved ? JSON.parse(saved) : MOCK_EVENTS;
+  });
+  const [counselingLogs, setCounselingLogs] = useState<CounselingLog[]>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.LOGS);
+      return saved ? JSON.parse(saved) : MOCK_COUNSELING_LOGS;
+  });
+  const [systemLogs, setSystemLogs] = useState<SystemLog[]>(() => {
+      const saved = localStorage.getItem(STORAGE_KEYS.SYSTEM_LOGS);
+      return saved ? JSON.parse(saved) : [];
+  });
 
-  // Data States with Schema Migration Logic embedded in initial value if needed (handled by Service mostly)
-  const [students, setStudents] = useLocalStorage<Student[]>(KEYS.STUDENTS, MOCK_STUDENTS);
-  const [configs, setConfigs] = useLocalStorage<ConfigItem[]>(KEYS.CONFIGS, MOCK_CONFIGS);
-  const [scholarshipConfigs, setScholarshipConfigs] = useLocalStorage<ScholarshipConfig[]>(KEYS.SCHOLARSHIP_CONFIGS, MOCK_SCHOLARSHIP_CONFIGS);
-  const [scholarships, setScholarships] = useLocalStorage<ScholarshipRecord[]>(KEYS.SCHOLARSHIPS, MOCK_SCHOLARSHIPS);
-  const [activities, setActivities] = useLocalStorage<ActivityRecord[]>(KEYS.ACTIVITIES, MOCK_ACTIVITIES);
-  const [events, setEvents] = useLocalStorage<Event[]>(KEYS.EVENTS, MOCK_EVENTS);
-  const [counselingLogs, setCounselingLogs] = useLocalStorage<CounselingLog[]>(KEYS.LOGS, MOCK_COUNSELING_LOGS);
-  const [systemLogs, setSystemLogs] = useLocalStorage<SystemLog[]>(KEYS.SYSTEM_LOGS, []);
-
-  // UI State
   const [currentView, setCurrentView] = useState('DASHBOARD');
   const [navParams, setNavParams] = useState<any>(null); 
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'alert'} | null>(null);
 
-  // --- Core Services ---
-  const notify = (message: string, type: 'success' | 'alert' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  useEffect(() => localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users)), [users]);
+  useEffect(() => localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(roles)), [roles]);
+  useEffect(() => localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students)), [students]);
+  useEffect(() => localStorage.setItem(STORAGE_KEYS.CONFIGS, JSON.stringify(configs)), [configs]);
+  useEffect(() => localStorage.setItem(STORAGE_KEYS.SCHOLARSHIP_CONFIGS, JSON.stringify(scholarshipConfigs)), [scholarshipConfigs]);
+  useEffect(() => localStorage.setItem(STORAGE_KEYS.SCHOLARSHIPS, JSON.stringify(scholarships)), [scholarships]);
+  useEffect(() => localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(activities)), [activities]);
+  useEffect(() => localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(events)), [events]);
+  useEffect(() => localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(counselingLogs)), [counselingLogs]);
+  useEffect(() => localStorage.setItem(STORAGE_KEYS.SYSTEM_LOGS, JSON.stringify(systemLogs)), [systemLogs]);
 
   const handleLog = (actionType: LogAction, target: string, status: LogStatus, details?: string) => {
       if (!currentUser) return; 
@@ -73,29 +114,43 @@ export default function App() {
       setSystemLogs(prev => [newLog, ...prev]);
   };
 
-  // Helper for internal CRUD usage to check permissions
-  // Note: Components use usePermission() hook, but App.tsx handlers need direct access
-  const checkPermissionInternal = (moduleId: ModuleId, action: any): boolean => {
+  const checkPermission = (moduleId: ModuleId, action: keyof PermissionMatrix[ModuleId]): boolean => {
       if (!currentUser) return false;
       const role = roles.find(r => r.id === currentUser.roleId);
       if (!role) return false;
       return role.permissions[moduleId]?.[action] === true;
   };
 
-  // --- CRUD EXECUTOR ---
-  const executeCRUD = useMemo(() => createCRUDExecutor({
-      currentUser, checkPermission: checkPermissionInternal, handleLog, notify
-  }), [currentUser, roles]);
-
-  // --- Handlers ---
+  const notify = (message: string, type: 'success' | 'alert' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const handleLoginSuccess = (user: User) => {
       setCurrentUser(user);
-      handleLog('LOGIN', 'System', 'SUCCESS', `User ${user.name} logged in`);
+      const roleName = roles.find(r => r.id === user.roleId)?.name || 'Unknown';
+      const newLog: SystemLog = {
+          id: Math.random().toString(36).substr(2, 9),
+          timestamp: new Date().toISOString(),
+          actorId: user.id,
+          actorName: user.name,
+          roleName: roleName,
+          actionType: 'LOGIN',
+          target: 'System',
+          status: 'SUCCESS',
+          details: 'User logged in',
+          ip: '192.168.1.10'
+      };
+      setSystemLogs(prev => [newLog, ...prev]);
   };
 
   const handleUpdateUserPassword = (userId: string, newPass: string) => {
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, password: newPass, isFirstLogin: false } : u));
+      setUsers(prev => prev.map(u => {
+          if (u.id === userId) {
+              return { ...u, password: newPass, isFirstLogin: false };
+          }
+          return u;
+      }));
       notify('密碼已更新，請重新登入');
   };
 
@@ -110,129 +165,138 @@ export default function App() {
   };
 
   const handleNavigate = (view: string, params?: any) => {
-      // Basic View Permission Check logic moved to components or simplified here
-      // Real check happens in renderContent via components or simple switch
+      let moduleId: ModuleId = ModuleId.DASHBOARD;
+      if (view === 'STUDENTS') moduleId = ModuleId.STUDENTS;
+      if (view === 'COUNSELING_MANAGER') moduleId = ModuleId.COUNSELING_MANAGER; 
+      if (view === 'SETTINGS') moduleId = ModuleId.SYSTEM_SETTINGS;
+      if (view === 'USER_MANAGEMENT') moduleId = ModuleId.USER_MANAGEMENT;
+      if (view === 'AUDIT_LOGS') moduleId = ModuleId.AUDIT_LOGS;
+      if (view === 'SCHOLARSHIP') moduleId = ModuleId.SCHOLARSHIP;
+      if (view === 'ACTIVITY') moduleId = ModuleId.ACTIVITY;
+
+      if (moduleId !== ModuleId.DASHBOARD && view !== 'DETAIL' && !checkPermission(moduleId, 'view')) {
+          handleLog('ACCESS_DENIED', `Attempted to access ${view}`, 'WARNING');
+          notify('權限不足：無法存取此頁面', 'alert');
+          return;
+      }
       setCurrentView(view);
       setNavParams(params || null); 
       if (view !== 'DETAIL') setSelectedStudent(null);
   };
 
   const handleResetSystem = () => {
-      StorageService.clearAll();
+      localStorage.clear();
       window.location.reload();
   };
 
-  // --- Entity Handlers ---
-
   const handleAddStudent = async (newStudent: Student): Promise<boolean> => {
-      const result = await executeCRUD({
-          actionType: 'CREATE',
-          targetName: `Student: ${newStudent.name}`,
-          moduleId: ModuleId.STUDENTS,
-          permissionAction: 'add',
-          successMessage: '學生資料已成功新增',
-          commit: () => {
-              setStudents(prev => [newStudent, ...prev]);
-              return newStudent;
+      if(!checkPermission(ModuleId.STUDENTS, 'add')) {
+          notify('權限不足', 'alert'); 
+          return false;
+      }
+      setStudents(prev => [newStudent, ...prev]);
+      handleLog('CREATE', `Student: ${newStudent.name}`, 'SUCCESS');
+      notify('學生資料已新增');
+      return true;
+  };
+
+  const handleUpdateStudent = (updatedStudent: Student) => {
+      if(!checkPermission(ModuleId.STUDENTS, 'edit')) {
+           notify('權限不足', 'alert');
+           return;
+      }
+      
+      const oldStudent = students.find(s => s.id === updatedStudent.id);
+      let statusLog = null;
+      
+      // Special logic for Case Closed
+      if (oldStudent && oldStudent.careStatus !== 'CLOSED' && updatedStudent.careStatus === 'CLOSED') {
+          handleLog('UPDATE', `Student ${updatedStudent.studentId}`, 'SUCCESS', 'Case Closed (High Risk -> None)');
+      }
+
+      // Status Change Logic
+      if (oldStudent) {
+          if (oldStudent.status !== updatedStudent.status) {
+              statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.status, newStatus: updatedStudent.status, reason: '狀態變更', editor: currentUser?.name || 'System' };
+          } else if (oldStudent.departmentCode !== updatedStudent.departmentCode) {
+              statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.departmentCode, newStatus: updatedStudent.departmentCode, reason: '轉系/系所變更', editor: currentUser?.name || 'System' };
           }
-      });
-      return result.success;
+      }
+
+      const finalStudent = statusLog 
+        ? { ...updatedStudent, statusHistory: [...(updatedStudent.statusHistory || []), statusLog] } 
+        : updatedStudent;
+
+      setStudents(prev => prev.map(s => s.id === finalStudent.id ? finalStudent : s));
+      setSelectedStudent(finalStudent);
+      
+      if(statusLog) {
+          handleLog('UPDATE', `Student ${finalStudent.studentId}`, 'SUCCESS', `Status changed: ${statusLog.oldStatus} -> ${statusLog.newStatus}`);
+      }
+      notify('學生資料已更新');
   };
 
-  const handleUpdateStudent = async (updatedStudent: Student) => {
-      await executeCRUD({
-          actionType: 'UPDATE',
-          targetName: `Student: ${updatedStudent.studentId}`,
-          moduleId: ModuleId.STUDENTS,
-          permissionAction: 'edit',
-          successMessage: '學生資料已更新',
-          commit: () => {
-              const oldStudent = students.find(s => s.id === updatedStudent.id);
-              let statusLog = null;
-              
-              if (oldStudent) {
-                  if (oldStudent.status !== updatedStudent.status) {
-                      statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.status, newStatus: updatedStudent.status, reason: '狀態變更', editor: currentUser?.name || 'System' };
-                  } else if (oldStudent.departmentCode !== updatedStudent.departmentCode) {
-                      statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.departmentCode, newStatus: updatedStudent.departmentCode, reason: '轉系/系所變更', editor: currentUser?.name || 'System' };
-                  }
-                  
-                  if (oldStudent.careStatus !== 'CLOSED' && updatedStudent.careStatus === 'CLOSED') {
-                      handleLog('UPDATE', `Student ${updatedStudent.studentId}`, 'SUCCESS', 'Case Closed');
-                  }
-              }
+  const handleAddCounselingLog = (newLog: CounselingLog) => {
+      if(!checkPermission(ModuleId.COUNSELING_MANAGER, 'add') && !checkPermission(ModuleId.COUNSELING, 'add')) {
+           notify('權限不足', 'alert');
+           return;
+      }
+      setCounselingLogs(prev => [newLog, ...prev]);
+      handleLog('CREATE', `Counseling Log for Student ID: ${newLog.studentId}`, 'SUCCESS');
+      notify('輔導紀錄已新增');
 
-              const finalStudent = statusLog 
-                ? { ...updatedStudent, statusHistory: [...(updatedStudent.statusHistory || []), statusLog] } 
-                : updatedStudent;
-
-              setStudents(prev => prev.map(s => s.id === finalStudent.id ? finalStudent : s));
-              setSelectedStudent(finalStudent);
-              return finalStudent;
+      // Auto-escalate High Risk Logic
+      if (newLog.isHighRisk) {
+          const student = students.find(s => s.id === newLog.studentId);
+          if (student && student.highRisk !== HighRiskStatus.CRITICAL) {
+               const updated = { ...student, highRisk: HighRiskStatus.CRITICAL, careStatus: 'OPEN' as const };
+               setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
+               handleLog('UPDATE', `Student ${student.studentId}`, 'SUCCESS', 'Auto-escalated to High Risk');
+               notify('⚠️ 學生已自動標記為高風險');
           }
-      });
+      }
   };
 
-  const handleAddCounselingLog = async (newLog: CounselingLog) => {
-      await executeCRUD({
-          actionType: 'CREATE',
-          targetName: `Log: ${newLog.studentId}`,
-          moduleId: ModuleId.COUNSELING_MANAGER, 
-          permissionAction: 'add',
-          successMessage: '輔導紀錄已新增',
-          commit: () => {
-              setCounselingLogs(prev => [newLog, ...prev]);
-
-              if (newLog.isHighRisk) {
-                  const student = students.find(s => s.id === newLog.studentId);
-                  if (student && student.highRisk !== HighRiskStatus.CRITICAL) {
-                       const updated = { ...student, highRisk: HighRiskStatus.CRITICAL, careStatus: 'OPEN' as const };
-                       setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
-                       notify('⚠️ 學生已自動標記為高風險', 'alert');
-                  }
-              }
-              return newLog;
-          }
-      });
+  const handleAddEvent = (event: Event) => {
+      if(!checkPermission(ModuleId.ACTIVITY, 'add')) {
+          notify('權限不足', 'alert');
+          return;
+      }
+      setEvents(prev => [event, ...prev]);
+      handleLog('CREATE', `Event: ${event.name}`, 'SUCCESS');
+      notify('活動已建立');
   };
 
-  const handleAddEvent = async (event: Event) => {
-      await executeCRUD({
-          actionType: 'CREATE',
-          targetName: `Event: ${event.name}`,
-          moduleId: ModuleId.ACTIVITY,
-          permissionAction: 'add',
-          commit: () => setEvents(prev => [event, ...prev])
-      });
+  const handleAddScholarship = (record: ScholarshipRecord) => {
+      if(!checkPermission(ModuleId.SCHOLARSHIP, 'add')) {
+          notify('權限不足', 'alert');
+          return;
+      }
+      setScholarships(prev => [record, ...prev]);
+      handleLog('CREATE', `Scholarship Application: ${record.name}`, 'SUCCESS');
+      notify('申請已送出');
   };
 
-  const handleAddScholarship = async (record: ScholarshipRecord) => {
-      await executeCRUD({
-          actionType: 'CREATE',
-          targetName: `App: ${record.name}`,
-          moduleId: ModuleId.SCHOLARSHIP,
-          permissionAction: 'add',
-          successMessage: '申請已送出',
-          commit: () => setScholarships(prev => [record, ...prev])
-      });
+  const handleBatchConfirmActivity = (eventId: string) => {
+      if(!checkPermission(ModuleId.ACTIVITY, 'edit')) {
+          notify('權限不足', 'alert');
+          return;
+      }
+      setActivities(prev => prev.map(a => a.eventId === eventId ? { ...a, status: 'CONFIRMED' } : a));
+      handleLog('UPDATE', `Event Batch Confirm: ${eventId}`, 'SUCCESS');
+      notify('已批次核撥時數 (已鎖定)');
   };
 
-  const handleBatchConfirmActivity = async (eventId: string) => {
-      await executeCRUD({
-          actionType: 'UPDATE',
-          targetName: `Batch Confirm: ${eventId}`,
-          moduleId: ModuleId.ACTIVITY,
-          permissionAction: 'edit',
-          successMessage: '已批次核撥時數',
-          commit: () => setActivities(prev => prev.map(a => a.eventId === eventId ? { ...a, status: 'CONFIRMED' } : a))
-      });
+  const handleRevealSensitiveData = (label: string) => {
+      handleLog('VIEW_SENSITIVE', label, 'SUCCESS');
+      notify('已記錄稽核日誌', 'alert');
   };
 
-  const handleSaveUser = async (user: User) => {
-      // Only Admin
+  const handleSaveUser = (user: User) => {
       setUsers(prev => {
           const exists = prev.find(u => u.id === user.id);
-          return exists ? prev.map(u => u.id === user.id ? user : u) : [...prev, user];
+          if (exists) return prev.map(u => u.id === user.id ? user : u);
+          return [...prev, user];
       });
       handleLog(user.id ? 'UPDATE' : 'CREATE', `User: ${user.account}`, 'SUCCESS');
       notify('使用者資料已儲存');
@@ -241,7 +305,8 @@ export default function App() {
   const handleSaveRole = (role: RoleDefinition) => {
       setRoles(prev => {
           const exists = prev.find(r => r.id === role.id);
-          return exists ? prev.map(r => r.id === role.id ? role : r) : [...prev, role];
+          if (exists) return prev.map(r => r.id === role.id ? role : r);
+          return [...prev, role];
       });
       handleLog('UPDATE', `Role: ${role.name}`, 'SUCCESS');
       notify('角色權限已更新');
@@ -253,37 +318,31 @@ export default function App() {
       notify('角色已刪除');
   };
 
-  const handleUpdateScholarshipStatus = async (id: string, status: ScholarshipRecord['status'], comment?: string) => {
-      await executeCRUD({
-          actionType: 'UPDATE',
-          targetName: `Scholarship Status: ${status}`,
-          moduleId: ModuleId.SCHOLARSHIP,
-          permissionAction: 'edit',
-          successMessage: '審核狀態已更新',
-          commit: () => {
-              setScholarships(p => p.map(s => {
-                  if (s.id === id) {
-                      const newAudit = comment ? {
-                          date: new Date().toISOString(),
-                          action: status,
-                          actor: currentUser?.name || 'System',
-                          comment: comment
-                      } : undefined;
+  const handleUpdateScholarshipStatus = (id: string, status: ScholarshipRecord['status'], comment?: string) => {
+    if(checkPermission(ModuleId.SCHOLARSHIP, 'edit')) {
+        setScholarships(p => p.map(s => {
+            if (s.id === id) {
+                const newAudit = comment ? {
+                    date: new Date().toISOString(),
+                    action: status,
+                    actor: currentUser?.name || 'System',
+                    comment: comment
+                } : undefined;
 
-                      return {
-                          ...s,
-                          status,
-                          currentHandler: currentUser?.name,
-                          auditHistory: newAudit ? [...(s.auditHistory || []), newAudit] : s.auditHistory
-                      };
-                  }
-                  return s;
-              }));
-          }
-      });
+                return {
+                    ...s,
+                    status,
+                    currentHandler: currentUser?.name,
+                    auditHistory: newAudit ? [...(s.auditHistory || []), newAudit] : s.auditHistory
+                };
+            }
+            return s;
+        }));
+        handleLog('UPDATE', `Scholarship ${id}`, 'SUCCESS', `Status: ${status}`);
+        notify('審核狀態已更新');
+    } else notify('權限不足', 'alert');
   };
 
-  // --- RENDER CONTENT ---
   const renderContent = () => {
     switch (currentView) {
       case 'DASHBOARD':
@@ -294,7 +353,7 @@ export default function App() {
             students={students} 
             configs={configs} 
             onSelectStudent={(s) => { setSelectedStudent(s); setCurrentView('DETAIL'); }}
-            onRevealSensitiveData={(label) => handleLog('VIEW_SENSITIVE', label, 'SUCCESS')}
+            onRevealSensitiveData={handleRevealSensitiveData}
             onAddStudent={handleAddStudent}
             initialParams={navParams}
           />
@@ -351,12 +410,12 @@ export default function App() {
                 students={students} 
                 activities={activities}
                 configs={configs} 
-                onUpdateScholarships={setScholarships}
+                onUpdateScholarships={(updatedList) => setScholarships(updatedList)}
                 onUpdateStatus={handleUpdateScholarshipStatus} 
                 onAddScholarship={handleAddScholarship}
+                hasPermission={(action) => checkPermission(ModuleId.SCHOLARSHIP, action)}
                 initialParams={navParams}
                 currentUser={currentUser}
-                hasPermission={(action) => checkPermissionInternal(ModuleId.SCHOLARSHIP, action)}
             />
         );
       case 'ACTIVITY':
@@ -365,28 +424,28 @@ export default function App() {
                 events={events}
                 activities={activities}
                 students={students}
-                onAddParticipant={async (eid, sid) => {
-                     if(checkPermissionInternal(ModuleId.ACTIVITY, 'edit')) {
+                onAddParticipant={(eid, sid) => {
+                     if(checkPermission(ModuleId.ACTIVITY, 'edit')) {
                         const event = events.find(e => e.id === eid);
                         const defaultHours = event?.defaultHours || 0;
                         setActivities(prev => [...prev, { id: Math.random().toString(), eventId: eid, studentId: sid, role: 'PARTICIPANT', hours: defaultHours, status: 'PENDING' }]);
                         handleLog('CREATE', `Activity Part.`, 'SUCCESS');
                      } else notify('權限不足', 'alert');
                 }}
-                onRemoveParticipant={async (eid, sid) => {
-                    if(checkPermissionInternal(ModuleId.ACTIVITY, 'delete')) {
+                onRemoveParticipant={(eid, sid) => {
+                    if(checkPermission(ModuleId.ACTIVITY, 'delete')) {
                         setActivities(prev => prev.filter(a => !(a.eventId === eid && a.studentId === sid)));
                         handleLog('DELETE', `Activity Part.`, 'SUCCESS');
                     } else notify('權限不足', 'alert');
                 }}
                 onAddEvent={handleAddEvent}
+                hasPermission={(action) => checkPermission(ModuleId.ACTIVITY, action)}
                 onUpdateActivity={(actId, hours) => {
-                    if(checkPermissionInternal(ModuleId.ACTIVITY, 'edit')) {
+                    if(checkPermission(ModuleId.ACTIVITY, 'edit')) {
                         setActivities(prev => prev.map(a => a.id === actId ? { ...a, hours } : a));
                     }
                 }}
                 onBatchConfirm={handleBatchConfirmActivity}
-                hasPermission={(action) => checkPermissionInternal(ModuleId.ACTIVITY, action)}
             />
         );
       default:
@@ -407,13 +466,13 @@ export default function App() {
   return (
     <PermissionProvider currentUser={currentUser} roles={roles} onLog={handleLog}>
         <Layout 
-          currentView={currentView} 
-          onNavigate={handleNavigate}
-          currentUser={currentUser}
-          allUsers={users}
-          roles={roles}
-          onSwitchUser={handleSwitchUser}
-          onResetSystem={handleResetSystem}
+        currentView={currentView} 
+        onNavigate={handleNavigate}
+        currentUser={currentUser}
+        allUsers={users}
+        roles={roles}
+        onSwitchUser={handleSwitchUser}
+        onResetSystem={handleResetSystem}
         >
             {renderContent()}
             {toast && (

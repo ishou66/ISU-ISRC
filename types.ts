@@ -67,6 +67,15 @@ export interface StudentStatusLog {
   editor: string;
 }
 
+export interface StudentBankInfo {
+  bankCode: string;
+  branchCode?: string;
+  accountNumber: string;
+  accountName: string;
+  passbookImg?: string; // Base64
+  lastUpdated?: string;
+}
+
 export interface Student {
   id: string; // UUID
   studentId: string; // Unique Display ID
@@ -98,6 +107,8 @@ export interface Student {
 
   avatarUrl?: string;
   statusHistory: StudentStatusLog[];
+  
+  bankInfo?: StudentBankInfo; // New Financial Info
 }
 
 export interface CounselingLog {
@@ -130,6 +141,7 @@ export interface ScholarshipConfig {
   isActive: boolean;
 }
 
+// Deprecated in favor of StudentBankInfo, but kept for legacy ScholarshipRecord compatibility if needed
 export interface BankInfo {
   bankCode: string;
   branchCode?: string;
@@ -160,11 +172,12 @@ export interface ScholarshipRecord {
   semester: string; 
   name: string;
   amount: number;
-  status: 'UNDER_HOURS' | 'MET_HOURS' | 'REVIEWING' | 'PENDING_DOC' | 'APPROVED' | 'DISBURSED' | 'REJECTED' | 'PENDING'; // PENDING is legacy
+  status: 'UNDER_HOURS' | 'MET_HOURS' | 'REVIEWING' | 'PENDING_DOC' | 'APPROVED' | 'DISBURSED' | 'REJECTED' | 'PENDING'; 
   serviceHoursRequired: number;
   serviceHoursCompleted: number; // Derived field (Activity + Manual)
   
-  bankInfo?: BankInfo;
+  // bankInfo on Record is optional snapshot, usually read from Student
+  bankInfo?: BankInfo; 
   manualHours: ManualServiceLog[];
   
   // Review Process

@@ -84,7 +84,7 @@ export const ActivityManager: React.FC<ActivityManagerProps> = ({
     return (
         <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border border-gray-200">
             {/* Header with Back Button */}
-            <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+            <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={() => setSelectedEventId(null)}
@@ -94,32 +94,32 @@ export const ActivityManager: React.FC<ActivityManagerProps> = ({
                     </button>
                     <div>
                         <h2 className="text-lg font-bold text-gray-800">{selectedEvent.name}</h2>
-                        <p className="text-xs text-gray-500 flex items-center gap-2">
-                            <ICONS.Calendar size={12}/> {selectedEvent.date}
-                            <span className="mx-1">|</span>
-                            <ICONS.MapPin size={12}/> {selectedEvent.location}
-                            <span className="mx-1">|</span>
-                            <ICONS.Clock size={12}/> 預設核發: <span className="font-bold text-gray-700">{selectedEvent.defaultHours}</span> 小時
+                        <p className="text-xs text-gray-500 flex flex-wrap items-center gap-2">
+                            <span className="flex items-center gap-1"><ICONS.Calendar size={12}/> {selectedEvent.date}</span>
+                            <span className="hidden md:inline mx-1">|</span>
+                            <span className="flex items-center gap-1"><ICONS.MapPin size={12}/> {selectedEvent.location}</span>
+                            <span className="hidden md:inline mx-1">|</span>
+                            <span className="flex items-center gap-1"><ICONS.Clock size={12}/> 預設 <span className="font-bold text-gray-700">{selectedEvent.defaultHours}</span> hr</span>
                         </p>
                     </div>
                 </div>
-                <div className="relative">
+                <div className="relative w-full md:w-auto">
                      <ICONS.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
                      <input 
                         type="text"
                         placeholder="搜尋學生..."
-                        className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-isu-red outline-none"
+                        className="w-full md:w-64 pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-isu-red outline-none"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                      />
                 </div>
             </div>
 
-            {/* Transfer List Container */}
-            <div className="flex-1 p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-hidden">
+            {/* Transfer List Container - Stacked on Mobile */}
+            <div className="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
                 
                 {/* Left: Not Checked In */}
-                <div className="flex flex-col border border-gray-200 rounded-lg h-full overflow-hidden">
+                <div className="flex flex-col border border-gray-200 rounded-lg h-[400px] md:h-full overflow-hidden">
                     <div className="bg-gray-100 p-3 border-b border-gray-200 font-bold text-gray-700 flex justify-between">
                         <span>未簽到名單</span>
                         <span className="bg-gray-200 text-gray-600 px-2 rounded-full text-xs flex items-center">{filterList(notCheckedIn).length}</span>
@@ -145,7 +145,7 @@ export const ActivityManager: React.FC<ActivityManagerProps> = ({
                 </div>
 
                 {/* Right: Checked In */}
-                <div className="flex flex-col border border-blue-200 rounded-lg h-full overflow-hidden shadow-sm">
+                <div className="flex flex-col border border-blue-200 rounded-lg h-[400px] md:h-full overflow-hidden shadow-sm">
                     <div className="bg-blue-50 p-3 border-b border-blue-200 font-bold text-blue-800 flex justify-between items-center">
                         <div className="flex gap-2">
                             <span>已簽到 / 核發時數</span>
@@ -157,7 +157,7 @@ export const ActivityManager: React.FC<ActivityManagerProps> = ({
                                 className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 flex items-center gap-1 shadow-sm font-medium"
                                 title="核撥所有人的時數"
                             >
-                                <ICONS.CheckCircle size={14} /> 批次核撥 (鎖定)
+                                <ICONS.CheckCircle size={14} /> <span className="hidden sm:inline">批次核撥</span>
                             </button>
                         )}
                     </div>
@@ -166,7 +166,7 @@ export const ActivityManager: React.FC<ActivityManagerProps> = ({
                             <div key={student.id} className={`p-2 rounded border flex justify-between items-center ${student.status === 'CONFIRMED' ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-100'}`}>
                                 <div>
                                     <span className={`font-medium mr-2 ${student.status === 'CONFIRMED' ? 'text-green-900' : 'text-blue-900'}`}>{student.name}</span>
-                                    <span className={`text-xs font-mono ${student.status === 'CONFIRMED' ? 'text-green-700' : 'text-blue-500'}`}>{student.studentId}</span>
+                                    <span className={`text-xs font-mono block sm:inline ${student.status === 'CONFIRMED' ? 'text-green-700' : 'text-blue-500'}`}>{student.studentId}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {student.status === 'CONFIRMED' ? (
@@ -184,7 +184,7 @@ export const ActivityManager: React.FC<ActivityManagerProps> = ({
                                                 min="0"
                                                 step="0.5"
                                             />
-                                            <span className="text-xs text-blue-600 font-medium">hr</span>
+                                            <span className="text-xs text-blue-600 font-medium hidden sm:inline">hr</span>
                                             <button 
                                                 onClick={() => onRemoveParticipant(selectedEventId!, student.id)}
                                                 className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded ml-1"

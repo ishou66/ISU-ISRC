@@ -25,27 +25,26 @@ export const SystemConfig: React.FC<SystemConfigProps> = ({ configs, setConfigs 
       isActive: true,
       order: currentConfigs.length + 1
     };
-    // Use spread to create a new array reference for React reactivity
-    setConfigs([...configs, newItem]);
+    // CRITICAL: Create a new array reference so useEffects dependent on 'configs' will fire
+    setConfigs(prev => [...prev, newItem]);
     setNewItemCode('');
     setNewItemLabel('');
   };
 
   const toggleStatus = (id: string) => {
-    setConfigs(configs.map(c => c.id === id ? { ...c, isActive: !c.isActive } : c));
+    setConfigs(prev => prev.map(c => c.id === id ? { ...c, isActive: !c.isActive } : c));
   };
 
   const tabs = [
       { id: 'DEPT', label: '系所單位' },
       { id: 'TRIBE', label: '原住民族別' },
-      { id: 'SCHOLARSHIP', label: '獎助學金' },
       { id: 'COUNSEL_METHOD', label: '輔導:進行方式' },
       { id: 'COUNSEL_CATEGORY', label: '輔導:諮詢類別' },
       { id: 'COUNSEL_RECOMMENDATION', label: '輔導:後續建議' },
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-140px)]">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full">
       <div className="p-6 border-b border-gray-200">
         <h2 className="text-xl font-bold text-gray-800 mb-4">系統參數配置</h2>
         <div className="flex flex-wrap gap-2">
@@ -98,11 +97,11 @@ export const SystemConfig: React.FC<SystemConfigProps> = ({ configs, setConfigs 
         <table className="w-full text-sm text-left">
             <thead className="bg-gray-100 text-gray-700">
                 <tr>
-                    <th className="px-4 py-2 rounded-tl-lg">排序</th>
-                    <th className="px-4 py-2">代碼</th>
+                    <th className="px-4 py-2 w-20">排序</th>
+                    <th className="px-4 py-2 w-32">代碼</th>
                     <th className="px-4 py-2">名稱</th>
-                    <th className="px-4 py-2">狀態</th>
-                    <th className="px-4 py-2 rounded-tr-lg text-right">操作</th>
+                    <th className="px-4 py-2 w-24">狀態</th>
+                    <th className="px-4 py-2 w-24 text-right">操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -113,14 +112,11 @@ export const SystemConfig: React.FC<SystemConfigProps> = ({ configs, setConfigs 
                         <td className="px-4 py-3">{item.label}</td>
                         <td className="px-4 py-3">
                             <span className={`px-2 py-1 rounded text-xs ${item.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {item.isActive ? '啟用中' : '已停用'}
+                                {item.isActive ? '啟用' : '停用'}
                             </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                            <button 
-                                onClick={() => toggleStatus(item.id)}
-                                className="text-blue-600 hover:underline text-xs"
-                            >
+                            <button onClick={() => toggleStatus(item.id)} className="text-blue-600 hover:underline text-xs">
                                 {item.isActive ? '停用' : '啟用'}
                             </button>
                         </td>

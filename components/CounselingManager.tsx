@@ -4,7 +4,6 @@ import { CounselingLog, Student, ConfigItem, HighRiskStatus, ModuleId } from '..
 import { ICONS } from '../constants';
 import { usePermission } from '../hooks/usePermission';
 
-// ... (Utils: getLabel, getCodeForOther, StudentSearchBox, StudentSummaryCard components same as before)
 const getLabel = (code: string | undefined, type: string, configs: ConfigItem[]) => {
     return configs.find(c => c.category === type && c.code === code)?.label || code;
 };
@@ -13,9 +12,11 @@ const getCodeForOther = (type: string, configs: ConfigItem[]) => {
     return configs.find(c => c.category === type && c.code.includes('OTHER'))?.code || 'OTHER';
 };
 
+// --- Student Search Box (Updated with Clear & UX) ---
 const StudentSearchBox: React.FC<{ students: Student[], onSelect: (s: Student) => void, disabled?: boolean, configs: ConfigItem[] }> = ({ students, onSelect, disabled, configs }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
+
     const suggestions = useMemo(() => {
         if (!searchTerm) return [];
         const lowerTerm = searchTerm.toLowerCase();
@@ -28,28 +29,48 @@ const StudentSearchBox: React.FC<{ students: Student[], onSelect: (s: Student) =
         onSelect(student);
     };
 
+    const handleClear = () => {
+        setSearchTerm('');
+        setShowSuggestions(false);
+    };
+
     return (
-        <div className="relative">
-            <label className="block text-xs font-bold text-gray-500 mb-1">輔導對象</label>
-            <div className="relative">
-                <ICONS.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                <input
-                    type="text"
-                    className="w-full border border-gray-300 rounded pl-10 pr-4 py-2 text-sm outline-none"
-                    placeholder="例如: 11200... 或 林小美"
-                    value={searchTerm}
-                    onChange={(e) => { setSearchTerm(e.target.value); setShowSuggestions(true); }}
-                    onFocus={() => setShowSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                    disabled={disabled}
-                />
-                {suggestions.length > 0 && showSuggestions && (
-                    <div className="absolute z-50 w-full bg-white border border-gray-200 mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                        {suggestions.map(s => (
-                            <button key={s.id} className="w-full text-left px-4 py-2 hover:bg-blue-50 flex justify-between items-center border-b border-gray-100" onClick={() => handleSelect(s)}>
-                                <div><span className="font-bold text-sm">{s.name}</span> <span className="text-xs text-gray-500">{s.studentId}</span></div>
-                            </button>
-                        ))}
+        <div className="relative no-print">
+            <label className="block text-xs font-bold text-gray-500 mb-1">輔導對象搜尋</label>
+            <div className="relative flex gap-2">
+                <div className="relative flex-1">
+                    <ICONS.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                    <input
+                        type="text"
+                        className="w-full border border-gray-300 rounded pl-10 pr-8 py-2 text-sm outline-none focus:ring-1 focus:ring-isu-red"
+                        placeholder="請輸入學號或姓名..."
+                        value={searchTerm}
+                        onChange={(e) => { setSearchTerm(e.target.value); setShowSuggestions(true); }}
+                        onFocus={() => setShowSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                        disabled={disabled}
+                    />
+                    {searchTerm && (
+                        <button 
+                            onClick={handleClear}
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                            <ICONS.Close size={16} />
+                        </button>
+                    )}
+                </div>
+                {searchTerm && showSuggestions && (
+                    <div className="absolute top-full left-0 z-50 w-full bg-white border border-gray-200 mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {suggestions.length > 0 ? (
+                            suggestions.map(s => (
+                                <button key={s.id} className="w-full text-left px-4 py-2 hover:bg-blue-50 flex justify-between items-center border-b border-gray-100 last:border-0" onClick={() => handleSelect(s)}>
+                                    <div><span className="font-bold text-sm text-gray-800">{s.name}</span> <span className="text-xs text-gray-500 font-mono ml-2">{s.studentId}</span></div>
+                                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">{getLabel(s.departmentCode, 'DEPT', configs)}</span>
+                                </button>
+                            ))
+                        ) : (
+                            <div className="p-3 text-center text-gray-400 text-sm">查無此學生</div>
+                        )}
                     </div>
                 )}
             </div>
@@ -57,29 +78,34 @@ const StudentSearchBox: React.FC<{ students: Student[], onSelect: (s: Student) =
     );
 };
 
+// ... StudentSummaryCard (Same as before) ...
 const StudentSummaryCard: React.FC<{ student: Student; configs: ConfigItem[]; onClear: () => void }> = ({ student, configs, onClear }) => {
     return (
-        <div className="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg p-4 flex items-center gap-4 relative">
-            <button onClick={onClear} className="absolute top-2 right-2 text-gray-400 hover:text-red-500"><ICONS.Close size={16} /></button>
-            <img src={student.avatarUrl} alt={student.name} className="w-16 h-16 rounded-lg object-cover border-2 border-white shadow-sm" />
+        <div className="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg p-4 flex items-center gap-4 relative animate-fade-in print:bg-none print:border-black">
+            <button onClick={onClear} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors no-print"><ICONS.Close size={16} /></button>
+            <img src={student.avatarUrl} alt={student.name} className="w-16 h-16 rounded-lg object-cover border-2 border-white shadow-sm print:hidden" />
             <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-lg font-bold text-gray-900">{student.name}</h3>
-                    <span className="font-mono text-sm text-gray-500 bg-gray-100 px-2 rounded">{student.studentId}</span>
+                    <span className="font-mono text-sm text-gray-500 bg-gray-100 px-2 rounded print:bg-transparent print:text-black">{student.studentId}</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
-                    <span>{getLabel(student.departmentCode, 'DEPT', configs)}</span>
+                    <span className="flex items-center gap-1"><ICONS.CheckCircle size={10}/> {getLabel(student.departmentCode, 'DEPT', configs)}</span>
                 </div>
             </div>
             {student.highRisk !== HighRiskStatus.NONE && (
-                <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm border border-red-200">
-                    <ICONS.Alert size={12} /> {student.highRisk}
-                </span>
+                <div className="flex flex-col items-end">
+                    <span className="text-[10px] text-red-400 font-bold uppercase mb-1">Risk Status</span>
+                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm border border-red-200 print:border-black print:text-black print:bg-transparent">
+                        <ICONS.Alert size={12} /> {student.highRisk}
+                    </span>
+                </div>
             )}
         </div>
     );
 };
 
+// ... CounselingForm (Same as before) ...
 const CounselingForm: React.FC<{ configs: ConfigItem[], currentUserName: string, selectedStudent: Student | null, onSave: (data: CounselingLog) => void, onCancel: () => void }> = ({ configs, currentUserName, selectedStudent, onSave, onCancel }) => {
     const [formData, setFormData] = useState<Partial<CounselingLog>>({
         date: new Date().toISOString().split('T')[0],
@@ -91,24 +117,52 @@ const CounselingForm: React.FC<{ configs: ConfigItem[], currentUserName: string,
         content: '',
         isHighRisk: false,
         needsTracking: false,
+        methodOtherDetail: '',
+        categoriesOtherDetail: ''
     });
+    
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const handleChange = (field: keyof CounselingLog, value: any) => setFormData(prev => ({ ...prev, [field]: value }));
+    const handleChange = (field: keyof CounselingLog, value: any) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
+    };
+    
     const handleCheckboxChange = (field: 'categories' | 'recommendations', code: string) => {
         setFormData(prev => {
             const list = prev[field] || [];
             return { ...prev, [field]: list.includes(code) ? list.filter(c => c !== code) : [...list, code] };
         });
+        if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
     };
 
     const handleSubmit = () => {
-        if (!selectedStudent || !formData.date || !formData.method || (formData.categories || []).length === 0 || !formData.content?.trim()) {
-            alert("請填寫必填欄位");
+        const newErrors: Record<string, string> = {};
+
+        if (!selectedStudent) newErrors.student = "請先搜尋並選擇學生";
+        if (!formData.date) newErrors.date = "請選擇日期";
+        if (!formData.method) newErrors.method = "請選擇進行方式";
+        if ((formData.categories || []).length === 0) newErrors.categories = "請至少選擇一項輔導事項";
+        if (!formData.content?.trim()) newErrors.content = "請填寫紀錄內容";
+
+        const methodOtherCode = getCodeForOther('COUNSEL_METHOD', configs);
+        if (formData.method === methodOtherCode && !formData.methodOtherDetail?.trim()) {
+             newErrors.methodOtherDetail = "請填寫「其他」進行方式的說明";
+        }
+
+        const categoryOtherCode = getCodeForOther('COUNSEL_CATEGORY', configs);
+        if (formData.categories?.includes(categoryOtherCode) && !formData.categoriesOtherDetail?.trim()) {
+             newErrors.categoriesOtherDetail = "請填寫「其他」輔導事項的說明";
+        }
+        
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
             return;
         }
+
         const logData: CounselingLog = {
             id: `cl_${Math.random().toString(36).substr(2, 9)}`,
-            studentId: selectedStudent.id,
+            studentId: selectedStudent!.id,
             date: formData.date!,
             consultTime: formData.consultTime!,
             counselorName: formData.counselorName || currentUserName,
@@ -126,101 +180,234 @@ const CounselingForm: React.FC<{ configs: ConfigItem[], currentUserName: string,
         onSave(logData);
     };
 
+    const methodOtherCode = getCodeForOther('COUNSEL_METHOD', configs);
+    const categoryOtherCode = getCodeForOther('COUNSEL_CATEGORY', configs);
+
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1">日期</label>
-                    <input type="date" className="w-full border rounded px-3 py-2 text-sm" value={formData.date} onChange={e => handleChange('date', e.target.value)} />
+                    <label className="block text-xs font-bold text-gray-500 mb-1">日期 *</label>
+                    <input 
+                        type="date" 
+                        className={`w-full border rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-isu-red ${errors.date ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`} 
+                        value={formData.date} 
+                        onChange={e => handleChange('date', e.target.value)} 
+                    />
+                    {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1">進行方式</label>
-                    <select className="w-full border rounded px-3 py-2 text-sm" value={formData.method} onChange={e => handleChange('method', e.target.value)}>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">進行方式 *</label>
+                    <select 
+                        className={`w-full border rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-isu-red ${errors.method ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`} 
+                        value={formData.method} 
+                        onChange={e => handleChange('method', e.target.value)}
+                    >
                         <option value="">請選擇...</option>
                         {configs.filter(c => c.category === 'COUNSEL_METHOD' && c.isActive).map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
                     </select>
+                    {errors.method && <p className="text-red-500 text-xs mt-1">{errors.method}</p>}
+
+                    {formData.method === methodOtherCode && (
+                        <>
+                            <input 
+                                type="text" 
+                                className={`w-full border rounded px-3 py-2 text-sm mt-2 outline-none ${errors.methodOtherDetail ? 'border-red-500 ring-1 ring-red-500' : 'border-yellow-300 bg-yellow-50 focus:ring-1 focus:ring-yellow-400'}`} 
+                                placeholder="請說明其他方式..." 
+                                value={formData.methodOtherDetail} 
+                                onChange={e => handleChange('methodOtherDetail', e.target.value)} 
+                            />
+                            {errors.methodOtherDetail && <p className="text-red-500 text-xs mt-1">{errors.methodOtherDetail}</p>}
+                        </>
+                    )}
                 </div>
             </div>
-            <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">紀錄內容</label>
-                <textarea className="w-full border rounded px-3 py-2 h-32 text-sm" value={formData.content} onChange={e => handleChange('content', e.target.value)} />
-            </div>
-            
-            {/* ... Other fields simplified for brevity ... */}
 
-            <div className="bg-blue-50 p-4 rounded border border-blue-100">
-                <label className="block text-xs font-bold text-gray-700 mb-2">輔導事項 (可多選)</label>
-                <div className="flex flex-wrap gap-2">
+            <div>
+                 <label className="block text-xs font-bold text-gray-500 mb-2">輔導事項 (可多選) *</label>
+                 <div className={`bg-gray-50 p-3 rounded border grid grid-cols-2 md:grid-cols-3 gap-2 ${errors.categories ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'}`}>
                     {configs.filter(c => c.category === 'COUNSEL_CATEGORY' && c.isActive).map(c => (
-                        <label key={c.code} className="flex items-center gap-1 cursor-pointer bg-white px-2 py-1 rounded border">
-                            <input type="checkbox" checked={formData.categories?.includes(c.code)} onChange={() => handleCheckboxChange('categories', c.code)} />
-                            <span className="text-xs">{c.label}</span>
+                        <label key={c.code} className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={formData.categories?.includes(c.code)} onChange={() => handleCheckboxChange('categories', c.code)} className="text-isu-red focus:ring-isu-red rounded" />
+                            <span className="text-xs text-gray-700">{c.label}</span>
                         </label>
                     ))}
+                 </div>
+                 {errors.categories && <p className="text-red-500 text-xs mt-1">{errors.categories}</p>}
+
+                 {formData.categories?.includes(categoryOtherCode) && (
+                    <>
+                        <input 
+                            type="text" 
+                            className={`w-full border rounded px-3 py-2 text-sm mt-2 outline-none ${errors.categoriesOtherDetail ? 'border-red-500 ring-1 ring-red-500' : 'border-yellow-300 bg-yellow-50 focus:ring-1 focus:ring-yellow-400'}`}
+                            placeholder="請說明其他輔導事項..." 
+                            value={formData.categoriesOtherDetail} 
+                            onChange={e => handleChange('categoriesOtherDetail', e.target.value)} 
+                        />
+                         {errors.categoriesOtherDetail && <p className="text-red-500 text-xs mt-1">{errors.categoriesOtherDetail}</p>}
+                    </>
+                 )}
+            </div>
+
+            <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">紀錄內容 *</label>
+                <textarea 
+                    className={`w-full border rounded px-3 py-2 h-32 text-sm resize-none outline-none focus:ring-1 focus:ring-isu-red ${errors.content ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`} 
+                    value={formData.content} 
+                    onChange={e => handleChange('content', e.target.value)} 
+                    placeholder="請詳實記錄晤談內容..." 
+                />
+                {errors.content && <p className="text-red-500 text-xs mt-1">{errors.content}</p>}
+            </div>
+            
+            <div className="bg-red-50 p-4 rounded border border-red-100 flex items-center justify-between">
+                <span className="text-sm font-bold text-red-800 flex items-center gap-2">
+                    <ICONS.Alert size={16}/> 是否標記為休退學高風險？
+                </span>
+                <div 
+                    className={`relative w-12 h-6 rounded-full cursor-pointer transition-colors ${formData.isHighRisk ? 'bg-red-500' : 'bg-gray-300'}`}
+                    onClick={() => handleChange('isHighRisk', !formData.isHighRisk)}
+                >
+                    <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${formData.isHighRisk ? 'translate-x-6' : ''}`}></div>
                 </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                <button onClick={onCancel} className="px-5 py-2.5 border rounded text-gray-600">取消</button>
-                <button onClick={handleSubmit} className="px-5 py-2.5 bg-isu-red text-white rounded">儲存紀錄</button>
+                <button onClick={onCancel} className="px-5 py-2.5 border rounded text-gray-600 hover:bg-gray-50">取消</button>
+                <button onClick={handleSubmit} className="px-5 py-2.5 bg-isu-red text-white rounded hover:bg-red-800 font-medium shadow-sm">儲存紀錄</button>
             </div>
         </div>
     );
 };
 
+// --- Main Component ---
 export const CounselingManager: React.FC<{ logs: CounselingLog[], students: Student[], configs: ConfigItem[], currentUserName: string, onAddLog: (log: CounselingLog) => void }> = ({ logs, students, configs, currentUserName, onAddLog }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const { can } = usePermission();
 
-  const handleOpenModal = () => {
-      setSelectedStudent(null);
-      setIsModalOpen(true);
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Print List Logic
+  const handlePrintList = () => {
+      window.print();
+  };
+
+  // Pagination Logic
+  const sortedLogs = useMemo(() => {
+      return [...logs].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [logs]);
+
+  const totalPages = Math.ceil(sortedLogs.length / itemsPerPage);
+  const currentLogs = sortedLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const goToPage = (page: number) => {
+      if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full">
-        <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><ICONS.CounselingManager className="text-isu-red" /> 輔導關懷紀錄</h2>
-            {can(ModuleId.COUNSELING_MANAGER, 'add') && (
-                <button onClick={handleOpenModal} className="bg-isu-dark text-white px-4 py-1.5 rounded text-sm hover:bg-gray-800 flex items-center gap-2">
-                    <ICONS.Plus size={16} /> 新增紀錄
-                </button>
-            )}
+        {/* Print Header (Visible only in print) */}
+        <div className="print-only text-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">義守大學原住民族學生資源中心</h1>
+            <h2 className="text-xl font-medium text-gray-700 mt-2">輔導關懷紀錄清冊</h2>
+            <p className="text-sm text-gray-500 mt-1">列印日期: {new Date().toLocaleDateString()}</p>
         </div>
 
-        <div className="flex-1 overflow-auto p-4">
-             {/* Simple List View */}
-             <table className="w-full text-sm text-left">
-                <thead className="bg-gray-100 text-gray-700">
-                    <tr><th className="px-4 py-2">日期</th><th className="px-4 py-2">學生</th><th className="px-4 py-2">輔導員</th><th className="px-4 py-2">方式</th></tr>
+        <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center no-print">
+            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><ICONS.CounselingManager className="text-isu-red" /> 輔導關懷紀錄</h2>
+            <div className="flex gap-2">
+                <button onClick={handlePrintList} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-50 flex items-center gap-2">
+                    <ICONS.Print size={16} /> 列印列表
+                </button>
+                {can(ModuleId.COUNSELING_MANAGER, 'add') && (
+                    <button onClick={() => { setSelectedStudent(null); setIsModalOpen(true); }} className="bg-isu-dark text-white px-4 py-1.5 rounded text-sm hover:bg-gray-800 flex items-center gap-2">
+                        <ICONS.Plus size={16} /> 新增紀錄
+                    </button>
+                )}
+            </div>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4 print:p-0 print:overflow-visible">
+             <table className="w-full text-sm text-left border-collapse">
+                <thead className="bg-gray-100 text-gray-700 sticky top-0 print:static">
+                    <tr>
+                        <th className="px-4 py-2 print:border print:border-black">日期</th>
+                        <th className="px-4 py-2 print:border print:border-black">學生</th>
+                        <th className="px-4 py-2 print:border print:border-black">輔導員</th>
+                        <th className="px-4 py-2 print:border print:border-black">方式</th>
+                        <th className="px-4 py-2 print:border print:border-black">類別</th>
+                        <th className="px-4 py-2 text-right no-print">操作</th>
+                    </tr>
                 </thead>
                 <tbody>
-                    {logs.map(log => {
+                    {currentLogs.map(log => {
                         const st = students.find(s => s.id === log.studentId);
                         return (
-                            <tr key={log.id} className="border-b">
-                                <td className="px-4 py-2">{log.date}</td>
-                                <td className="px-4 py-2">{st ? st.name : 'Unknown'}</td>
-                                <td className="px-4 py-2">{log.counselorName}</td>
-                                <td className="px-4 py-2">{getLabel(log.method, 'COUNSEL_METHOD', configs)}</td>
+                            <tr key={log.id} className="border-b hover:bg-gray-50 print:border-black">
+                                <td className="px-4 py-2 font-mono text-gray-600 print:text-black print:border print:border-black">{log.date}</td>
+                                <td className="px-4 py-2 font-medium print:text-black print:border print:border-black">{st ? `${st.name} (${st.studentId})` : 'Unknown'}</td>
+                                <td className="px-4 py-2 print:text-black print:border print:border-black">{log.counselorName}</td>
+                                <td className="px-4 py-2 print:text-black print:border print:border-black">{getLabel(log.method, 'COUNSEL_METHOD', configs)}</td>
+                                <td className="px-4 py-2 flex gap-1 flex-wrap print:border print:border-black print:block">
+                                    {log.categories.map(c => <span key={c} className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-xs border border-blue-100 print:border-0 print:bg-transparent print:text-black print:mr-1">{getLabel(c, 'COUNSEL_CATEGORY', configs)}</span>)}
+                                </td>
+                                <td className="px-4 py-2 text-right no-print">
+                                    <button className="text-gray-500 hover:text-isu-dark p-1" title="詳情">
+                                        <ICONS.ChevronRight size={16} />
+                                    </button>
+                                </td>
                             </tr>
                         );
                     })}
                 </tbody>
              </table>
         </div>
+        
+        {/* Signature Area for Print */}
+        <div className="print-signature">
+            <div className="border-t border-black w-1/3 pt-2 text-center text-sm">承辦人簽章</div>
+            <div className="border-t border-black w-1/3 pt-2 text-center text-sm">單位主管簽章</div>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center no-print">
+            <span className="text-xs text-gray-500">
+                顯示 {Math.min((currentPage - 1) * itemsPerPage + 1, sortedLogs.length)} - {Math.min(currentPage * itemsPerPage, sortedLogs.length)} 筆，共 {sortedLogs.length} 筆
+            </span>
+            <div className="flex gap-2">
+                <button 
+                    onClick={() => goToPage(currentPage - 1)} 
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border rounded bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <ICONS.ChevronRight size={14} className="transform rotate-180" />
+                </button>
+                <span className="px-3 py-1 text-sm text-gray-700 font-medium">
+                    第 {currentPage} 頁 / 共 {totalPages} 頁
+                </span>
+                <button 
+                    onClick={() => goToPage(currentPage + 1)} 
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 border rounded bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <ICONS.ChevronRight size={14} />
+                </button>
+            </div>
+        </div>
 
         {isModalOpen && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print">
+                <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                     <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-xl">
                         <h3 className="text-lg font-bold">新增輔導紀錄</h3>
                         <button onClick={() => setIsModalOpen(false)}><ICONS.Close size={20} /></button>
                     </div>
                     <div className="p-6 overflow-y-auto flex-1 bg-gray-50/30">
                         {!selectedStudent ? (
-                            <div className="max-w-md mx-auto py-10">
+                            <div className="max-w-md mx-auto py-8">
                                 <StudentSearchBox students={students} onSelect={setSelectedStudent} configs={configs} />
                             </div>
                         ) : (

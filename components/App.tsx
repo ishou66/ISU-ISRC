@@ -12,6 +12,7 @@ import { AuditLogManager } from './components/AuditLogManager';
 import { RoleManager } from './components/RoleManager';
 import { UserManager } from './components/UserManager';
 import { CounselingManager } from './components/CounselingManager';
+import { PermissionProvider } from './contexts/PermissionContext';
 
 import { 
     Student, ConfigItem, ScholarshipRecord, ActivityRecord, Event, CounselingLog, SystemLog, 
@@ -21,80 +22,37 @@ import {
     MOCK_STUDENTS, MOCK_CONFIGS, MOCK_SCHOLARSHIPS, MOCK_ACTIVITIES, MOCK_EVENTS, 
     MOCK_COUNSELING_LOGS, ICONS, DEFAULT_USERS, DEFAULT_ROLES, MOCK_SCHOLARSHIP_CONFIGS
 } from './constants';
+import { StorageService } from './services/StorageService';
+import { useLocalStorage } from './hooks/useLocalStorage';
 
-const STORAGE_KEYS = {
-    STUDENTS: 'isu_students_v3',
-    CONFIGS: 'isu_configs_v3',
-    SCHOLARSHIPS: 'isu_scholarships_v3',
-    SCHOLARSHIP_CONFIGS: 'isu_scholarship_configs_v3',
-    ACTIVITIES: 'isu_activities_v3',
-    EVENTS: 'isu_events_v3',
-    LOGS: 'isu_counseling_logs_v3',
-    SYSTEM_LOGS: 'isu_system_audit_logs_v3',
-    USERS: 'isu_users_v3',
-    ROLES: 'isu_roles_v3'
-};
+// Keys moved to StorageService but defined here for hook usage if needed, 
+// or directly use strings. Let's use strings or constants from App to ensure consistency.
+const STORAGE_KEYS = StorageService.getKeys();
 
 export default function App() {
-  const [users, setUsers] = useState<User[]>(() => {
-      const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-      return saved ? JSON.parse(saved) : DEFAULT_USERS;
-  });
-  const [roles, setRoles] = useState<RoleDefinition[]>(() => {
-      const saved = localStorage.getItem(STORAGE_KEYS.ROLES);
-      return saved ? JSON.parse(saved) : DEFAULT_ROLES;
-  });
-
+  const [users, setUsers] = useLocalStorage<User[]>(STORAGE_KEYS.USERS, DEFAULT_USERS);
+  const [roles, setRoles] = useLocalStorage<RoleDefinition[]>(STORAGE_KEYS.ROLES, DEFAULT_ROLES);
+  
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
-  const [students, setStudents] = useState<Student[]>(() => {
-      const saved = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-      return saved ? JSON.parse(saved) : MOCK_STUDENTS;
-  });
-  const [configs, setConfigs] = useState<ConfigItem[]>(() => {
-      const saved = localStorage.getItem(STORAGE_KEYS.CONFIGS);
-      return saved ? JSON.parse(saved) : MOCK_CONFIGS;
-  });
-  const [scholarshipConfigs, setScholarshipConfigs] = useState<ScholarshipConfig[]>(() => {
-      const saved = localStorage.getItem(STORAGE_KEYS.SCHOLARSHIP_CONFIGS);
-      return saved ? JSON.parse(saved) : MOCK_SCHOLARSHIP_CONFIGS;
-  });
-  const [scholarships, setScholarships] = useState<ScholarshipRecord[]>(() => {
-      const saved = localStorage.getItem(STORAGE_KEYS.SCHOLARSHIPS);
-      return saved ? JSON.parse(saved) : MOCK_SCHOLARSHIPS;
-  });
-  const [activities, setActivities] = useState<ActivityRecord[]>(() => {
-      const saved = localStorage.getItem(STORAGE_KEYS.ACTIVITIES);
-      return saved ? JSON.parse(saved) : MOCK_ACTIVITIES;
-  });
-  const [events, setEvents] = useState<Event[]>(() => {
-      const saved = localStorage.getItem(STORAGE_KEYS.EVENTS);
-      return saved ? JSON.parse(saved) : MOCK_EVENTS;
-  });
-  const [counselingLogs, setCounselingLogs] = useState<CounselingLog[]>(() => {
-      const saved = localStorage.getItem(STORAGE_KEYS.LOGS);
-      return saved ? JSON.parse(saved) : MOCK_COUNSELING_LOGS;
-  });
-  const [systemLogs, setSystemLogs] = useState<SystemLog[]>(() => {
-      const saved = localStorage.getItem(STORAGE_KEYS.SYSTEM_LOGS);
-      return saved ? JSON.parse(saved) : [];
-  });
+  const [students, setStudents] = useLocalStorage<Student[]>(STORAGE_KEYS.STUDENTS, MOCK_STUDENTS);
+  const [configs, setConfigs] = useLocalStorage<ConfigItem[]>(STORAGE_KEYS.CONFIGS, MOCK_CONFIGS);
+  const [scholarshipConfigs, setScholarshipConfigs] = useLocalStorage<ScholarshipConfig[]>(STORAGE_KEYS.SCHOLARSHIP_CONFIGS, MOCK_SCHOLARSHIP_CONFIGS);
+  const [scholarships, setScholarships] = useLocalStorage<ScholarshipRecord[]>(STORAGE_KEYS.SCHOLARSHIPS, MOCK_SCHOLARSHIPS);
+  const [activities, setActivities] = useLocalStorage<ActivityRecord[]>(STORAGE_KEYS.ACTIVITIES, MOCK_ACTIVITIES);
+  const [events, setEvents] = useLocalStorage<Event[]>(STORAGE_KEYS.EVENTS, MOCK_EVENTS);
+  const [counselingLogs, setCounselingLogs] = useLocalStorage<CounselingLog[]>(STORAGE_KEYS.LOGS, MOCK_COUNSELING_LOGS);
+  const [systemLogs, setSystemLogs] = useLocalStorage<SystemLog[]>(STORAGE_KEYS.SYSTEM_LOGS, []);
 
   const [currentView, setCurrentView] = useState('DASHBOARD');
   const [navParams, setNavParams] = useState<any>(null); 
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'alert'} | null>(null);
 
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users)), [users]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(roles)), [roles]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students)), [students]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.CONFIGS, JSON.stringify(configs)), [configs]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.SCHOLARSHIP_CONFIGS, JSON.stringify(scholarshipConfigs)), [scholarshipConfigs]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.SCHOLARSHIPS, JSON.stringify(scholarships)), [scholarships]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(activities)), [activities]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(events)), [events]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(counselingLogs)), [counselingLogs]);
-  useEffect(() => localStorage.setItem(STORAGE_KEYS.SYSTEM_LOGS, JSON.stringify(systemLogs)), [systemLogs]);
+  // Initialize Storage Service on mount (metadata etc)
+  useEffect(() => {
+      StorageService.updateMetadata();
+  }, []);
 
   const handleLog = (actionType: LogAction, target: string, status: LogStatus, details?: string) => {
       if (!currentUser) return; 
@@ -114,13 +72,6 @@ export default function App() {
       setSystemLogs(prev => [newLog, ...prev]);
   };
 
-  const checkPermission = (moduleId: ModuleId, action: keyof PermissionMatrix[ModuleId]): boolean => {
-      if (!currentUser) return false;
-      const role = roles.find(r => r.id === currentUser.roleId);
-      if (!role) return false;
-      return role.permissions[moduleId]?.[action] === true;
-  };
-
   const notify = (message: string, type: 'success' | 'alert' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -128,20 +79,7 @@ export default function App() {
 
   const handleLoginSuccess = (user: User) => {
       setCurrentUser(user);
-      const roleName = roles.find(r => r.id === user.roleId)?.name || 'Unknown';
-      const newLog: SystemLog = {
-          id: Math.random().toString(36).substr(2, 9),
-          timestamp: new Date().toISOString(),
-          actorId: user.id,
-          actorName: user.name,
-          roleName: roleName,
-          actionType: 'LOGIN',
-          target: 'System',
-          status: 'SUCCESS',
-          details: 'User logged in',
-          ip: '192.168.1.10'
-      };
-      setSystemLogs(prev => [newLog, ...prev]);
+      handleLog('LOGIN', 'System', 'SUCCESS', `User logged in`);
   };
 
   const handleUpdateUserPassword = (userId: string, newPass: string) => {
@@ -165,52 +103,31 @@ export default function App() {
   };
 
   const handleNavigate = (view: string, params?: any) => {
-      let moduleId: ModuleId = ModuleId.DASHBOARD;
-      if (view === 'STUDENTS') moduleId = ModuleId.STUDENTS;
-      if (view === 'COUNSELING_MANAGER') moduleId = ModuleId.COUNSELING_MANAGER; 
-      if (view === 'SETTINGS') moduleId = ModuleId.SYSTEM_SETTINGS;
-      if (view === 'USER_MANAGEMENT') moduleId = ModuleId.USER_MANAGEMENT;
-      if (view === 'AUDIT_LOGS') moduleId = ModuleId.AUDIT_LOGS;
-      if (view === 'SCHOLARSHIP') moduleId = ModuleId.SCHOLARSHIP;
-      if (view === 'ACTIVITY') moduleId = ModuleId.ACTIVITY;
-
-      if (moduleId !== ModuleId.DASHBOARD && view !== 'DETAIL' && !checkPermission(moduleId, 'view')) {
-          handleLog('ACCESS_DENIED', `Attempted to access ${view}`, 'WARNING');
-          notify('權限不足：無法存取此頁面', 'alert');
-          return;
-      }
       setCurrentView(view);
       setNavParams(params || null); 
       if (view !== 'DETAIL') setSelectedStudent(null);
   };
 
   const handleResetSystem = () => {
-      localStorage.clear();
+      StorageService.clearAll();
       window.location.reload();
   };
 
+  // --- Handlers using State Setters (from useLocalStorage) ---
+
   const handleAddStudent = (newStudent: Student) => {
-      if(!checkPermission(ModuleId.STUDENTS, 'add')) {
-          notify('權限不足', 'alert'); 
-          return;
-      }
       setStudents(prev => [newStudent, ...prev]);
       handleLog('CREATE', `Student: ${newStudent.name}`, 'SUCCESS');
       notify('學生資料已新增');
   };
 
   const handleUpdateStudent = (updatedStudent: Student) => {
-      if(!checkPermission(ModuleId.STUDENTS, 'edit')) {
-           notify('權限不足', 'alert');
-           return;
-      }
-      
       const oldStudent = students.find(s => s.id === updatedStudent.id);
       let statusLog = null;
       
-      // Special logic for Case Closed
+      // Case Closed Logic
       if (oldStudent && oldStudent.careStatus !== 'CLOSED' && updatedStudent.careStatus === 'CLOSED') {
-          handleLog('UPDATE', `Student ${updatedStudent.studentId}`, 'SUCCESS', 'Case Closed (High Risk -> None)');
+          handleLog('UPDATE', `Student ${updatedStudent.studentId}`, 'SUCCESS', 'Case Closed');
       }
 
       // Status Change Logic
@@ -218,7 +135,7 @@ export default function App() {
           if (oldStudent.status !== updatedStudent.status) {
               statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.status, newStatus: updatedStudent.status, reason: '狀態變更', editor: currentUser?.name || 'System' };
           } else if (oldStudent.departmentCode !== updatedStudent.departmentCode) {
-              statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.departmentCode, newStatus: updatedStudent.departmentCode, reason: '轉系/系所變更', editor: currentUser?.name || 'System' };
+              statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.departmentCode, newStatus: updatedStudent.departmentCode, reason: '轉系', editor: currentUser?.name || 'System' };
           }
       }
 
@@ -228,20 +145,12 @@ export default function App() {
 
       setStudents(prev => prev.map(s => s.id === finalStudent.id ? finalStudent : s));
       setSelectedStudent(finalStudent);
-      
-      if(statusLog) {
-          handleLog('UPDATE', `Student ${finalStudent.studentId}`, 'SUCCESS', `Status changed: ${statusLog.oldStatus} -> ${statusLog.newStatus}`);
-      }
       notify('學生資料已更新');
   };
 
   const handleAddCounselingLog = (newLog: CounselingLog) => {
-      if(!checkPermission(ModuleId.COUNSELING_MANAGER, 'add') && !checkPermission(ModuleId.COUNSELING, 'add')) {
-           notify('權限不足', 'alert');
-           return;
-      }
       setCounselingLogs(prev => [newLog, ...prev]);
-      handleLog('CREATE', `Counseling Log for Student ID: ${newLog.studentId}`, 'SUCCESS');
+      handleLog('CREATE', `Log for Student ID: ${newLog.studentId}`, 'SUCCESS');
       notify('輔導紀錄已新增');
 
       // Auto-escalate High Risk Logic
@@ -257,33 +166,21 @@ export default function App() {
   };
 
   const handleAddEvent = (event: Event) => {
-      if(!checkPermission(ModuleId.ACTIVITY, 'add')) {
-          notify('權限不足', 'alert');
-          return;
-      }
       setEvents(prev => [event, ...prev]);
       handleLog('CREATE', `Event: ${event.name}`, 'SUCCESS');
       notify('活動已建立');
   };
 
   const handleAddScholarship = (record: ScholarshipRecord) => {
-      if(!checkPermission(ModuleId.SCHOLARSHIP, 'add')) {
-          notify('權限不足', 'alert');
-          return;
-      }
       setScholarships(prev => [record, ...prev]);
-      handleLog('CREATE', `Scholarship Application: ${record.name}`, 'SUCCESS');
+      handleLog('CREATE', `Scholarship App: ${record.name}`, 'SUCCESS');
       notify('申請已送出');
   };
 
   const handleBatchConfirmActivity = (eventId: string) => {
-      if(!checkPermission(ModuleId.ACTIVITY, 'edit')) {
-          notify('權限不足', 'alert');
-          return;
-      }
       setActivities(prev => prev.map(a => a.eventId === eventId ? { ...a, status: 'CONFIRMED' } : a));
       handleLog('UPDATE', `Event Batch Confirm: ${eventId}`, 'SUCCESS');
-      notify('已批次核撥時數 (已鎖定)');
+      notify('已批次核撥時數');
   };
 
   const handleRevealSensitiveData = (label: string) => {
@@ -318,7 +215,6 @@ export default function App() {
   };
 
   const handleUpdateScholarshipStatus = (id: string, status: ScholarshipRecord['status'], comment?: string) => {
-    if(checkPermission(ModuleId.SCHOLARSHIP, 'edit')) {
         setScholarships(p => p.map(s => {
             if (s.id === id) {
                 const newAudit = comment ? {
@@ -331,15 +227,14 @@ export default function App() {
                 return {
                     ...s,
                     status,
-                    currentHandler: currentUser?.name,
+                    currentHandler: status === 'DISBURSED' ? '已結案' : currentUser?.name,
                     auditHistory: newAudit ? [...(s.auditHistory || []), newAudit] : s.auditHistory
                 };
             }
             return s;
         }));
         handleLog('UPDATE', `Scholarship ${id}`, 'SUCCESS', `Status: ${status}`);
-        notify('審核狀態已更新');
-    } else notify('權限不足', 'alert');
+        notify('狀態已更新');
   };
 
   const renderContent = () => {
@@ -354,7 +249,6 @@ export default function App() {
             onSelectStudent={(s) => { setSelectedStudent(s); setCurrentView('DETAIL'); }}
             onRevealSensitiveData={handleRevealSensitiveData}
             onAddStudent={handleAddStudent}
-            hasPermission={(action) => checkPermission(ModuleId.STUDENTS, action)}
             initialParams={navParams}
           />
         );
@@ -374,7 +268,6 @@ export default function App() {
             onUpdateStudent={handleUpdateStudent}
             onAddCounselingLog={handleAddCounselingLog}
             onLogAction={handleLog}
-            checkPermission={checkPermission}
           />
         );
       case 'COUNSELING_MANAGER':
@@ -385,7 +278,6 @@ export default function App() {
             configs={configs}
             currentUserName={currentUser?.name || ''}
             onAddLog={handleAddCounselingLog}
-            hasPermission={(action) => checkPermission(ModuleId.COUNSELING_MANAGER, action)}
           />
         );
       case 'SETTINGS':
@@ -411,11 +303,12 @@ export default function App() {
                 setScholarshipConfigs={setScholarshipConfigs}
                 students={students} 
                 activities={activities}
+                events={events}
                 configs={configs} 
                 onUpdateScholarships={(updatedList) => setScholarships(updatedList)}
                 onUpdateStatus={handleUpdateScholarshipStatus} 
                 onAddScholarship={handleAddScholarship}
-                hasPermission={(action) => checkPermission(ModuleId.SCHOLARSHIP, action)}
+                hasPermission={() => true} // Handled in component via hook
                 initialParams={navParams}
                 currentUser={currentUser}
             />
@@ -427,25 +320,19 @@ export default function App() {
                 activities={activities}
                 students={students}
                 onAddParticipant={(eid, sid) => {
-                     if(checkPermission(ModuleId.ACTIVITY, 'edit')) {
-                        const event = events.find(e => e.id === eid);
-                        const defaultHours = event?.defaultHours || 0;
-                        setActivities(prev => [...prev, { id: Math.random().toString(), eventId: eid, studentId: sid, role: 'PARTICIPANT', hours: defaultHours, status: 'PENDING' }]);
-                        handleLog('CREATE', `Activity Part.`, 'SUCCESS');
-                     } else notify('權限不足', 'alert');
+                    const event = events.find(e => e.id === eid);
+                    const defaultHours = event?.defaultHours || 0;
+                    setActivities(prev => [...prev, { id: Math.random().toString(), eventId: eid, studentId: sid, role: 'PARTICIPANT', hours: defaultHours, status: 'PENDING' }]);
+                    handleLog('CREATE', `Activity Part.`, 'SUCCESS');
                 }}
                 onRemoveParticipant={(eid, sid) => {
-                    if(checkPermission(ModuleId.ACTIVITY, 'delete')) {
-                        setActivities(prev => prev.filter(a => !(a.eventId === eid && a.studentId === sid)));
-                        handleLog('DELETE', `Activity Part.`, 'SUCCESS');
-                    } else notify('權限不足', 'alert');
+                    setActivities(prev => prev.filter(a => !(a.eventId === eid && a.studentId === sid)));
+                    handleLog('DELETE', `Activity Part.`, 'SUCCESS');
                 }}
                 onAddEvent={handleAddEvent}
-                hasPermission={(action) => checkPermission(ModuleId.ACTIVITY, action)}
+                hasPermission={() => true}
                 onUpdateActivity={(actId, hours) => {
-                    if(checkPermission(ModuleId.ACTIVITY, 'edit')) {
-                        setActivities(prev => prev.map(a => a.id === actId ? { ...a, hours } : a));
-                    }
+                    setActivities(prev => prev.map(a => a.id === actId ? { ...a, hours } : a));
                 }}
                 onBatchConfirm={handleBatchConfirmActivity}
             />
@@ -466,23 +353,24 @@ export default function App() {
   }
 
   return (
-    <Layout 
-      currentView={currentView} 
-      onNavigate={handleNavigate}
-      currentUser={currentUser}
-      allUsers={users}
-      roles={roles}
-      onSwitchUser={handleSwitchUser}
-      onResetSystem={handleResetSystem}
-      checkPermission={checkPermission}
-    >
-        {renderContent()}
-        {toast && (
-            <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-bold animate-fade-in-up z-50 flex items-center gap-2 ${toast.type === 'alert' ? 'bg-red-600' : 'bg-green-600'}`}>
-                {toast.type === 'alert' ? <ICONS.Alert size={20} /> : <ICONS.CheckCircle size={20} />}
-                {toast.message}
-            </div>
-        )}
-    </Layout>
+    <PermissionProvider currentUser={currentUser} roles={roles} onLog={handleLog}>
+        <Layout 
+        currentView={currentView} 
+        onNavigate={handleNavigate}
+        currentUser={currentUser}
+        allUsers={users}
+        roles={roles}
+        onSwitchUser={handleSwitchUser}
+        onResetSystem={handleResetSystem}
+        >
+            {renderContent()}
+            {toast && (
+                <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-bold animate-fade-in-up z-50 flex items-center gap-2 ${toast.type === 'alert' ? 'bg-red-600' : 'bg-green-600'}`}>
+                    {toast.type === 'alert' ? <ICONS.Alert size={20} /> : <ICONS.CheckCircle size={20} />}
+                    {toast.message}
+                </div>
+            )}
+        </Layout>
+    </PermissionProvider>
   );
 }
