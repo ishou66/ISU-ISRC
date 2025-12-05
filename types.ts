@@ -224,3 +224,11 @@ export interface SystemLog {
   status: LogStatus;
   ip: string; 
 }
+
+// --- CRUD Common Interface ---
+export interface CRUDResult<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+  error?: string;
+}

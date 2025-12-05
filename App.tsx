@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from './components/Layout';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
@@ -12,6 +12,7 @@ import { AuditLogManager } from './components/AuditLogManager';
 import { RoleManager } from './components/RoleManager';
 import { UserManager } from './components/UserManager';
 import { CounselingManager } from './components/CounselingManager';
+import { createCRUDExecutor } from './utils/CRUDExecutor';
 
 import { 
     Student, ConfigItem, ScholarshipRecord, ActivityRecord, Event, CounselingLog, SystemLog, 
@@ -49,7 +50,13 @@ export default function App() {
   
   const [students, setStudents] = useState<Student[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-      return saved ? JSON.parse(saved) : MOCK_STUDENTS;
+      let parsed = saved ? JSON.parse(saved) : MOCK_STUDENTS;
+      // Schema Migration
+      parsed = parsed.map((s: any) => ({
+          ...s,
+          careStatus: s.careStatus || 'OPEN',
+      }));
+      return parsed;
   });
   const [configs, setConfigs] = useState<ConfigItem[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.CONFIGS);
@@ -61,7 +68,14 @@ export default function App() {
   });
   const [scholarships, setScholarships] = useState<ScholarshipRecord[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.SCHOLARSHIPS);
-      return saved ? JSON.parse(saved) : MOCK_SCHOLARSHIPS;
+      let parsed = saved ? JSON.parse(saved) : MOCK_SCHOLARSHIPS;
+      // Schema Migration
+      parsed = parsed.map((s: any) => ({
+          ...s,
+          auditHistory: s.auditHistory || [],
+          currentHandler: s.currentHandler || undefined
+      }));
+      return parsed;
   });
   const [activities, setActivities] = useState<ActivityRecord[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.ACTIVITIES);
@@ -96,6 +110,12 @@ export default function App() {
   useEffect(() => localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(counselingLogs)), [counselingLogs]);
   useEffect(() => localStorage.setItem(STORAGE_KEYS.SYSTEM_LOGS, JSON.stringify(systemLogs)), [systemLogs]);
 
+  // --- Core Services ---
+  const notify = (message: string, type: 'success' | 'alert' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const handleLog = (actionType: LogAction, target: string, status: LogStatus, details?: string) => {
       if (!currentUser) return; 
       const roleName = roles.find(r => r.id === currentUser.roleId)?.name || 'Unknown Role';
@@ -121,10 +141,13 @@ export default function App() {
       return role.permissions[moduleId]?.[action] === true;
   };
 
-  const notify = (message: string, type: 'success' | 'alert' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  // --- CRUD EXECUTOR ---
+  // Memoize to prevent recreation on every render
+  const executeCRUD = useMemo(() => createCRUDExecutor({
+      currentUser, checkPermission, handleLog, notify
+  }), [currentUser, roles, systemLogs]); // Depend on relevant state
+
+  // --- Handlers ---
 
   const handleLoginSuccess = (user: User) => {
       setCurrentUser(user);
@@ -189,107 +212,117 @@ export default function App() {
       window.location.reload();
   };
 
-  const handleAddStudent = (newStudent: Student) => {
-      if(!checkPermission(ModuleId.STUDENTS, 'add')) {
-          notify('權限不足', 'alert'); 
-          return;
-      }
-      setStudents(prev => [newStudent, ...prev]);
-      handleLog('CREATE', `Student: ${newStudent.name}`, 'SUCCESS');
-      notify('學生資料已新增');
-  };
-
-  const handleUpdateStudent = (updatedStudent: Student) => {
-      if(!checkPermission(ModuleId.STUDENTS, 'edit')) {
-           notify('權限不足', 'alert');
-           return;
-      }
-      
-      const oldStudent = students.find(s => s.id === updatedStudent.id);
-      let statusLog = null;
-      
-      // Log for Case Closed
-      if (oldStudent && oldStudent.careStatus !== 'CLOSED' && updatedStudent.careStatus === 'CLOSED') {
-          handleLog('UPDATE', `Student ${updatedStudent.studentId}`, 'SUCCESS', 'Case Closed (High Risk -> None)');
-      }
-
-      // Status Change Logic (if not already handled in component)
-      if (oldStudent) {
-          if (oldStudent.status !== updatedStudent.status) {
-              statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.status, newStatus: updatedStudent.status, reason: '狀態變更', editor: currentUser?.name || 'System' };
-          } else if (oldStudent.departmentCode !== updatedStudent.departmentCode) {
-              statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.departmentCode, newStatus: updatedStudent.departmentCode, reason: '轉系/系所變更', editor: currentUser?.name || 'System' };
+  const handleAddStudent = async (newStudent: Student): Promise<boolean> => {
+      const result = await executeCRUD({
+          actionType: 'CREATE',
+          targetName: `Student: ${newStudent.name}`,
+          moduleId: ModuleId.STUDENTS,
+          permissionAction: 'add',
+          successMessage: '學生資料已成功新增',
+          commit: () => {
+              setStudents(prev => [newStudent, ...prev]);
+              return newStudent;
           }
-      }
-
-      // Only append status log if component didn't already append it (e.g. Case Closed handles its own history)
-      const hasNewHistory = updatedStudent.statusHistory.length > (oldStudent?.statusHistory.length || 0);
-      const finalStudent = (statusLog && !hasNewHistory)
-        ? { ...updatedStudent, statusHistory: [...(updatedStudent.statusHistory || []), statusLog] } 
-        : updatedStudent;
-
-      setStudents(prev => prev.map(s => s.id === finalStudent.id ? finalStudent : s));
-      setSelectedStudent(finalStudent);
-      
-      if(statusLog) {
-          handleLog('UPDATE', `Student ${finalStudent.studentId}`, 'SUCCESS', `Status changed: ${statusLog.oldStatus} -> ${statusLog.newStatus}`);
-      }
-      notify('學生資料已更新');
+      });
+      return result.success;
   };
 
-  const handleAddCounselingLog = (newLog: CounselingLog) => {
-      if(!checkPermission(ModuleId.COUNSELING_MANAGER, 'add') && !checkPermission(ModuleId.COUNSELING, 'add')) {
-           notify('權限不足', 'alert');
-           return;
-      }
-      setCounselingLogs(prev => [newLog, ...prev]);
-      handleLog('CREATE', `Counseling Log for Student ID: ${newLog.studentId}`, 'SUCCESS');
-      notify('輔導紀錄已新增');
+  const handleUpdateStudent = async (updatedStudent: Student) => {
+      await executeCRUD({
+          actionType: 'UPDATE',
+          targetName: `Student: ${updatedStudent.studentId}`,
+          moduleId: ModuleId.STUDENTS,
+          permissionAction: 'edit',
+          successMessage: '學生資料已更新',
+          commit: () => {
+              const oldStudent = students.find(s => s.id === updatedStudent.id);
+              let statusLog = null;
+              
+              if (oldStudent) {
+                  // Check status changes
+                  if (oldStudent.status !== updatedStudent.status) {
+                      statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.status, newStatus: updatedStudent.status, reason: '狀態變更', editor: currentUser?.name || 'System' };
+                  } else if (oldStudent.departmentCode !== updatedStudent.departmentCode) {
+                      statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.departmentCode, newStatus: updatedStudent.departmentCode, reason: '轉系/系所變更', editor: currentUser?.name || 'System' };
+                  }
+                  
+                  // Check Case Closed for logging (Side Effect)
+                  if (oldStudent.careStatus !== 'CLOSED' && updatedStudent.careStatus === 'CLOSED') {
+                      handleLog('UPDATE', `Student ${updatedStudent.studentId}`, 'SUCCESS', 'Case Closed');
+                  }
+              }
 
-      // Auto-escalate High Risk Logic
-      if (newLog.isHighRisk) {
-          const student = students.find(s => s.id === newLog.studentId);
-          if (student && student.highRisk !== HighRiskStatus.CRITICAL) {
-               const updated = { 
-                   ...student, 
-                   highRisk: HighRiskStatus.CRITICAL, 
-                   careStatus: 'OPEN' as const 
-               };
-               setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
-               handleLog('UPDATE', `Student ${student.studentId}`, 'SUCCESS', 'Auto-escalated to High Risk due to Counseling Log');
-               notify('⚠️ 學生已自動標記為高風險', 'alert');
+              const hasNewHistory = updatedStudent.statusHistory.length > (oldStudent?.statusHistory.length || 0);
+              const finalStudent = (statusLog && !hasNewHistory)
+                ? { ...updatedStudent, statusHistory: [...(updatedStudent.statusHistory || []), statusLog] } 
+                : updatedStudent;
+
+              setStudents(prev => prev.map(s => s.id === finalStudent.id ? finalStudent : s));
+              setSelectedStudent(finalStudent);
+              return finalStudent;
           }
-      }
+      });
   };
 
-  const handleAddEvent = (event: Event) => {
-      if(!checkPermission(ModuleId.ACTIVITY, 'add')) {
-          notify('權限不足', 'alert');
-          return;
-      }
-      setEvents(prev => [event, ...prev]);
-      handleLog('CREATE', `Event: ${event.name}`, 'SUCCESS');
-      notify('活動已建立');
+  const handleAddCounselingLog = async (newLog: CounselingLog) => {
+      await executeCRUD({
+          actionType: 'CREATE',
+          targetName: `Counseling Log: ${newLog.studentId}`,
+          moduleId: ModuleId.COUNSELING_MANAGER, // Simplified permission check
+          permissionAction: 'add',
+          successMessage: '輔導紀錄已新增',
+          commit: () => {
+              setCounselingLogs(prev => [newLog, ...prev]);
+
+              // Auto-escalate High Risk Logic
+              if (newLog.isHighRisk) {
+                  const student = students.find(s => s.id === newLog.studentId);
+                  if (student && student.highRisk !== HighRiskStatus.CRITICAL) {
+                       const updated = { 
+                           ...student, 
+                           highRisk: HighRiskStatus.CRITICAL, 
+                           careStatus: 'OPEN' as const 
+                       };
+                       setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
+                       handleLog('UPDATE', `Student ${student.studentId}`, 'SUCCESS', 'Auto-escalated to High Risk due to Counseling Log');
+                       notify('⚠️ 學生已自動標記為高風險', 'alert');
+                  }
+              }
+              return newLog;
+          }
+      });
   };
 
-  const handleAddScholarship = (record: ScholarshipRecord) => {
-      if(!checkPermission(ModuleId.SCHOLARSHIP, 'add')) {
-          notify('權限不足', 'alert');
-          return;
-      }
-      setScholarships(prev => [record, ...prev]);
-      handleLog('CREATE', `Scholarship Application: ${record.name}`, 'SUCCESS');
-      notify('申請已送出');
+  const handleAddEvent = async (event: Event) => {
+      await executeCRUD({
+          actionType: 'CREATE',
+          targetName: `Event: ${event.name}`,
+          moduleId: ModuleId.ACTIVITY,
+          permissionAction: 'add',
+          commit: () => setEvents(prev => [event, ...prev])
+      });
   };
 
-  const handleBatchConfirmActivity = (eventId: string) => {
-      if(!checkPermission(ModuleId.ACTIVITY, 'edit')) {
-          notify('權限不足', 'alert');
-          return;
-      }
-      setActivities(prev => prev.map(a => a.eventId === eventId ? { ...a, status: 'CONFIRMED' } : a));
-      handleLog('UPDATE', `Event Batch Confirm: ${eventId}`, 'SUCCESS');
-      notify('已批次核撥時數 (已鎖定)');
+  const handleAddScholarship = async (record: ScholarshipRecord) => {
+      await executeCRUD({
+          actionType: 'CREATE',
+          targetName: `Scholarship App: ${record.name}`,
+          moduleId: ModuleId.SCHOLARSHIP,
+          permissionAction: 'add',
+          successMessage: '申請已送出',
+          commit: () => setScholarships(prev => [record, ...prev])
+      });
+  };
+
+  const handleBatchConfirmActivity = async (eventId: string) => {
+      await executeCRUD({
+          actionType: 'UPDATE',
+          targetName: `Event Batch Confirm: ${eventId}`,
+          moduleId: ModuleId.ACTIVITY,
+          permissionAction: 'edit',
+          successMessage: '已批次核撥時數',
+          commit: () => setActivities(prev => prev.map(a => a.eventId === eventId ? { ...a, status: 'CONFIRMED' } : a))
+      });
   };
 
   const handleRevealSensitiveData = (label: string) => {
@@ -297,7 +330,8 @@ export default function App() {
       notify('已記錄稽核日誌', 'alert');
   };
 
-  const handleSaveUser = (user: User) => {
+  const handleSaveUser = async (user: User) => {
+      // User Management permissions handled in component view usually, but good to check here
       setUsers(prev => {
           const exists = prev.find(u => u.id === user.id);
           if (exists) return prev.map(u => u.id === user.id ? user : u);
@@ -323,29 +357,34 @@ export default function App() {
       notify('角色已刪除');
   };
 
-  const handleUpdateScholarshipStatus = (id: string, status: ScholarshipRecord['status'], comment?: string) => {
-    if(checkPermission(ModuleId.SCHOLARSHIP, 'edit')) {
-        setScholarships(p => p.map(s => {
-            if (s.id === id) {
-                const newAudit = comment ? {
-                    date: new Date().toISOString(),
-                    action: status,
-                    actor: currentUser?.name || 'System',
-                    comment: comment
-                } : undefined;
+  const handleUpdateScholarshipStatus = async (id: string, status: ScholarshipRecord['status'], comment?: string) => {
+      await executeCRUD({
+          actionType: 'UPDATE',
+          targetName: `Scholarship ${id} -> ${status}`,
+          moduleId: ModuleId.SCHOLARSHIP,
+          permissionAction: 'edit',
+          successMessage: '審核狀態已更新',
+          commit: () => {
+              setScholarships(p => p.map(s => {
+                  if (s.id === id) {
+                      const newAudit = comment ? {
+                          date: new Date().toISOString(),
+                          action: status,
+                          actor: currentUser?.name || 'System',
+                          comment: comment
+                      } : undefined;
 
-                return {
-                    ...s,
-                    status,
-                    currentHandler: currentUser?.name,
-                    auditHistory: newAudit ? [...(s.auditHistory || []), newAudit] : s.auditHistory
-                };
-            }
-            return s;
-        }));
-        handleLog('UPDATE', `Scholarship ${id}`, 'SUCCESS', `Status: ${status}`);
-        notify('審核狀態已更新');
-    } else notify('權限不足', 'alert');
+                      return {
+                          ...s,
+                          status,
+                          currentHandler: currentUser?.name,
+                          auditHistory: newAudit ? [...(s.auditHistory || []), newAudit] : s.auditHistory
+                      };
+                  }
+                  return s;
+              }));
+          }
+      });
   };
 
   const renderContent = () => {

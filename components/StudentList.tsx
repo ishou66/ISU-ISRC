@@ -8,7 +8,7 @@ interface StudentListProps {
   configs: ConfigItem[];
   onSelectStudent: (student: Student) => void;
   onRevealSensitiveData: (label: string) => void;
-  onAddStudent: (newStudent: Student) => void;
+  onAddStudent: (newStudent: Student) => Promise<boolean>; // Changed to Promise<boolean>
   hasPermission: (action: 'add' | 'export' | 'viewSensitive') => boolean;
   initialParams?: any;
 }
@@ -61,6 +61,7 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
   const [filterDept, setFilterDept] = useState('ALL');
   const [filterRisk, setFilterRisk] = useState('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // UI Loading state
 
   useEffect(() => {
       if (initialParams?.filterRisk) {
@@ -128,12 +129,14 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
       }
   };
 
-  const handleSaveNewStudent = () => {
+  const handleSaveNewStudent = async () => {
       // Basic Validation
       if(!newStudent.name || !newStudent.studentId || !newStudent.departmentCode || !newStudent.tribeCode) {
           alert('請填寫所有必填欄位');
           return;
       }
+
+      setIsSubmitting(true);
 
       const fullStudent: Student = {
           id: Math.random().toString(36).substr(2, 9),
@@ -158,9 +161,17 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
           statusHistory: []
       };
 
-      onAddStudent(fullStudent);
-      setIsAddModalOpen(false);
-      setNewStudent({ gender: '男', status: StudentStatus.ACTIVE, highRisk: HighRiskStatus.NONE });
+      try {
+          const success = await onAddStudent(fullStudent);
+          if (success) {
+              setIsAddModalOpen(false);
+              setNewStudent({ gender: '男', status: StudentStatus.ACTIVE, highRisk: HighRiskStatus.NONE });
+          }
+      } catch (e) {
+          // Errors handled by CRUDExecutor generally, but catch block here prevents crash
+      } finally {
+          setIsSubmitting(false);
+      }
   };
 
   return (
@@ -383,14 +394,16 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
                       <button 
                           onClick={() => setIsAddModalOpen(false)}
                           className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded"
+                          disabled={isSubmitting}
                       >
                           取消
                       </button>
                       <button 
                           onClick={handleSaveNewStudent}
-                          className="px-4 py-2 bg-isu-red text-white rounded hover:bg-red-800 font-medium"
+                          disabled={isSubmitting}
+                          className={`px-4 py-2 bg-isu-red text-white rounded font-medium flex items-center gap-2 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-800'}`}
                       >
-                          確認新增
+                          {isSubmitting ? '處理中...' : '確認新增'}
                       </button>
                   </div>
               </div>
