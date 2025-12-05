@@ -112,6 +112,7 @@ export interface CounselingLog {
   categoriesOtherDetail?: string; // If categories includes OTHER
   content: string; // No longer masked internally based on isPrivate
   recommendations: string[]; // Config: COUNSEL_RECOMMENDATION (Multi-select)
+  recommendationOtherDetail?: string; // If recommendations includes OTHER
   isHighRisk: boolean;
   needsTracking: boolean;
   trackingDetail?: string; // Reason for tracking
