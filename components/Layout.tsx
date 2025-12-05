@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 import { User, RoleDefinition, ModuleId } from '../types';
+import { usePermission } from '../hooks/usePermission';
+import { StorageService } from '../services/StorageService';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,13 +14,13 @@ interface LayoutProps {
   roles: RoleDefinition[];
   onSwitchUser: (userId: string) => void;
   onResetSystem: () => void;
-  checkPermission: (moduleId: ModuleId, action: 'view') => boolean;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
-    children, currentView, onNavigate, currentUser, allUsers, roles, onSwitchUser, onResetSystem, checkPermission 
+    children, currentView, onNavigate, currentUser, allUsers, roles, onSwitchUser, onResetSystem 
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { can } = usePermission(); // Use Hook
   const currentRole = roles.find(r => r.id === currentUser.roleId);
 
   const handleNavigate = (view: string) => {
@@ -27,7 +29,7 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   const NavItem = ({ view, moduleId, label, icon: Icon }: { view: string, moduleId: ModuleId, label: string, icon: any }) => {
-      if (!checkPermission(moduleId, 'view')) return null;
+      if (!can(moduleId, 'view')) return null; // Use Hook
 
       return (
         <button
@@ -49,6 +51,16 @@ export const Layout: React.FC<LayoutProps> = ({
       if(confirm('警告：此操作將清除所有本地端資料 (Local Storage) 並回復至預設值。\n包含所有新增的學生、設定與日誌。\n\n確定要執行嗎？')) {
           onResetSystem();
       }
+  };
+
+  const handleBackup = () => {
+      const data = StorageService.createBackup();
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ISU_Backup_${new Date().toISOString().slice(0,10)}.json`;
+      link.click();
   };
 
   return (
@@ -83,7 +95,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <NavItem view="SCHOLARSHIP" moduleId={ModuleId.SCHOLARSHIP} label="獎助學金管理" icon={ICONS.Financial} />
           <NavItem view="ACTIVITY" moduleId={ModuleId.ACTIVITY} label="活動參與紀錄" icon={ICONS.Activity} />
           
-          {(checkPermission(ModuleId.SYSTEM_SETTINGS, 'view') || checkPermission(ModuleId.USER_MANAGEMENT, 'view') || checkPermission(ModuleId.AUDIT_LOGS, 'view')) && (
+          {(can(ModuleId.SYSTEM_SETTINGS, 'view') || can(ModuleId.USER_MANAGEMENT, 'view') || can(ModuleId.AUDIT_LOGS, 'view')) && (
              <>
                 <div className="pt-6 pb-2 px-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                     <ICONS.Settings size={10} /> System Management
@@ -95,8 +107,8 @@ export const Layout: React.FC<LayoutProps> = ({
           )}
         </nav>
 
-        <div className="p-4 border-t border-gray-700 bg-gray-800">
-            <div className="mb-3">
+        <div className="p-4 border-t border-gray-700 bg-gray-800 space-y-2">
+            <div className="mb-2">
                 <label className="text-[10px] text-gray-400 uppercase font-bold mb-1 block">模擬切換使用者</label>
                 <div className="relative">
                     <ICONS.Transfer className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
@@ -114,12 +126,12 @@ export const Layout: React.FC<LayoutProps> = ({
                 </div>
             </div>
             
-            <button 
-                onClick={handleFactoryReset}
-                className="w-full text-xs text-red-400 hover:text-red-300 border border-red-900/50 hover:border-red-400/50 rounded p-2 transition-colors flex items-center justify-center gap-2"
-            >
-                <ICONS.Close size={12} />
-                系統重置 (Reset Data)
+            <button onClick={handleBackup} className="w-full text-xs text-blue-300 hover:text-white border border-blue-900/50 hover:border-blue-400/50 rounded p-2 flex items-center justify-center gap-2">
+                <ICONS.Download size={12} /> 備份資料
+            </button>
+
+            <button onClick={handleFactoryReset} className="w-full text-xs text-red-400 hover:text-red-300 border border-red-900/50 hover:border-red-400/50 rounded p-2 flex items-center justify-center gap-2">
+                <ICONS.Close size={12} /> 系統重置
             </button>
         </div>
       </aside>
@@ -146,16 +158,9 @@ export const Layout: React.FC<LayoutProps> = ({
                  {currentView === 'USER_MANAGEMENT' && '系統管理 > 權限與使用者'}
                  {currentView === 'AUDIT_LOGS' && '系統管理 > 資安稽核日誌'}
                </div>
-               <div className="md:hidden text-sm font-bold text-gray-800">
-                   {currentView === 'DASHBOARD' ? '儀表板' : '原資中心系統'}
-               </div>
             </div>
 
             <div className="flex items-center gap-4">
-                <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                    <ICONS.Alert size={20} />
-                </button>
-                <div className="h-8 w-px bg-gray-200"></div>
                 <div className="flex items-center gap-3 pl-2">
                     <img 
                         src={currentUser.avatarUrl} 
