@@ -47,41 +47,22 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
-  // Data Migration Logic: Ensure old data has new fields
   const [students, setStudents] = useState<Student[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-      let loaded = saved ? JSON.parse(saved) : MOCK_STUDENTS;
-      // Migration: Backfill missing 'careStatus' and 'statusHistory'
-      return loaded.map((s: any) => ({
-          ...s,
-          careStatus: s.careStatus || (s.highRisk !== HighRiskStatus.NONE ? 'PROCESSING' : 'OPEN'),
-          statusHistory: s.statusHistory || [],
-          avatarUrl: s.avatarUrl || `https://ui-avatars.com/api/?name=${s.name}&background=random`
-      }));
+      return saved ? JSON.parse(saved) : MOCK_STUDENTS;
   });
-  
   const [configs, setConfigs] = useState<ConfigItem[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.CONFIGS);
       return saved ? JSON.parse(saved) : MOCK_CONFIGS;
   });
-  
   const [scholarshipConfigs, setScholarshipConfigs] = useState<ScholarshipConfig[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.SCHOLARSHIP_CONFIGS);
       return saved ? JSON.parse(saved) : MOCK_SCHOLARSHIP_CONFIGS;
   });
-  
   const [scholarships, setScholarships] = useState<ScholarshipRecord[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.SCHOLARSHIPS);
-      let loaded = saved ? JSON.parse(saved) : MOCK_SCHOLARSHIPS;
-      // Migration: Backfill 'auditHistory' and 'currentHandler'
-      return loaded.map((s: any) => ({
-          ...s,
-          auditHistory: s.auditHistory || [],
-          currentHandler: s.currentHandler || (s.status === 'APPROVED' ? '系統自動' : undefined),
-          bankInfo: s.bankInfo || { bankCode: '', accountNumber: '', accountName: '', isVerified: false }
-      }));
+      return saved ? JSON.parse(saved) : MOCK_SCHOLARSHIPS;
   });
-
   const [activities, setActivities] = useState<ActivityRecord[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.ACTIVITIES);
       return saved ? JSON.parse(saved) : MOCK_ACTIVITIES;
@@ -92,7 +73,6 @@ export default function App() {
   });
   const [counselingLogs, setCounselingLogs] = useState<CounselingLog[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.LOGS);
-      // Migration: Remove isPrivate dependencies if present in old data
       return saved ? JSON.parse(saved) : MOCK_COUNSELING_LOGS;
   });
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>(() => {

@@ -154,7 +154,7 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
           addressCurrent: '',
           housingType: 'COMMUTE',
           housingInfo: '',
-          avatarUrl: 'https://via.placeholder.com/150',
+          avatarUrl: 'https://ui-avatars.com/api/?name=' + newStudent.name + '&background=random',
           statusHistory: []
       };
 

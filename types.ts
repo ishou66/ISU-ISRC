@@ -81,7 +81,7 @@ export interface Student {
   highRisk: HighRiskStatus;
   
   // Case Tracking Logic
-  careStatus: 'OPEN' | 'PROCESSING' | 'CLOSED'; 
+  careStatus?: 'OPEN' | 'PROCESSING' | 'CLOSED'; 
   
   phone: string;
   email: string;
@@ -110,7 +110,7 @@ export interface CounselingLog {
   methodOtherDetail?: string; // If method is OTHER
   categories: string[]; // Config: COUNSEL_CATEGORY (Multi-select)
   categoriesOtherDetail?: string; // If categories includes OTHER
-  content: string; // No longer masked internally
+  content: string; // No longer masked internally based on isPrivate
   recommendations: string[]; // Config: COUNSEL_RECOMMENDATION (Multi-select)
   isHighRisk: boolean;
   needsTracking: boolean;
