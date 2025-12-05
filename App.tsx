@@ -47,41 +47,22 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
-  // Data Migration Logic: Ensure old data has new fields
   const [students, setStudents] = useState<Student[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-      let loaded = saved ? JSON.parse(saved) : MOCK_STUDENTS;
-      // Migration: Backfill missing 'careStatus' and 'statusHistory'
-      return loaded.map((s: any) => ({
-          ...s,
-          careStatus: s.careStatus || (s.highRisk !== HighRiskStatus.NONE ? 'PROCESSING' : 'OPEN'),
-          statusHistory: s.statusHistory || [],
-          avatarUrl: s.avatarUrl || `https://ui-avatars.com/api/?name=${s.name}&background=random`
-      }));
+      return saved ? JSON.parse(saved) : MOCK_STUDENTS;
   });
-  
   const [configs, setConfigs] = useState<ConfigItem[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.CONFIGS);
       return saved ? JSON.parse(saved) : MOCK_CONFIGS;
   });
-  
   const [scholarshipConfigs, setScholarshipConfigs] = useState<ScholarshipConfig[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.SCHOLARSHIP_CONFIGS);
       return saved ? JSON.parse(saved) : MOCK_SCHOLARSHIP_CONFIGS;
   });
-  
   const [scholarships, setScholarships] = useState<ScholarshipRecord[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.SCHOLARSHIPS);
-      let loaded = saved ? JSON.parse(saved) : MOCK_SCHOLARSHIPS;
-      // Migration: Backfill 'auditHistory' and 'currentHandler'
-      return loaded.map((s: any) => ({
-          ...s,
-          auditHistory: s.auditHistory || [],
-          currentHandler: s.currentHandler || (s.status === 'APPROVED' ? '系統自動' : undefined),
-          bankInfo: s.bankInfo || { bankCode: '', accountNumber: '', accountName: '', isVerified: false }
-      }));
+      return saved ? JSON.parse(saved) : MOCK_SCHOLARSHIPS;
   });
-
   const [activities, setActivities] = useState<ActivityRecord[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.ACTIVITIES);
       return saved ? JSON.parse(saved) : MOCK_ACTIVITIES;
@@ -92,7 +73,6 @@ export default function App() {
   });
   const [counselingLogs, setCounselingLogs] = useState<CounselingLog[]>(() => {
       const saved = localStorage.getItem(STORAGE_KEYS.LOGS);
-      // Migration: Remove isPrivate dependencies if present in old data
       return saved ? JSON.parse(saved) : MOCK_COUNSELING_LOGS;
   });
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>(() => {
@@ -228,12 +208,12 @@ export default function App() {
       const oldStudent = students.find(s => s.id === updatedStudent.id);
       let statusLog = null;
       
-      // Special logic for Case Closed
+      // Log for Case Closed
       if (oldStudent && oldStudent.careStatus !== 'CLOSED' && updatedStudent.careStatus === 'CLOSED') {
           handleLog('UPDATE', `Student ${updatedStudent.studentId}`, 'SUCCESS', 'Case Closed (High Risk -> None)');
       }
 
-      // Status Change Logic
+      // Status Change Logic (if not already handled in component)
       if (oldStudent) {
           if (oldStudent.status !== updatedStudent.status) {
               statusLog = { date: new Date().toISOString().slice(0,10), oldStatus: oldStudent.status, newStatus: updatedStudent.status, reason: '狀態變更', editor: currentUser?.name || 'System' };
@@ -242,7 +222,9 @@ export default function App() {
           }
       }
 
-      const finalStudent = statusLog 
+      // Only append status log if component didn't already append it (e.g. Case Closed handles its own history)
+      const hasNewHistory = updatedStudent.statusHistory.length > (oldStudent?.statusHistory.length || 0);
+      const finalStudent = (statusLog && !hasNewHistory)
         ? { ...updatedStudent, statusHistory: [...(updatedStudent.statusHistory || []), statusLog] } 
         : updatedStudent;
 
@@ -268,10 +250,14 @@ export default function App() {
       if (newLog.isHighRisk) {
           const student = students.find(s => s.id === newLog.studentId);
           if (student && student.highRisk !== HighRiskStatus.CRITICAL) {
-               const updated = { ...student, highRisk: HighRiskStatus.CRITICAL, careStatus: 'OPEN' as const };
+               const updated = { 
+                   ...student, 
+                   highRisk: HighRiskStatus.CRITICAL, 
+                   careStatus: 'OPEN' as const 
+               };
                setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
-               handleLog('UPDATE', `Student ${student.studentId}`, 'SUCCESS', 'Auto-escalated to High Risk');
-               notify('⚠️ 學生已自動標記為高風險');
+               handleLog('UPDATE', `Student ${student.studentId}`, 'SUCCESS', 'Auto-escalated to High Risk due to Counseling Log');
+               notify('⚠️ 學生已自動標記為高風險', 'alert');
           }
       }
   };

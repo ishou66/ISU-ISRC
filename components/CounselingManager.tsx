@@ -68,9 +68,26 @@ export const CounselingManager: React.FC<CounselingManagerProps> = ({
       setSearchSuggestions([]);
   };
 
+  const clearStudentSelection = () => {
+      setSelectedStudent(null);
+      setNewLog(prev => ({ ...prev, studentId: undefined }));
+      setStudentSearchTerm('');
+      setSearchSuggestions([]);
+  };
+
   const handleSave = () => {
       if(!newLog.studentId || !newLog.method || newLog.categories?.length === 0 || !newLog.content) {
           alert('請填寫完整資訊：學生、進行方式、至少一項輔導事項與內容');
+          return;
+      }
+
+      // Check if "Other" details are filled if selected
+      if (newLog.method.includes('OTHER') && !newLog.methodOtherDetail) {
+          alert('請填寫「其他」進行方式的詳細說明');
+          return;
+      }
+      if (newLog.categories.some(c => c.includes('OTHER')) && !newLog.categoriesOtherDetail) {
+          alert('請填寫「其他」輔導事項的詳細說明');
           return;
       }
 
@@ -261,12 +278,21 @@ export const CounselingManager: React.FC<CounselingManagerProps> = ({
                                         <ICONS.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                                         <input 
                                             type="text"
-                                            className="w-full border border-gray-300 rounded pl-10 pr-3 py-2 text-sm focus:ring-1 focus:ring-isu-red outline-none"
+                                            className="w-full border border-gray-300 rounded pl-10 pr-8 py-2 text-sm focus:ring-1 focus:ring-isu-red outline-none"
                                             value={studentSearchTerm}
                                             onChange={handleStudentSearch}
                                             placeholder="請輸入關鍵字..."
+                                            disabled={!!selectedStudent}
                                         />
-                                        {searchSuggestions.length > 0 && (
+                                        {selectedStudent && (
+                                            <button 
+                                                onClick={clearStudentSelection}
+                                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500"
+                                            >
+                                                <ICONS.Close size={16} />
+                                            </button>
+                                        )}
+                                        {!selectedStudent && searchSuggestions.length > 0 && (
                                             <div className="absolute z-10 w-full bg-white border border-gray-200 mt-1 rounded shadow-lg max-h-48 overflow-auto">
                                                 {searchSuggestions.map(s => (
                                                     <div 
@@ -343,7 +369,7 @@ export const CounselingManager: React.FC<CounselingManagerProps> = ({
                                         <input 
                                             type="text" 
                                             placeholder="請說明其他方式" 
-                                            className="mt-2 w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                            className="mt-2 w-full border border-gray-300 rounded px-3 py-2 text-sm bg-yellow-50 focus:bg-white"
                                             value={newLog.methodOtherDetail || ''}
                                             onChange={e => setNewLog({...newLog, methodOtherDetail: e.target.value})}
                                         />
@@ -372,7 +398,7 @@ export const CounselingManager: React.FC<CounselingManagerProps> = ({
                                 <input 
                                     type="text" 
                                     placeholder="請說明其他事項" 
-                                    className="mt-3 w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                    className="mt-3 w-full border border-gray-300 rounded px-3 py-2 text-sm bg-yellow-50 focus:bg-white"
                                     value={newLog.categoriesOtherDetail || ''}
                                     onChange={e => setNewLog({...newLog, categoriesOtherDetail: e.target.value})}
                                 />

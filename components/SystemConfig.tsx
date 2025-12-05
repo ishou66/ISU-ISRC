@@ -25,6 +25,7 @@ export const SystemConfig: React.FC<SystemConfigProps> = ({ configs, setConfigs 
       isActive: true,
       order: currentConfigs.length + 1
     };
+    // Use spread to create a new array reference for React reactivity
     setConfigs([...configs, newItem]);
     setNewItemCode('');
     setNewItemLabel('');

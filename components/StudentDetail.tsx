@@ -98,7 +98,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({
       if (file) {
           const objectUrl = URL.createObjectURL(file);
           const updated = { ...student, avatarUrl: objectUrl };
-          onUpdateStudent(updated); // In real app, upload to server here
+          onUpdateStudent(updated); 
           onLogAction('UPDATE', `Student Photo: ${student.studentId}`, 'SUCCESS');
       }
   };
@@ -108,21 +108,25 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({
           alert('請填寫結案/解除列管說明');
           return;
       }
+      
+      const statusLog = {
+          date: new Date().toISOString().slice(0, 10),
+          oldStatus: '高關懷 (列管中)',
+          newStatus: '結案 (解除列管)',
+          reason: `結案: ${closeCaseReason}`,
+          editor: currentUser?.name || 'System'
+      };
+
       const updated: Student = {
           ...student,
           highRisk: HighRiskStatus.NONE,
           careStatus: 'CLOSED',
           statusHistory: [
               ...(student.statusHistory || []),
-              {
-                  date: new Date().toISOString().slice(0, 10),
-                  oldStatus: '高關懷',
-                  newStatus: '結案',
-                  reason: closeCaseReason,
-                  editor: currentUser?.name || 'System'
-              }
+              statusLog
           ]
       };
+      
       onUpdateStudent(updated);
       setIsCloseCaseModalOpen(false);
       setCloseCaseReason('');
@@ -427,15 +431,15 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({
                 <dl className="grid grid-cols-1 md:grid-cols-2 gap-y-6 text-sm">
                     <div>
                         <dt className="text-gray-500 mb-1">家長姓名</dt>
-                        <dd className="font-medium">{student.guardianName}</dd>
+                        <dd className="font-medium">{student.guardianName || '未填寫'}</dd>
                     </div>
                     <div>
                         <dt className="text-gray-500 mb-1">關係</dt>
-                        <dd>{student.guardianRelation}</dd>
+                        <dd>{student.guardianRelation || '未填寫'}</dd>
                     </div>
                     <div>
                         <dt className="text-gray-500 mb-1">聯絡電話</dt>
-                        <dd className="font-mono">{student.guardianPhone}</dd>
+                        <dd className="font-mono">{student.guardianPhone || '未填寫'}</dd>
                     </div>
                     <div>
                         <dt className="text-gray-500 mb-1">經濟等級</dt>

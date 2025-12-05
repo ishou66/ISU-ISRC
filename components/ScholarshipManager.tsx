@@ -27,6 +27,10 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
   // Tab A: Settings State
   const [newConfig, setNewConfig] = useState<Partial<ScholarshipConfig>>({ semester: '113-2', isActive: true });
 
+  // Tab B: Data Entry State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newApplication, setNewApplication] = useState<{studentId: string, configId: string}>({ studentId: '', configId: '' });
+
   // Tab C: Hours State
   const [selectedScholarshipId, setSelectedScholarshipId] = useState<string | null>(null);
   const [manualHourEntry, setManualHourEntry] = useState({ date: '', content: '', hours: 0 });
@@ -80,6 +84,37 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
       }));
       onUpdateScholarships([...scholarships, ...newRecords]);
       alert(`已匯入 ${newRecords.length} 筆初始名單`);
+  };
+
+  const handleManualAddApplication = () => {
+      if (!newApplication.studentId || !newApplication.configId) {
+          alert("請選擇學生與獎助學金項目");
+          return;
+      }
+      const config = scholarshipConfigs.find(c => c.id === newApplication.configId);
+      const student = students.find(s => s.id === newApplication.studentId);
+      
+      if (!config || !student) return;
+
+      const record: ScholarshipRecord = {
+          id: `sch_${Math.random().toString(36).substr(2,9)}`,
+          studentId: student.id,
+          configId: config.id,
+          semester: config.semester,
+          name: config.name,
+          amount: config.amount,
+          status: 'UNDER_HOURS',
+          serviceHoursRequired: config.serviceHoursRequired,
+          serviceHoursCompleted: 0,
+          manualHours: [],
+          bankInfo: { bankCode: '', accountNumber: '', accountName: student.name, isVerified: false },
+          auditHistory: [],
+          currentHandler: currentUser?.name
+      };
+
+      onAddScholarship(record);
+      setIsAddModalOpen(false);
+      setNewApplication({ studentId: '', configId: '' });
   };
 
   const handleUpdateBankInfo = (schId: string, field: string, value: string) => {
@@ -159,7 +194,12 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
           'PENDING': 'bg-gray-100 text-gray-500',
           'PENDING_DOC': 'bg-orange-100 text-orange-700'
       };
-      return <span className={`px-2 py-1 rounded text-xs font-bold ${map[status] || ''}`}>{status}</span>;
+      
+      let label = status;
+      if (status === 'APPROVED') label = '已核定 (待撥款)';
+      if (status === 'MET_HOURS') label = '已達標 (待審)';
+
+      return <span className={`px-2 py-1 rounded text-xs font-bold ${map[status] || ''}`}>{label}</span>;
   };
 
   return (
@@ -238,9 +278,16 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
               <div className="space-y-4">
                   <div className="flex justify-between items-center">
                       <h3 className="font-bold text-gray-700">申請名單資料補齊</h3>
-                      <button onClick={handleImportMock} className="border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50 flex gap-2 items-center">
-                          <ICONS.Download size={16} /> 模擬匯入名單
-                      </button>
+                      <div className="flex gap-2">
+                        {hasPermission('add') && (
+                            <button onClick={() => setIsAddModalOpen(true)} className="bg-isu-dark text-white px-3 py-1.5 rounded text-sm hover:bg-gray-800 flex gap-2 items-center">
+                                <ICONS.Plus size={16} /> 新增申請
+                            </button>
+                        )}
+                        <button onClick={handleImportMock} className="border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50 flex gap-2 items-center">
+                            <ICONS.Download size={16} /> 模擬匯入名單
+                        </button>
+                      </div>
                   </div>
                   <table className="w-full text-sm text-left">
                       <thead className="bg-gray-100">
@@ -375,6 +422,47 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
               </div>
           )}
       </div>
+
+      {/* Manual Add Application Modal */}
+      {isAddModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white p-6 rounded-lg shadow-xl w-96">
+                  <h3 className="font-bold mb-4">新增獎助學金申請</h3>
+                  <div className="space-y-4">
+                      <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1">獎助學金項目</label>
+                          <select 
+                              className="w-full border rounded p-2 text-sm"
+                              value={newApplication.configId}
+                              onChange={e => setNewApplication({...newApplication, configId: e.target.value})}
+                          >
+                              <option value="">請選擇...</option>
+                              {scholarshipConfigs.filter(c => c.isActive).map(c => (
+                                  <option key={c.id} value={c.id}>{c.semester} {c.name}</option>
+                              ))}
+                          </select>
+                      </div>
+                      <div>
+                          <label className="block text-xs font-bold text-gray-500 mb-1">申請學生</label>
+                          <select
+                              className="w-full border rounded p-2 text-sm"
+                              value={newApplication.studentId}
+                              onChange={e => setNewApplication({...newApplication, studentId: e.target.value})}
+                          >
+                              <option value="">請選擇...</option>
+                              {students.map(s => (
+                                  <option key={s.id} value={s.id}>{s.studentId} {s.name}</option>
+                              ))}
+                          </select>
+                      </div>
+                  </div>
+                  <div className="mt-6 flex justify-end gap-2">
+                      <button onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 border rounded text-sm">取消</button>
+                      <button onClick={handleManualAddApplication} className="px-4 py-2 bg-isu-red text-white rounded text-sm">提交申請</button>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* Manual Hours Modal */}
       {selectedScholarshipId && (
