@@ -96,7 +96,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({
           const reader = new FileReader();
           reader.onloadend = () => {
               const base64String = reader.result as string;
-              setTempBank(prev => ({ ...prev, passbookImg: base64String }));
+              setTempBank(prev => ({ ...prev, passbookUrl: base64String }));
           };
           reader.readAsDataURL(file);
       }
@@ -349,8 +349,8 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({
                        <div className="border-l border-gray-200 pl-6">
                            <label className="block text-xs font-bold text-gray-500 mb-2">存摺封面影本</label>
                            <div className="w-full aspect-video bg-gray-100 rounded-lg flex flex-col items-center justify-center overflow-hidden border border-dashed border-gray-300 relative group">
-                               {(isEditingBank ? tempBank.passbookImg : student.bankInfo?.passbookImg) ? (
-                                   <img src={isEditingBank ? tempBank.passbookImg : student.bankInfo?.passbookImg} alt="Passbook" className="w-full h-full object-contain" />
+                               {(isEditingBank ? tempBank.passbookUrl : student.bankInfo?.passbookUrl) ? (
+                                   <img src={isEditingBank ? tempBank.passbookUrl : student.bankInfo?.passbookUrl} alt="Passbook" className="w-full h-full object-contain" />
                                ) : (
                                    <div className="text-gray-400 text-sm flex flex-col items-center">
                                        <ICONS.Image size={32} className="mb-2"/>

@@ -80,11 +80,63 @@ export const ActivityManager: React.FC<ActivityManagerProps> = ({
       }
   };
 
+  const handlePrintSignIn = () => {
+      window.print();
+  };
+
   if (selectedEventId && selectedEvent) {
     return (
         <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border border-gray-200">
+            {/* Print View for Sign In Sheet */}
+            <div className="fixed inset-0 bg-white z-[9999] hidden print:block p-10">
+                <div className="text-center mb-8">
+                    <h1 className="text-2xl font-bold mb-2">義守大學原住民族學生資源中心</h1>
+                    <h2 className="text-xl font-bold mb-4">活動簽到表</h2>
+                    <div className="flex justify-center gap-8 text-sm">
+                        <p>活動名稱：{selectedEvent.name}</p>
+                        <p>日期：{selectedEvent.date}</p>
+                        <p>地點：{selectedEvent.location}</p>
+                    </div>
+                </div>
+                <table className="w-full border-collapse border border-black text-sm">
+                    <thead>
+                        <tr className="bg-gray-100">
+                            <th className="border border-black p-2 w-16 text-center">序號</th>
+                            <th className="border border-black p-2 w-32">學號</th>
+                            <th className="border border-black p-2 w-32">姓名</th>
+                            <th className="border border-black p-2 w-24">系級</th>
+                            <th className="border border-black p-2">簽名</th>
+                            <th className="border border-black p-2 w-24 text-center">時數</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filterList(checkedIn).map((student, idx) => (
+                            <tr key={student.id}>
+                                <td className="border border-black p-2 text-center">{idx + 1}</td>
+                                <td className="border border-black p-2 font-mono">{student.studentId}</td>
+                                <td className="border border-black p-2">{student.name}</td>
+                                <td className="border border-black p-2">{student.departmentCode}</td>
+                                <td className="border border-black p-2"></td>
+                                <td className="border border-black p-2 text-center">{student.hours}</td>
+                            </tr>
+                        ))}
+                        {/* Add empty rows for walk-ins */}
+                        {[...Array(5)].map((_, i) => (
+                            <tr key={`empty-${i}`}>
+                                <td className="border border-black p-2 text-center">{checkedIn.length + i + 1}</td>
+                                <td className="border border-black p-2"></td>
+                                <td className="border border-black p-2"></td>
+                                <td className="border border-black p-2"></td>
+                                <td className="border border-black p-2"></td>
+                                <td className="border border-black p-2"></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
             {/* Header with Back Button */}
-            <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4">
+            <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 no-print">
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={() => setSelectedEventId(null)}
@@ -103,20 +155,25 @@ export const ActivityManager: React.FC<ActivityManagerProps> = ({
                         </p>
                     </div>
                 </div>
-                <div className="relative w-full md:w-auto">
-                     <ICONS.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                     <input 
-                        type="text"
-                        placeholder="搜尋學生..."
-                        className="w-full md:w-64 pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-isu-red outline-none"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                     />
+                <div className="flex gap-2 w-full md:w-auto">
+                     <button onClick={handlePrintSignIn} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-50 flex items-center gap-2">
+                        <ICONS.Print size={14} /> 列印簽到表
+                     </button>
+                     <div className="relative flex-1 md:w-auto">
+                        <ICONS.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                        <input 
+                            type="text"
+                            placeholder="搜尋學生..."
+                            className="w-full md:w-48 pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-isu-red outline-none"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                     </div>
                 </div>
             </div>
 
             {/* Transfer List Container - Stacked on Mobile */}
-            <div className="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
+            <div className="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto no-print">
                 
                 {/* Left: Not Checked In */}
                 <div className="flex flex-col border border-gray-200 rounded-lg h-[400px] md:h-full overflow-hidden">

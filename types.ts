@@ -72,7 +72,7 @@ export interface StudentBankInfo {
   branchCode?: string;
   accountNumber: string;
   accountName: string;
-  passbookImg?: string; // Base64
+  passbookUrl?: string; // Base64 image
   lastUpdated?: string;
 }
 
@@ -108,7 +108,7 @@ export interface Student {
   avatarUrl?: string;
   statusHistory: StudentStatusLog[];
   
-  bankInfo?: StudentBankInfo; // New Financial Info
+  bankInfo?: StudentBankInfo; // Financial Info
 }
 
 export interface CounselingLog {

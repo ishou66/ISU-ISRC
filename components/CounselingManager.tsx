@@ -284,15 +284,21 @@ const CounselingForm: React.FC<{ configs: ConfigItem[], currentUserName: string,
 export const CounselingManager: React.FC<{ logs: CounselingLog[], students: Student[], configs: ConfigItem[], currentUserName: string, onAddLog: (log: CounselingLog) => void }> = ({ logs, students, configs, currentUserName, onAddLog }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [printingLog, setPrintingLog] = useState<CounselingLog | null>(null);
   const { can } = usePermission();
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Print List Logic
   const handlePrintList = () => {
-      window.print();
+      setPrintingLog(null);
+      setTimeout(() => window.print(), 100);
+  };
+
+  const handlePrintSingle = (log: CounselingLog) => {
+      setPrintingLog(log);
+      setTimeout(() => window.print(), 100);
   };
 
   // Pagination Logic
@@ -309,12 +315,88 @@ export const CounselingManager: React.FC<{ logs: CounselingLog[], students: Stud
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full">
-        {/* Print Header (Visible only in print) */}
-        <div className="print-only text-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">義守大學原住民族學生資源中心</h1>
-            <h2 className="text-xl font-medium text-gray-700 mt-2">輔導關懷紀錄清冊</h2>
-            <p className="text-sm text-gray-500 mt-1">列印日期: {new Date().toLocaleDateString()}</p>
-        </div>
+        {/* Full Page Print View for Single Log */}
+        {printingLog && (
+            <div className="fixed inset-0 bg-white z-[9999] hidden print:block p-10 font-serif">
+                <div className="text-center mb-8 border-b-2 border-black pb-4">
+                    <h1 className="text-3xl font-bold mb-2">義守大學原住民族學生資源中心</h1>
+                    <h2 className="text-2xl font-bold">個別輔導紀錄表</h2>
+                </div>
+                
+                {(() => {
+                    const st = students.find(s => s.id === printingLog.studentId);
+                    return (
+                        <div className="space-y-6 text-lg">
+                            <table className="w-full border-collapse border border-black">
+                                <tbody>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-100 w-32">輔導日期</td>
+                                        <td className="border border-black p-2">{printingLog.date} {printingLog.consultTime}</td>
+                                        <td className="border border-black p-2 font-bold bg-gray-100 w-32">輔導人員</td>
+                                        <td className="border border-black p-2">{printingLog.counselorName}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-100">學生姓名</td>
+                                        <td className="border border-black p-2">{st?.name}</td>
+                                        <td className="border border-black p-2 font-bold bg-gray-100">學號/系級</td>
+                                        <td className="border border-black p-2">{st?.studentId} / {getLabel(st?.departmentCode, 'DEPT', configs)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-100">輔導方式</td>
+                                        <td className="border border-black p-2" colSpan={3}>
+                                            {getLabel(printingLog.method, 'COUNSEL_METHOD', configs)} 
+                                            {printingLog.methodOtherDetail && ` (${printingLog.methodOtherDetail})`}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-100">輔導事項</td>
+                                        <td className="border border-black p-2" colSpan={3}>
+                                            {printingLog.categories.map(c => getLabel(c, 'COUNSEL_CATEGORY', configs)).join(', ')}
+                                            {printingLog.categoriesOtherDetail && ` (${printingLog.categoriesOtherDetail})`}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-100 h-64 align-top">
+                                            晤談內容<br/>摘要
+                                        </td>
+                                        <td className="border border-black p-4 align-top whitespace-pre-wrap leading-relaxed" colSpan={3}>
+                                            {printingLog.content}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-100">後續建議</td>
+                                        <td className="border border-black p-2" colSpan={3}>
+                                            {printingLog.recommendations.map(c => getLabel(c, 'COUNSEL_RECOMMENDATION', configs)).join(', ')}
+                                            {printingLog.recommendationOtherDetail && ` (${printingLog.recommendationOtherDetail})`}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div className="flex justify-between mt-16 pt-8">
+                                <div className="text-center w-1/3">
+                                    <p className="mb-8">承辦人簽章</p>
+                                    <div className="border-b border-black"></div>
+                                </div>
+                                <div className="text-center w-1/3">
+                                    <p className="mb-8">單位主管簽章</p>
+                                    <div className="border-b border-black"></div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
+            </div>
+        )}
+
+        {/* Regular List Print Header */}
+        {!printingLog && (
+            <div className="print-only text-center mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">義守大學原住民族學生資源中心</h1>
+                <h2 className="text-xl font-medium text-gray-700 mt-2">輔導關懷紀錄清冊</h2>
+                <p className="text-sm text-gray-500 mt-1">列印日期: {new Date().toLocaleDateString()}</p>
+            </div>
+        )}
 
         <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center no-print">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2"><ICONS.CounselingManager className="text-isu-red" /> 輔導關懷紀錄</h2>
@@ -330,7 +412,7 @@ export const CounselingManager: React.FC<{ logs: CounselingLog[], students: Stud
             </div>
         </div>
 
-        <div className="flex-1 overflow-auto p-4 print:p-0 print:overflow-visible">
+        <div className={`flex-1 overflow-auto p-4 print:p-0 print:overflow-visible ${printingLog ? 'print:hidden' : ''}`}>
              <table className="w-full text-sm text-left border-collapse">
                 <thead className="bg-gray-100 text-gray-700 sticky top-0 print:static">
                     <tr>
@@ -354,9 +436,9 @@ export const CounselingManager: React.FC<{ logs: CounselingLog[], students: Stud
                                 <td className="px-4 py-2 flex gap-1 flex-wrap print:border print:border-black print:block">
                                     {log.categories.map(c => <span key={c} className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-xs border border-blue-100 print:border-0 print:bg-transparent print:text-black print:mr-1">{getLabel(c, 'COUNSEL_CATEGORY', configs)}</span>)}
                                 </td>
-                                <td className="px-4 py-2 text-right no-print">
-                                    <button className="text-gray-500 hover:text-isu-dark p-1" title="詳情">
-                                        <ICONS.ChevronRight size={16} />
+                                <td className="px-4 py-2 text-right no-print flex justify-end gap-2">
+                                    <button onClick={() => handlePrintSingle(log)} className="text-gray-500 hover:text-blue-600 p-1" title="列印個案紀錄">
+                                        <ICONS.Print size={16} />
                                     </button>
                                 </td>
                             </tr>
@@ -366,11 +448,13 @@ export const CounselingManager: React.FC<{ logs: CounselingLog[], students: Stud
              </table>
         </div>
         
-        {/* Signature Area for Print */}
-        <div className="print-signature">
-            <div className="border-t border-black w-1/3 pt-2 text-center text-sm">承辦人簽章</div>
-            <div className="border-t border-black w-1/3 pt-2 text-center text-sm">單位主管簽章</div>
-        </div>
+        {/* Signature Area for List Print */}
+        {!printingLog && (
+            <div className="print-signature">
+                <div className="border-t border-black w-1/3 pt-2 text-center text-sm">承辦人簽章</div>
+                <div className="border-t border-black w-1/3 pt-2 text-center text-sm">單位主管簽章</div>
+            </div>
+        )}
 
         {/* Pagination Controls */}
         <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center no-print">
