@@ -103,8 +103,8 @@ export const Login: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-isu-red to-red-900 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-isu-red to-red-900 flex flex-col items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col mb-4">
         <div className="bg-gray-50 p-6 text-center border-b border-gray-100">
             <div className="w-12 h-12 bg-isu-dark rounded-full flex items-center justify-center mx-auto mb-3 text-white font-bold text-xl">I</div>
             <h1 className="text-xl font-bold text-gray-800">義守大學原資中心</h1><p className="text-sm text-gray-500">學生輔導關懷系統</p>
@@ -130,6 +130,12 @@ export const Login: React.FC = () => {
             </form>
         </div>
         <div className="bg-gray-50 p-4 text-center text-xs text-gray-400 border-t border-gray-100">&copy; 2024 I-Shou University Indigenous Student Resource Center</div>
+      </div>
+      
+      {/* Security Disclaimer */}
+      <div className="max-w-md w-full bg-red-900/30 text-white text-xs p-3 rounded border border-red-800 text-center backdrop-blur-sm">
+          <p className="font-bold mb-1 flex items-center justify-center gap-1"><ICONS.Alert size={12} /> 資安警示 / Security Notice</p>
+          <p>本系統為展示版本 (Demo)，所有資料僅儲存於您的瀏覽器 (LocalStorage)。請勿輸入真實的個人敏感資料 (如真實身分證號、銀行帳號)。</p>
       </div>
     </div>
   );

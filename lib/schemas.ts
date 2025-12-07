@@ -2,18 +2,33 @@
 import { z } from 'zod';
 import { HighRiskStatus, StudentStatus } from '../types';
 
-// Regular expression for Student ID (Example: 11200123A)
-// 1 + 8 digits + optional uppercase letter
-const STUDENT_ID_REGEX = /^1\d{8}[A-Z]?$/;
+// Regular expression for Student ID (Strict: 11288123A)
+// Year (3) + Dept (2) + Seat (3) + Division (1)
+const STUDENT_ID_REGEX = /^\d{3}\d{2}\d{3}[A-Z]$/;
 const PHONE_REGEX = /^09\d{8}$|^0\d{1,2}-\d{6,8}$/;
+
+// Reusable nested schemas
+const familyMemberSchema = z.object({
+    name: z.string().optional(),
+    isAlive: z.boolean().default(true),
+    relation: z.string().optional(),
+    phone: z.string().optional(),
+    occupation: z.string().optional(),
+    education: z.string().optional(),
+    companyTitle: z.string().optional(),
+    address: z.string().optional(),
+    gender: z.string().optional()
+});
 
 export const studentSchema = z.object({
   studentId: z.string()
     .min(1, { message: '請填寫學號' })
-    .regex(STUDENT_ID_REGEX, { message: '學號格式錯誤 (例: 11200123A)' }),
+    .regex(STUDENT_ID_REGEX, { message: '學號格式錯誤 (例: 11288123A)' }),
   
   name: z.string()
     .min(2, { message: '姓名至少需 2 個字' }),
+  
+  indigenousName: z.string().optional(),
   
   departmentCode: z.string()
     .min(1, { message: '請選擇系所' }),
@@ -22,8 +37,10 @@ export const studentSchema = z.object({
     .min(1, { message: '請選擇族別' }),
   
   grade: z.string().default('1'),
+  enrollmentYear: z.string().min(3, { message: '請填寫入學年度' }),
   
   gender: z.enum(['男', '女', '其他']).default('男'),
+  maritalStatus: z.enum(['未婚', '已婚', '其他']).optional(),
   
   status: z.nativeEnum(StudentStatus).default(StudentStatus.ACTIVE),
   
@@ -31,39 +48,57 @@ export const studentSchema = z.object({
   
   careStatus: z.enum(['OPEN', 'PROCESSING', 'CLOSED']).optional().default('OPEN'),
   
+  // Emails
+  emails: z.object({
+      personal: z.string().email().optional().or(z.literal('')),
+      school: z.string().email().optional().or(z.literal(''))
+  }).optional(),
+  
   phone: z.string()
     .regex(PHONE_REGEX, { message: '手機號碼格式錯誤' })
     .optional()
     .or(z.literal('')),
     
-  email: z.string()
-    .email({ message: 'Email 格式錯誤' })
-    .optional()
-    .or(z.literal('')),
-    
-  hometownCity: z.string().optional(),
-  hometownDistrict: z.string().optional(),
-  housingType: z.enum(['DORM', 'RENTAL', 'COMMUTE']).default('COMMUTE'),
+  // Indigenous Township (Linked)
+  indigenousTownship: z.object({
+      city: z.string().optional(),
+      district: z.string().optional()
+  }).optional(),
+  
+  languageAbility: z.object({
+      dialect: z.string().optional(),
+      level: z.string().optional(),
+      certified: z.boolean().optional()
+  }).optional(),
+
+  housingType: z.enum(['DORM', 'RENTAL', 'COMMUTE', 'OTHER']).default('COMMUTE'),
   housingInfo: z.string().optional(),
   
   addressOfficial: z.string().optional(),
   addressCurrent: z.string().optional(),
   
-  guardianName: z.string().optional(),
-  guardianRelation: z.string().optional(),
-  guardianPhone: z.string().optional(),
-  economicStatus: z.enum(['一般', '清寒', '低收', '中低收']).optional(),
-  familyNote: z.string().optional(),
+  // Family Structure
+  familyData: z.object({
+      father: familyMemberSchema.optional(),
+      mother: familyMemberSchema.optional(),
+      guardian: familyMemberSchema.optional(),
+      economicStatus: z.string().default('小康'),
+      proofDocumentUrl: z.string().optional()
+  }).optional(),
   
-  // These are handled by system, usually not in create form but good to have in schema
-  avatarUrl: z.string().optional(),
-  statusHistory: z.array(z.object({
-    date: z.string(),
-    oldStatus: z.string(),
-    newStatus: z.string(),
-    reason: z.string(),
-    editor: z.string()
+  siblings: z.array(z.object({
+      id: z.string(),
+      order: z.number(),
+      title: z.string(),
+      name: z.string(),
+      birthYear: z.string(),
+      schoolStatus: z.string(),
+      note: z.string().optional()
   })).default([]),
+  
+  // These are handled by system
+  avatarUrl: z.string().optional(),
+  statusHistory: z.array(z.any()).default([]), // Detailed structure defined in types
   
   bankInfo: z.object({
     bankCode: z.string(),

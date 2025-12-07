@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ConfigItem, SystemLog, LogAction, LogStatus } from '../types';
 import { StorageService } from '../services/StorageService';
-import { MOCK_CONFIGS } from '../constants';
+import { SYSTEM_CONFIGS } from '../constants';
 import { useToast } from './ToastContext';
 
 interface SystemContextType {
@@ -18,7 +18,7 @@ const SystemContext = createContext<SystemContextType | undefined>(undefined);
 const KEYS = StorageService.getKeys();
 
 export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [configs, setConfigs] = useState<ConfigItem[]>(() => StorageService.load(KEYS.CONFIGS, MOCK_CONFIGS));
+  const [configs, setConfigs] = useState<ConfigItem[]>(() => StorageService.load(KEYS.CONFIGS, SYSTEM_CONFIGS));
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>(() => StorageService.load(KEYS.SYSTEM_LOGS, []));
   const { notify } = useToast();
 

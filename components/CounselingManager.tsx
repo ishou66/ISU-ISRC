@@ -54,8 +54,14 @@ const StudentSearchBox: React.FC<{ students: Student[], onSelect: (s: Student) =
                         {suggestions.length > 0 ? (
                             suggestions.map(s => (
                                 <button key={s.id} className="w-full text-left px-4 py-2 hover:bg-blue-50 flex justify-between items-center border-b border-gray-100 last:border-0" onClick={() => handleSelect(s)}>
-                                    <div><span className="font-bold text-sm text-gray-800">{s.name}</span> <span className="text-xs text-gray-500 font-mono ml-2">{s.studentId}</span></div>
-                                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">{getLabel(s.departmentCode, 'DEPT', configs)}</span>
+                                    <div>
+                                        <span className="font-bold text-sm text-gray-800">{s.name}</span>
+                                        <span className="text-xs text-gray-500 font-mono ml-2">{s.studentId}</span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="block text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600 mb-0.5">{getLabel(s.departmentCode, 'DEPT', configs)}</span>
+                                        <span className="text-[10px] text-gray-400">{s.grade}年級</span>
+                                    </div>
                                 </button>
                             ))
                         ) : <div className="p-3 text-center text-gray-400 text-sm">查無此學生</div>}

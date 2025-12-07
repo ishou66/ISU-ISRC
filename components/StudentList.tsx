@@ -8,11 +8,9 @@ import { studentSchema } from '../lib/schemas';
 import { z } from 'zod';
 
 interface StudentListProps {
-  // students: Student[]; // Removed
   configs: ConfigItem[];
   onSelectStudent: (student: Student) => void;
   onRevealSensitiveData: (label: string) => void;
-  // onAddStudent: (newStudent: Student) => Promise<boolean>; // Removed
   initialParams?: any;
 }
 
@@ -53,32 +51,32 @@ const MaskedCell: React.FC<{ value: string; label: string; onReveal: (label: str
 };
 
 export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStudent, onRevealSensitiveData, initialParams }) => {
-  const { students, addStudent, isLoading } = useStudents(); // Use Context
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterDept, setFilterDept] = useState('ALL');
-  const [filterRisk, setFilterRisk] = useState('ALL');
+  // Use persistent state from Context
+  const { students, addStudent, isLoading, listViewParams, setListViewParams } = useStudents();
+  
+  // Local UI State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Validation Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
   
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
   const { can, checkOrFail } = usePermission();
 
+  // 1. Handle Navigation Parameters (e.g. from Dashboard)
+  // This should OVERRIDE the saved state
   useEffect(() => {
-      if (initialParams?.filterRisk) {
-          setFilterRisk(initialParams.filterRisk);
+      if (initialParams) {
+          setListViewParams({
+              searchTerm: '',
+              filterDept: 'ALL',
+              filterRisk: initialParams.filterRisk || 'ALL',
+              currentPage: 1
+          });
       }
-  }, [initialParams]);
-  
-  useEffect(() => {
-      setCurrentPage(1);
-  }, [searchTerm, filterDept, filterRisk]);
+  }, [initialParams]); // Intentionally omitting setListViewParams to avoid loop
 
+  // 2. Add Student Form State
   const [newStudent, setNewStudent] = useState<Partial<Student>>({
       gender: '男',
       status: StudentStatus.ACTIVE,
@@ -90,21 +88,33 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
   const departments = configs.filter(c => c.category === 'DEPT' && c.isActive);
   const tribes = configs.filter(c => c.category === 'TRIBE' && c.isActive);
 
+  // 3. Filtering Logic using Context Params
   const filteredStudents = useMemo(() => {
       return students.filter(student => {
-        const matchesSearch = student.name.includes(searchTerm) || student.studentId.includes(searchTerm);
-        const matchesDept = filterDept === 'ALL' || student.departmentCode === filterDept;
-        const matchesRisk = filterRisk === 'ALL' || 
-                            (filterRisk === 'HIGH' && student.highRisk !== HighRiskStatus.NONE);
+        const matchesSearch = student.name.includes(listViewParams.searchTerm) || student.studentId.includes(listViewParams.searchTerm);
+        const matchesDept = listViewParams.filterDept === 'ALL' || student.departmentCode === listViewParams.filterDept;
+        const matchesRisk = listViewParams.filterRisk === 'ALL' || 
+                            (listViewParams.filterRisk === 'HIGH' && student.highRisk !== HighRiskStatus.NONE);
         return matchesSearch && matchesDept && matchesRisk;
       });
-  }, [students, searchTerm, filterDept, filterRisk]);
+  }, [students, listViewParams]);
 
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-  const currentStudents = filteredStudents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const currentStudents = filteredStudents.slice((listViewParams.currentPage - 1) * itemsPerPage, listViewParams.currentPage * itemsPerPage);
+
+  // 4. Handlers
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setListViewParams({ ...listViewParams, searchTerm: e.target.value, currentPage: 1 });
+  };
+
+  const handleFilterChange = (key: 'filterDept' | 'filterRisk', value: string) => {
+      setListViewParams({ ...listViewParams, [key]: value, currentPage: 1 });
+  };
 
   const goToPage = (page: number) => {
-      if (page >= 1 && page <= totalPages) setCurrentPage(page);
+      if (page >= 1 && page <= totalPages) {
+          setListViewParams({ ...listViewParams, currentPage: page });
+      }
   };
 
   const handleExport = () => {
@@ -133,13 +143,11 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
   const handleSaveNewStudent = async () => {
       if (!checkOrFail(ModuleId.STUDENTS, 'add')) return;
 
-      // Zod Validation
       const result = studentSchema.safeParse(newStudent);
 
       if (!result.success) {
           const formattedErrors: Record<string, string> = {};
           result.error.issues.forEach(issue => {
-              // Map path (e.g., ['name']) to key 'name'
               if (issue.path[0]) {
                   formattedErrors[issue.path[0].toString()] = issue.message;
               }
@@ -151,7 +159,7 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
       setIsSubmitting(true);
 
       const fullStudent: Student = {
-          ...result.data as Student, // Type assertion since schema matches interface mostly
+          ...result.data as Student, 
           id: Math.random().toString(36).substr(2, 9),
           avatarUrl: 'https://ui-avatars.com/api/?name=' + newStudent.name + '&background=random',
           statusHistory: []
@@ -182,8 +190,8 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
                 type="text" 
                 placeholder="搜尋姓名或學號..." 
                 className="pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-isu-red focus:border-transparent outline-none w-64"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                value={listViewParams.searchTerm}
+                onChange={handleSearchChange}
             />
         </div>
         
@@ -191,8 +199,8 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
             <ICONS.Filter size={16} className="text-gray-500" />
             <select 
                 className="border border-gray-300 rounded-md text-sm py-2 px-3 focus:ring-1 focus:ring-isu-red outline-none"
-                value={filterDept}
-                onChange={e => setFilterDept(e.target.value)}
+                value={listViewParams.filterDept}
+                onChange={(e) => handleFilterChange('filterDept', e.target.value)}
             >
                 <option value="ALL">所有系所</option>
                 {departments.map(d => <option key={d.id} value={d.code}>{d.label}</option>)}
@@ -200,8 +208,8 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
 
             <select 
                 className="border border-gray-300 rounded-md text-sm py-2 px-3 focus:ring-1 focus:ring-isu-red outline-none"
-                value={filterRisk}
-                onChange={e => setFilterRisk(e.target.value)}
+                value={listViewParams.filterRisk}
+                onChange={(e) => handleFilterChange('filterRisk', e.target.value)}
             >
                 <option value="ALL">所有關懷狀態</option>
                 <option value="HIGH">⚠️ 需關注/高關懷</option>
@@ -339,22 +347,22 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
       {/* Pagination Controls */}
       <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center no-print">
             <span className="text-xs text-gray-500">
-                顯示 {Math.min((currentPage - 1) * itemsPerPage + 1, filteredStudents.length)} - {Math.min(currentPage * itemsPerPage, filteredStudents.length)} 筆，共 {filteredStudents.length} 筆
+                顯示 {Math.min((listViewParams.currentPage - 1) * itemsPerPage + 1, filteredStudents.length)} - {Math.min(listViewParams.currentPage * itemsPerPage, filteredStudents.length)} 筆，共 {filteredStudents.length} 筆
             </span>
             <div className="flex gap-2">
                 <button 
-                    onClick={() => goToPage(currentPage - 1)} 
-                    disabled={currentPage === 1}
+                    onClick={() => goToPage(listViewParams.currentPage - 1)} 
+                    disabled={listViewParams.currentPage === 1}
                     className="px-3 py-1 border rounded bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <ICONS.ChevronRight size={14} className="transform rotate-180" />
                 </button>
                 <span className="px-3 py-1 text-sm text-gray-700 font-medium">
-                    第 {currentPage} 頁 / 共 {totalPages} 頁
+                    第 {listViewParams.currentPage} 頁 / 共 {totalPages} 頁
                 </span>
                 <button 
-                    onClick={() => goToPage(currentPage + 1)} 
-                    disabled={currentPage === totalPages}
+                    onClick={() => goToPage(listViewParams.currentPage + 1)} 
+                    disabled={listViewParams.currentPage === totalPages}
                     className="px-3 py-1 border rounded bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <ICONS.ChevronRight size={14} />

@@ -2,11 +2,13 @@
 import { SystemLog } from '../types';
 
 const APP_PREFIX = 'ISU_CARE_SYS_';
-const CURRENT_VERSION = '3.0';
+const CURRENT_VERSION = '3.1'; // Bump version
+const SECURE_PREFIX = 'SECURE::';
 
 interface StorageMetadata {
   version: string;
   lastBackup: string;
+  encrypted: boolean;
 }
 
 export class StorageService {
@@ -26,10 +28,36 @@ export class StorageService {
     };
   }
 
+  // Simple obfuscation to prevent casual reading of local storage
+  // In a real backend scenario, this would be DB encryption.
+  private static encode(data: string): string {
+    try {
+      return SECURE_PREFIX + btoa(unescape(encodeURIComponent(data)));
+    } catch (e) {
+      console.warn('Encoding failed, falling back to plain text', e);
+      return data;
+    }
+  }
+
+  private static decode(data: string): string {
+    if (data.startsWith(SECURE_PREFIX)) {
+      try {
+        return decodeURIComponent(escape(atob(data.replace(SECURE_PREFIX, ''))));
+      } catch (e) {
+        console.error('Decoding failed', e);
+        return '{}';
+      }
+    }
+    return data; // Return as-is if not encrypted (Backward Compatibility)
+  }
+
   static save<T>(key: string, data: T): boolean {
     try {
       const serialized = JSON.stringify(data);
-      localStorage.setItem(key, serialized);
+      // Encrypt sensitive keys (or all keys for simplicity)
+      const valueToStore = this.encode(serialized);
+      
+      localStorage.setItem(key, valueToStore);
       this.updateMetadata();
       return true;
     } catch (e) {
@@ -43,11 +71,15 @@ export class StorageService {
 
   static load<T>(key: string, defaultValue: T): T {
     try {
-      const serialized = localStorage.getItem(key);
-      if (!serialized) return defaultValue;
-      return JSON.parse(serialized);
+      const raw = localStorage.getItem(key);
+      if (!raw) return defaultValue;
+
+      // Attempt to decode if it looks encrypted, otherwise parse raw JSON
+      const jsonString = raw.startsWith(SECURE_PREFIX) ? this.decode(raw) : raw;
+      
+      return JSON.parse(jsonString);
     } catch (e) {
-      console.error('Storage Load Error:', e);
+      console.error(`Storage Load Error for ${key}:`, e);
       return defaultValue;
     }
   }
@@ -55,7 +87,8 @@ export class StorageService {
   static updateMetadata() {
     const meta: StorageMetadata = {
       version: CURRENT_VERSION,
-      lastBackup: new Date().toISOString()
+      lastBackup: new Date().toISOString(),
+      encrypted: true
     };
     localStorage.setItem(this.getKeys().METADATA, JSON.stringify(meta));
   }
@@ -73,8 +106,8 @@ export class StorageService {
     const backup: Record<string, any> = {};
     const keys = this.getKeys();
     Object.values(keys).forEach(key => {
-      const raw = localStorage.getItem(key);
-      if (raw) backup[key] = JSON.parse(raw);
+      // Decrypt before exporting so the backup JSON is readable/usable
+      backup[key] = this.load(key, null);
     });
     
     // Add Metadata
@@ -87,17 +120,18 @@ export class StorageService {
   static async restoreBackup(jsonString: string): Promise<boolean> {
     try {
       const data = JSON.parse(jsonString);
-      if (!data.version) throw new Error('Invalid backup file');
+      // Basic validation
+      if (!data.version && !data[this.getKeys().STUDENTS]) throw new Error('Invalid backup file');
 
       const keys = this.getKeys();
       
       // Clear current
       Object.values(keys).forEach(key => localStorage.removeItem(key));
 
-      // Restore
+      // Restore and Re-encrypt
       Object.values(keys).forEach(key => {
         if (data[key]) {
-          localStorage.setItem(key, JSON.stringify(data[key]));
+          this.save(key, data[key]);
         }
       });
 

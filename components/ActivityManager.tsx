@@ -17,7 +17,7 @@ export const ActivityManager: React.FC<ActivityManagerProps> = () => {
       updateActivityHours, batchConfirmActivity 
   } = useActivities();
   const { students } = useStudents();
-  const { can } = usePermission(); // In case we need permission checks later
+  const { can } = usePermission(); 
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,6 +49,11 @@ export const ActivityManager: React.FC<ActivityManagerProps> = () => {
 
   const filterList = (list: any[]) => list.filter(s => s.name.includes(searchTerm) || s.studentId.includes(searchTerm));
 
+  // Logic to determine button state
+  const pendingParticipants = checkedIn.filter(s => s.status === 'PENDING');
+  const hasParticipants = checkedIn.length > 0;
+  const allConfirmed = hasParticipants && pendingParticipants.length === 0;
+
   const handleCreateEvent = () => {
       if(!newEvent.name || !newEvent.date || !newEvent.location) {
           alert('請填寫所有必填欄位');
@@ -69,7 +74,11 @@ export const ActivityManager: React.FC<ActivityManagerProps> = () => {
 
   const handleBatchConfirm = () => {
       if (selectedEventId) {
-          if(confirm('【確認核撥】\n確定要核撥所有人的時數嗎？\n\n注意：狀態將變更為 CONFIRMED，且無法再修改時數。')) {
+          if (pendingParticipants.length === 0) {
+              alert('沒有待核撥的項目。');
+              return;
+          }
+          if(confirm(`【確認核撥】\n共 ${pendingParticipants.length} 位學生將核發時數。\n\n注意：狀態將變更為 CONFIRMED，且無法再修改時數。`)) {
               batchConfirmActivity(selectedEventId);
           }
       }
@@ -179,7 +188,19 @@ export const ActivityManager: React.FC<ActivityManagerProps> = () => {
                 <div className="flex flex-col border border-blue-200 rounded-lg h-[400px] md:h-full overflow-hidden shadow-sm">
                     <div className="bg-blue-50 p-3 border-b border-blue-200 font-bold text-blue-800 flex justify-between items-center">
                         <div className="flex gap-2"><span>已簽到 / 核發時數</span><span className="bg-blue-200 text-blue-800 px-2 rounded-full text-xs flex items-center">{filterList(checkedIn).length}</span></div>
-                        <button onClick={handleBatchConfirm} className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 flex items-center gap-1 shadow-sm font-medium"><ICONS.CheckCircle size={14} /> 批次核撥</button>
+                        <button 
+                            onClick={handleBatchConfirm} 
+                            disabled={!hasParticipants || allConfirmed}
+                            className={`text-xs px-3 py-1 rounded flex items-center gap-1 shadow-sm font-medium transition-colors
+                                ${!hasParticipants || allConfirmed 
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }
+                            `}
+                        >
+                            <ICONS.CheckCircle size={14} /> 
+                            {allConfirmed ? '全數已核發' : '批次核撥'}
+                        </button>
                     </div>
                     <div className="flex-1 overflow-auto p-2 space-y-1 bg-white">
                         {filterList(checkedIn).map(student => (

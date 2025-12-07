@@ -17,8 +17,8 @@ import { CounselingManager } from './components/CounselingManager';
 import { PermissionProvider, usePermissionContext } from './contexts/PermissionContext';
 import { StudentProvider, useStudents } from './contexts/StudentContext'; 
 import { ScholarshipProvider, useScholarships } from './contexts/ScholarshipContext';
-import { ActivityProvider } from './contexts/ActivityContext';
-import { ToastProvider, useToast } from './contexts/ToastContext';
+import { ActivityProvider, useActivities } from './contexts/ActivityContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SystemProvider, useSystem } from './contexts/SystemContext';
 
@@ -27,13 +27,17 @@ import { StorageService } from './services/StorageService';
 
 // --- Internal App Logic Component ---
 const AppContent: React.FC = () => {
-  const { currentUser, switchUser } = useAuth();
-  const { users, roles } = useAuth();
-  const { resetSystem, configs, systemLogs } = useSystem();
+  // 1. User & System Management
+  const { currentUser, switchUser, users, roles } = useAuth();
+  const { resetSystem, configs } = useSystem();
   const { logAction } = usePermissionContext();
+
+  // 2. Data consumption via Hooks (No local state management in App.tsx)
   const { students, updateStudent, addCounselingLog, counselingLogs } = useStudents();
   const { scholarships } = useScholarships();
+  const { activities, events } = useActivities();
   
+  // 3. UI State
   const [currentView, setCurrentView] = useState('DASHBOARD');
   const [navParams, setNavParams] = useState<any>(null); 
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -47,41 +51,39 @@ const AppContent: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'DASHBOARD':
-        return <Dashboard students={students} scholarships={scholarships} configs={configs} onNavigate={handleNavigate} counselingLogs={counselingLogs} />;
+        // No data props passed; Dashboard consumes Contexts directly
+        return <Dashboard onNavigate={handleNavigate} />;
+        
       case 'STUDENTS':
+        // StudentList consumes Contexts directly
         return (
           <StudentList 
             configs={configs} 
             onSelectStudent={(s) => { setSelectedStudent(s); setCurrentView('DETAIL'); }}
-            onRevealSensitiveData={() => {}} // Now handled in component via hook
+            onRevealSensitiveData={() => {}} // Handled inside StudentList via hooks
             initialParams={navParams}
           />
         );
+        
       case 'DETAIL':
         if (!selectedStudent) return <div>Error: No student selected</div>;
         // Re-fetch latest student data from context to ensure updates are reflected
         const freshStudent = students.find(s => s.id === selectedStudent.id) || selectedStudent;
         
+        // StudentDetail now consumes data from Contexts directly
         return (
           <StudentDetail 
             student={freshStudent} 
-            configs={configs}
-            counselingLogs={counselingLogs}
-            scholarships={scholarships}
-            activities={[]} // Handled in component if needed, or pass
-            events={[]} // Handled in component
-            currentRole={currentUser!.roleId as any}
-            currentUser={currentUser}
             onBack={() => setCurrentView('STUDENTS')}
-            onUpdateStudent={updateStudent} 
-            onAddCounselingLog={addCounselingLog}
-            onLogAction={logAction}
           />
         );
+        
       case 'COUNSELING_MANAGER':
-        return <CounselingManager />; // All data via Context
+        return <CounselingManager />; // Uses Contexts
+        
       case 'SETTINGS':
-        return <SystemConfig />;
+        return <SystemConfig />; // Uses Contexts
+        
       case 'USER_MANAGEMENT':
         return (
             <div className="flex flex-col gap-6 h-full">
@@ -89,19 +91,24 @@ const AppContent: React.FC = () => {
                 <div className="h-1/2 min-h-0 pt-6 border-t border-gray-300"><RoleManager /></div>
             </div>
         );
+        
       case 'AUDIT_LOGS':
-        return <AuditLogManager />;
+        return <AuditLogManager />; // Uses Contexts
+        
       case 'SCHOLARSHIP':
+        // ScholarshipManager consumes Contexts, configs passed for labeling helpers if needed
         return <ScholarshipManager configs={configs} initialParams={navParams} />;
+        
       case 'ACTIVITY':
-        return <ActivityManager />;
+        return <ActivityManager />; // Uses Contexts
+        
       default:
         return <div>Not Found</div>;
     }
   };
 
   if (!currentUser) {
-      return <Login />;
+      return <Login />; // Uses AuthContext
   }
 
   return (

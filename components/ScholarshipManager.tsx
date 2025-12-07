@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { ScholarshipRecord, Student, ConfigItem, AuditRecord, Event } from '../types';
 import { ICONS } from '../constants';
 import { useScholarships } from '../contexts/ScholarshipContext';
@@ -30,12 +30,10 @@ const AuditTimeline: React.FC<{ history: AuditRecord[] }> = ({ history }) => {
 
 interface ScholarshipManagerProps {
   configs: ConfigItem[];
-  // Removing other props as they are now in context
   initialParams?: any;
 }
 
 export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs, initialParams }) => {
-  // Consuming Contexts
   const { 
       scholarships, scholarshipConfigs, setScholarshipConfigs, 
       addScholarship, updateScholarships, updateScholarshipStatus 
@@ -66,36 +64,46 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs,
   const getStudentName = (id: string) => students.find(s => s.id === id)?.name || id;
   const getStudentId = (id: string) => students.find(s => s.id === id)?.studentId || id;
 
-  // --- Logic: Automatic Hour Calculation ---
-  const calculateHours = (sch: ScholarshipRecord) => {
-      const manHours = sch.manualHours.reduce((sum, m) => sum + m.hours, 0);
+  // --- Logic: Automatic Hour Calculation (Memoized) ---
+  const processedScholarships = useMemo(() => {
+      return scholarships.map(sch => {
+          const manHours = sch.manualHours.reduce((sum, m) => sum + m.hours, 0);
 
-      const actHours = activities
-          .filter(a => {
-              if (a.studentId !== sch.studentId) return false;
-              if (a.status !== 'CONFIRMED') return false;
-              
-              const event = events.find(e => e.id === a.eventId);
-              if (!event) return false;
-              
-              const evtDate = new Date(event.date);
-              const [rocYear, semester] = sch.semester.split('-').map(Number);
-              const ceYear = rocYear + 1911;
-              
-              if (semester === 1) {
-                  const start = new Date(`${ceYear}-08-01`);
-                  const end = new Date(`${ceYear+1}-01-31`);
+          const actHours = activities
+              .filter(a => {
+                  if (a.studentId !== sch.studentId) return false;
+                  if (a.status !== 'CONFIRMED') return false;
+                  
+                  const event = events.find(e => e.id === a.eventId);
+                  if (!event) return false;
+                  
+                  const evtDate = new Date(event.date);
+                  const [rocYear, semester] = sch.semester.split('-').map(Number);
+                  const ceYear = rocYear + 1911;
+                  
+                  let start, end;
+                  if (semester === 1) {
+                      start = new Date(`${ceYear}-08-01`);
+                      end = new Date(`${ceYear+1}-01-31`);
+                  } else {
+                      start = new Date(`${ceYear+1}-02-01`);
+                      end = new Date(`${ceYear+1}-07-31`);
+                  }
                   return evtDate >= start && evtDate <= end;
-              } else {
-                  const start = new Date(`${ceYear+1}-02-01`);
-                  const end = new Date(`${ceYear+1}-07-31`);
-                  return evtDate >= start && evtDate <= end;
+              })
+              .reduce((sum, a) => sum + a.hours, 0);
+
+          return { 
+              ...sch, 
+              stats: {
+                  total: actHours + manHours,
+                  actHours,
+                  manHours,
+                  isMet: (actHours + manHours) >= sch.serviceHoursRequired
               }
-          })
-          .reduce((sum, a) => sum + a.hours, 0);
-
-      return { total: actHours + manHours, actHours, manHours };
-  };
+          };
+      });
+  }, [scholarships, activities, events]);
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -144,12 +152,6 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs,
           return;
       }
       
-      // Update logic is local to component until committed, then sent to Context
-      // Context has generic updateScholarships or updateScholarship
-      // We need to fetch the current list, modify it, and push back. 
-      // OR better, we should probably have an addManualHour action in context. 
-      // For now, adhering to the prop signature 'onUpdateScholarships' which mapped to context 'updateScholarships'
-      
       const updatedList = scholarships.map(s => {
           if (s.id === selectedScholarshipId) {
               const newLog = { 
@@ -160,9 +162,13 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs,
                   approver: currentUser?.name
               };
               
-              const actHours = calculateHours(s).actHours; 
-              const currentManTotal = s.manualHours.reduce((sum,m)=>sum+m.hours, 0);
-              const newTotal = actHours + currentManTotal + newLog.hours;
+              // We need to recalculate purely based on current data for status update
+              // Ideally this logic should be inside the context reducer or a helper, 
+              // but doing it here locally before commit is acceptable for now.
+              // Note: We use the already processed data to get current totals, then add new.
+              const currentStats = processedScholarships.find(p => p.id === s.id)?.stats;
+              const currentTotal = currentStats ? currentStats.total : 0;
+              const newTotal = currentTotal + newLog.hours;
               
               let newStatus = s.status;
               if (newTotal >= s.serviceHoursRequired && s.status === 'UNDER_HOURS') {
@@ -190,9 +196,9 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs,
       }
 
       if (reviewActionType === 'APPROVE') {
-          const { total } = calculateHours(reviewItem);
-          if (total < reviewItem.serviceHoursRequired) {
-              if (!confirm(`【時數不足警示】\n該生目前累積時數 (${total} hr) 未達標準 (${reviewItem.serviceHoursRequired} hr)。\n\n確定要強制核定通過嗎？`)) {
+          const stats = processedScholarships.find(s => s.id === reviewItem.id)?.stats;
+          if (stats && stats.total < reviewItem.serviceHoursRequired) {
+              if (!confirm(`【時數不足警示】\n該生目前累積時數 (${stats.total} hr) 未達標準 (${reviewItem.serviceHoursRequired} hr)。\n\n確定要強制核定通過嗎？`)) {
                   return;
               }
           }
@@ -283,9 +289,8 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs,
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-100"><tr><th className="p-2">學生</th><th className="p-2">學期</th><th className="p-2">需服勤</th><th className="p-2">活動時數</th><th className="p-2">手動時數</th><th className="p-2">總計</th><th className="p-2">狀態</th><th className="p-2 text-right">操作</th></tr></thead>
                         <tbody>
-                            {scholarships.map(s => {
-                                const { total, actHours, manHours } = calculateHours(s);
-                                const isMet = total >= s.serviceHoursRequired;
+                            {processedScholarships.map(s => {
+                                const { total, actHours, manHours, isMet } = s.stats;
                                 return (
                                     <tr key={s.id} className="border-b hover:bg-gray-50">
                                         <td className="p-2 font-medium">{getStudentName(s.studentId)}</td>
@@ -315,11 +320,8 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs,
                       </button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {scholarships
-                        .filter(s => {
-                            const { total } = calculateHours(s);
-                            return total >= s.serviceHoursRequired || ['APPROVED','DISBURSED'].includes(s.status);
-                        })
+                      {processedScholarships
+                        .filter(s => s.stats.isMet || ['APPROVED','DISBURSED','REVIEWING','PENDING_DOC'].includes(s.status))
                         .map(s => (
                           <div key={s.id} className={`border rounded-lg p-4 shadow-sm bg-white hover:shadow-md transition-shadow relative ${s.status === 'DISBURSED' ? 'opacity-75' : ''}`}>
                               {s.status === 'DISBURSED' && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="border-4 border-green-600 text-green-600 font-bold text-2xl rotate-[-15deg] px-4 py-2 rounded opacity-30">已撥款</div></div>}
