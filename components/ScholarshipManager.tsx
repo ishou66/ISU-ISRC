@@ -1,23 +1,12 @@
 
 import React, { useState, useRef } from 'react';
-import { ScholarshipRecord, Student, ConfigItem, ScholarshipConfig, ActivityRecord, User, AuditRecord, Event, BankInfo } from '../types';
+import { ScholarshipRecord, Student, ConfigItem, AuditRecord, Event } from '../types';
 import { ICONS } from '../constants';
-
-interface ScholarshipManagerProps {
-  scholarships: ScholarshipRecord[];
-  scholarshipConfigs: ScholarshipConfig[];
-  setScholarshipConfigs: React.Dispatch<React.SetStateAction<ScholarshipConfig[]>>;
-  students: Student[];
-  activities: ActivityRecord[];
-  events?: Event[]; // Added events to check dates
-  configs: ConfigItem[];
-  currentUser: User | null;
-  onUpdateStatus: (id: string, newStatus: ScholarshipRecord['status'], comment?: string) => void;
-  onUpdateScholarships: (updatedList: ScholarshipRecord[]) => void;
-  onAddScholarship: (record: ScholarshipRecord) => void;
-  hasPermission: (action: 'add' | 'edit' | 'export') => boolean;
-  initialParams?: any;
-}
+import { useScholarships } from '../contexts/ScholarshipContext';
+import { useActivities } from '../contexts/ActivityContext';
+import { useStudents } from '../contexts/StudentContext';
+import { useToast } from '../contexts/ToastContext';
+import { usePermissionContext } from '../contexts/PermissionContext';
 
 // ... AuditTimeline Component (Same as before) ...
 const AuditTimeline: React.FC<{ history: AuditRecord[] }> = ({ history }) => {
@@ -39,10 +28,24 @@ const AuditTimeline: React.FC<{ history: AuditRecord[] }> = ({ history }) => {
     );
 };
 
-export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ 
-    scholarships, scholarshipConfigs, setScholarshipConfigs, students, activities, events = [], configs, currentUser,
-    onUpdateStatus, onUpdateScholarships, onAddScholarship, hasPermission 
-}) => {
+interface ScholarshipManagerProps {
+  configs: ConfigItem[];
+  // Removing other props as they are now in context
+  initialParams?: any;
+}
+
+export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs, initialParams }) => {
+  // Consuming Contexts
+  const { 
+      scholarships, scholarshipConfigs, setScholarshipConfigs, 
+      addScholarship, updateScholarships, updateScholarshipStatus 
+  } = useScholarships();
+  
+  const { students } = useStudents();
+  const { activities, events } = useActivities();
+  const { currentUser, checkPermission } = usePermissionContext();
+  const { notify } = useToast();
+
   const [activeTab, setActiveTab] = useState<'SETTINGS' | 'DATA_ENTRY' | 'HOURS' | 'REVIEW'>('REVIEW');
   
   // Import CSV State
@@ -58,49 +61,32 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
   const [reviewComment, setReviewComment] = useState('');
   const [reviewActionType, setReviewActionType] = useState<'APPROVE' | 'REJECT' | 'DISBURSE'>('APPROVE');
   
-  // Disbursement specific
   const [disburseDate, setDisburseDate] = useState(new Date().toISOString().slice(0,10));
 
   const getStudentName = (id: string) => students.find(s => s.id === id)?.name || id;
   const getStudentId = (id: string) => students.find(s => s.id === id)?.studentId || id;
 
   // --- Logic: Automatic Hour Calculation ---
-  // Calculates hours based on manual entries + activity records that fall within the semester (approx logic)
   const calculateHours = (sch: ScholarshipRecord) => {
-      // 1. Manual Hours
       const manHours = sch.manualHours.reduce((sum, m) => sum + m.hours, 0);
 
-      // 2. Activity Hours (Auto Linked)
-      // Logic: Find Confirmed activities for this student. 
-      // Ideally check if event date is inside the semester range. 
-      // For MVP Demo: Assume if scholarship is 112-1, events in late 2023 count.
-      // Or simply: Sum all confirmed activities for simplicity if dates are tricky.
-      // Let's implement a basic date check if events are provided.
-      
       const actHours = activities
           .filter(a => {
               if (a.studentId !== sch.studentId) return false;
               if (a.status !== 'CONFIRMED') return false;
               
-              // Date Check Logic (Simplified)
               const event = events.find(e => e.id === a.eventId);
               if (!event) return false;
               
-              // Assume semester format 'YYY-S' e.g. 112-1
-              // 112-1 approx 2023-08 to 2024-01
-              // 112-2 approx 2024-02 to 2024-07
-              // This is a rough check for the demo.
               const evtDate = new Date(event.date);
               const [rocYear, semester] = sch.semester.split('-').map(Number);
               const ceYear = rocYear + 1911;
               
               if (semester === 1) {
-                  // Fall Semester: Aug (Year) to Jan (Year+1)
                   const start = new Date(`${ceYear}-08-01`);
                   const end = new Date(`${ceYear+1}-01-31`);
                   return evtDate >= start && evtDate <= end;
               } else {
-                  // Spring Semester: Feb (Year+1) to July (Year+1)
                   const start = new Date(`${ceYear+1}-02-01`);
                   const end = new Date(`${ceYear+1}-07-31`);
                   return evtDate >= start && evtDate <= end;
@@ -119,7 +105,6 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
       reader.onload = (event) => {
           const text = event.target?.result as string;
           const lines = text.split('\n');
-          // Skip header, assume CSV: StudentID, Semester, ScholarshipName
           let addedCount = 0;
           
           lines.slice(1).forEach(line => {
@@ -128,7 +113,6 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
 
               const student = students.find(s => s.studentId === sId);
               if (student) {
-                  // Find config to get default amount/hours
                   const config = scholarshipConfigs.find(c => c.name === sName && c.semester === sem) || scholarshipConfigs[0];
                   
                   const newRecord: ScholarshipRecord = {
@@ -141,20 +125,14 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
                       serviceHoursCompleted: 0,
                       status: 'UNDER_HOURS',
                       manualHours: [],
-                      bankInfo: student.bankInfo ? {
-                          bankCode: student.bankInfo.bankCode,
-                          branchCode: student.bankInfo.branchCode,
-                          accountNumber: student.bankInfo.accountNumber,
-                          accountName: student.bankInfo.accountName,
-                          isVerified: false
-                      } : undefined,
+                      bankInfo: student.bankInfo ? { ...student.bankInfo, isVerified: false } as any : undefined,
                       auditHistory: [{ date: new Date().toISOString(), action: 'CREATE', actor: currentUser?.name || 'System', comment: 'Batch Import' }]
                   };
-                  onAddScholarship(newRecord);
+                  addScholarship(newRecord);
                   addedCount++;
               }
           });
-          alert(`成功匯入 ${addedCount} 筆申請資料`);
+          notify(`成功匯入 ${addedCount} 筆申請資料`);
           if (fileInputRef.current) fileInputRef.current.value = '';
       };
       reader.readAsText(file);
@@ -162,9 +140,15 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
 
   const handleAddManualHours = () => {
       if (!selectedScholarshipId || manualEntry.hours <= 0 || !manualEntry.content) {
-          alert("請填寫完整資訊"); 
+          notify("請填寫完整資訊", 'alert'); 
           return;
       }
+      
+      // Update logic is local to component until committed, then sent to Context
+      // Context has generic updateScholarships or updateScholarship
+      // We need to fetch the current list, modify it, and push back. 
+      // OR better, we should probably have an addManualHour action in context. 
+      // For now, adhering to the prop signature 'onUpdateScholarships' which mapped to context 'updateScholarships'
       
       const updatedList = scholarships.map(s => {
           if (s.id === selectedScholarshipId) {
@@ -176,10 +160,7 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
                   approver: currentUser?.name
               };
               
-              // We need to calc total again to check if status needs update
-              // But this function is inside the map, so calculateHours(s) uses OLD manualHours. 
-              // We need to add the new log first mentally.
-              const actHours = calculateHours(s).actHours; // Activity hours dont change here
+              const actHours = calculateHours(s).actHours; 
               const currentManTotal = s.manualHours.reduce((sum,m)=>sum+m.hours, 0);
               const newTotal = actHours + currentManTotal + newLog.hours;
               
@@ -192,23 +173,22 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
           }
           return s;
       });
-      onUpdateScholarships(updatedList);
+      updateScholarships(updatedList);
       setSelectedScholarshipId(null);
       setManualEntry({ date: '', content: '', hours: 0 });
+      notify('時數已登錄');
   };
 
   const handleReviewSubmit = () => {
       if (!reviewItem) return;
       
-      // Disbursement Logic
       if (reviewActionType === 'DISBURSE') {
-          onUpdateStatus(reviewItem.id, 'DISBURSED', `匯款日期: ${disburseDate} - ${reviewComment}`);
+          updateScholarshipStatus(reviewItem.id, 'DISBURSED', `匯款日期: ${disburseDate} - ${reviewComment}`);
           setReviewModalOpen(false);
           setReviewItem(null);
           return;
       }
 
-      // Safety Check: Service Hours for Approval
       if (reviewActionType === 'APPROVE') {
           const { total } = calculateHours(reviewItem);
           if (total < reviewItem.serviceHoursRequired) {
@@ -218,9 +198,12 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
           }
       }
 
-      if (reviewActionType === 'REJECT' && !reviewComment) return alert("駁回請填寫理由");
+      if (reviewActionType === 'REJECT' && !reviewComment) {
+          notify("駁回請填寫理由", 'alert');
+          return;
+      }
 
-      onUpdateStatus(
+      updateScholarshipStatus(
           reviewItem.id, 
           reviewActionType === 'APPROVE' ? 'APPROVED' : 'REJECTED', 
           reviewComment
@@ -230,14 +213,15 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
       setReviewComment('');
   };
 
-  // ... Exports & Print (Same as before) ...
   const handleExportApproved = () => {
       const approved = scholarships.filter(s => s.status === 'APPROVED');
-      if (approved.length === 0) return alert("無可匯出的撥款名冊");
+      if (approved.length === 0) {
+          notify("無可匯出的撥款名冊", 'alert');
+          return;
+      }
       const csvContent = '\uFEFF' + "學號,姓名,獎助項目,銀行代碼,帳號,戶名,金額\n" + 
         approved.map(s => {
              const student = students.find(st => st.id === s.studentId);
-             // Use snapshot bank info or fallback to current student info
              const bank = s.bankInfo || student?.bankInfo;
              return `${student?.studentId},${student?.name},${s.name},${bank?.bankCode},${bank?.accountNumber},${bank?.accountName},${s.amount}`;
         }).join('\n');
@@ -247,11 +231,6 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
       link.href = url;
       link.download = `撥款名冊_${new Date().toISOString().slice(0,10)}.csv`;
       link.click();
-  };
-
-  const handlePrintVoucher = () => {
-      // ... same logic ...
-      window.print(); // Placeholder for actual print logic implemented in previous step
   };
 
   return (
@@ -266,7 +245,6 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
       </div>
 
       <div className="flex-1 overflow-auto p-6 print:p-0">
-          
           {activeTab === 'DATA_ENTRY' && (
               <div className="space-y-6">
                   <div className="flex justify-between items-center">
@@ -281,9 +259,7 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
                   <div className="bg-blue-50 p-4 rounded border border-blue-100 text-sm text-blue-800">
                       <p className="font-bold mb-1">CSV 格式說明：</p>
                       <p>第一欄：學號, 第二欄：學期 (e.g. 112-1), 第三欄：獎助名稱</p>
-                      <p className="text-xs text-blue-600 mt-1">系統將自動比對學號建立資料，並連結學生銀行帳戶。</p>
                   </div>
-                  {/* ... Table of current list ... */}
                   <table className="w-full text-sm text-left mt-4">
                       <thead className="bg-gray-100"><tr><th className="p-2">學期</th><th className="p-2">學生</th><th className="p-2">項目</th><th className="p-2">狀態</th></tr></thead>
                       <tbody>
@@ -303,7 +279,6 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
           {activeTab === 'HOURS' && (
               <div className="space-y-4">
                   <h3 className="font-bold text-gray-700">服務時數管理 (自動計算)</h3>
-                  {/* Desktop Table */}
                   <div className="hidden md:block">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-100"><tr><th className="p-2">學生</th><th className="p-2">學期</th><th className="p-2">需服勤</th><th className="p-2">活動時數</th><th className="p-2">手動時數</th><th className="p-2">總計</th><th className="p-2">狀態</th><th className="p-2 text-right">操作</th></tr></thead>
@@ -334,19 +309,20 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
 
           {activeTab === 'REVIEW' && (
               <div className="space-y-4">
-                  {/* ... Header ... */}
+                  <div className="flex justify-end gap-2 no-print">
+                      <button onClick={handleExportApproved} className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-50 flex items-center gap-2">
+                          <ICONS.Download size={14} /> 匯出撥款名冊
+                      </button>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {scholarships
                         .filter(s => {
-                            // Show all if not just creating, or filter by logic
-                            // Let's show those ready for review or already reviewed
                             const { total } = calculateHours(s);
                             return total >= s.serviceHoursRequired || ['APPROVED','DISBURSED'].includes(s.status);
                         })
                         .map(s => (
                           <div key={s.id} className={`border rounded-lg p-4 shadow-sm bg-white hover:shadow-md transition-shadow relative ${s.status === 'DISBURSED' ? 'opacity-75' : ''}`}>
                               {s.status === 'DISBURSED' && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="border-4 border-green-600 text-green-600 font-bold text-2xl rotate-[-15deg] px-4 py-2 rounded opacity-30">已撥款</div></div>}
-                              
                               <div className="flex justify-between items-start mb-2">
                                   <h4 className="font-bold text-gray-800">{getStudentName(s.studentId)}</h4>
                                   <span className={`text-xs px-2 py-1 rounded font-bold ${s.status==='APPROVED'?'bg-blue-100 text-blue-700':s.status==='DISBURSED'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}`}>
@@ -355,11 +331,9 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
                               </div>
                               <p className="text-xs text-gray-500">{s.name}</p>
                               <div className="mt-4 flex justify-end">
-                                  {/* Review Action */}
                                   {(s.status === 'MET_HOURS' || s.status === 'REVIEWING' || s.status === 'PENDING_DOC') && (
                                       <button onClick={() => { setReviewItem(s); setReviewActionType('APPROVE'); setReviewModalOpen(true); }} className="bg-isu-dark text-white px-3 py-1.5 rounded text-sm hover:bg-gray-800">審核</button>
                                   )}
-                                  {/* Disburse Action */}
                                   {s.status === 'APPROVED' && (
                                       <button onClick={() => { setReviewItem(s); setReviewActionType('DISBURSE'); setReviewModalOpen(true); }} className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 flex items-center gap-1">
                                           <ICONS.Money size={14} /> 確認撥款
@@ -373,9 +347,25 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
           )}
       </div>
 
-      {/* Manual Hours Modal (Same) */}
-      
-      {/* Review & Disburse Modal */}
+      {/* Manual Entry Modal */}
+      {selectedScholarshipId && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-lg p-6 w-96">
+                  <h3 className="font-bold mb-4">手動補登服務時數</h3>
+                  <div className="space-y-3">
+                      <input type="date" className="w-full border rounded p-2" value={manualEntry.date} onChange={e => setManualEntry({...manualEntry, date: e.target.value})}/>
+                      <input type="text" className="w-full border rounded p-2" placeholder="服務內容摘要" value={manualEntry.content} onChange={e => setManualEntry({...manualEntry, content: e.target.value})}/>
+                      <input type="number" className="w-full border rounded p-2" placeholder="時數 (hr)" value={manualEntry.hours} onChange={e => setManualEntry({...manualEntry, hours: Number(e.target.value)})}/>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4">
+                      <button onClick={() => setSelectedScholarshipId(null)} className="px-4 py-2 border rounded">取消</button>
+                      <button onClick={handleAddManualHours} className="px-4 py-2 bg-isu-dark text-white rounded">確認</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Review Modal */}
       {reviewModalOpen && reviewItem && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
               <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
@@ -404,19 +394,16 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({
                             <p><span className="text-gray-500">項目：</span>{reviewItem.name}</p>
                             <p><span className="text-gray-500">金額：</span>{reviewItem.amount.toLocaleString()}</p>
                         </div>
-                        {/* Timeline */}
                         <div className="mb-4">
                             <h4 className="text-xs font-bold text-gray-500 mb-2">審核歷程</h4>
                             <div className="max-h-32 overflow-y-auto">
                                 <AuditTimeline history={reviewItem.auditHistory || []} />
                             </div>
                         </div>
-
                         <div className="flex gap-4 mb-4">
                             <button onClick={() => setReviewActionType('APPROVE')} className={`flex-1 py-2 border rounded text-center font-bold ${reviewActionType === 'APPROVE' ? 'bg-green-600 text-white border-green-600' : 'text-gray-500'}`}>通過 (Approve)</button>
                             <button onClick={() => setReviewActionType('REJECT')} className={`flex-1 py-2 border rounded text-center font-bold ${reviewActionType === 'REJECT' ? 'bg-red-600 text-white border-red-600' : 'text-gray-500'}`}>駁回 (Reject)</button>
                         </div>
-
                         <label className="block text-xs font-bold text-gray-500 mb-1">審核意見 / 駁回理由</label>
                         <textarea className="w-full border rounded p-2 text-sm h-24 mb-4 resize-none" value={reviewComment} onChange={e => setReviewComment(e.target.value)} placeholder="請輸入..." />
                       </>

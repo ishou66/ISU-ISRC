@@ -3,13 +3,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Student, StudentStatus, HighRiskStatus, ConfigItem, ModuleId } from '../types';
 import { ICONS } from '../constants';
 import { usePermission } from '../hooks/usePermission';
+import { useStudents } from '../contexts/StudentContext';
+import { studentSchema } from '../lib/schemas';
+import { z } from 'zod';
 
 interface StudentListProps {
-  students: Student[];
+  // students: Student[]; // Removed
   configs: ConfigItem[];
   onSelectStudent: (student: Student) => void;
   onRevealSensitiveData: (label: string) => void;
-  onAddStudent: (newStudent: Student) => Promise<boolean>;
+  // onAddStudent: (newStudent: Student) => Promise<boolean>; // Removed
   initialParams?: any;
 }
 
@@ -49,7 +52,8 @@ const MaskedCell: React.FC<{ value: string; label: string; onReveal: (label: str
   );
 };
 
-export const StudentList: React.FC<StudentListProps> = ({ students, configs, onSelectStudent, onRevealSensitiveData, onAddStudent, initialParams }) => {
+export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStudent, onRevealSensitiveData, initialParams }) => {
+  const { students, addStudent, isLoading } = useStudents(); // Use Context
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDept, setFilterDept] = useState('ALL');
   const [filterRisk, setFilterRisk] = useState('ALL');
@@ -71,7 +75,6 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
       }
   }, [initialParams]);
   
-  // Reset pagination when filters change
   useEffect(() => {
       setCurrentPage(1);
   }, [searchTerm, filterDept, filterRisk]);
@@ -97,7 +100,6 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
       });
   }, [students, searchTerm, filterDept, filterRisk]);
 
-  // Pagination Logic
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
   const currentStudents = filteredStudents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -115,7 +117,6 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
                   s.studentId, s.name, s.gender, deptName, s.grade, tribeName, s.phone, s.email, s.status, s.highRisk
               ].map(val => `"${val}"`).join(',');
           });
-          // Add BOM for correct Excel encoding
           const csvContent = '\uFEFF' + [headers.join(','), ...csvRows].join('\n');
           const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
           const url = URL.createObjectURL(blob);
@@ -132,44 +133,32 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
   const handleSaveNewStudent = async () => {
       if (!checkOrFail(ModuleId.STUDENTS, 'add')) return;
 
-      const newErrors: Record<string, string> = {};
-      if (!newStudent.studentId?.trim()) newErrors.studentId = '請填寫學號';
-      if (!newStudent.name?.trim()) newErrors.name = '請填寫姓名';
-      if (!newStudent.departmentCode) newErrors.departmentCode = '請選擇系所';
-      if (!newStudent.tribeCode) newErrors.tribeCode = '請選擇族別';
+      // Zod Validation
+      const result = studentSchema.safeParse(newStudent);
 
-      if (Object.keys(newErrors).length > 0) {
-          setErrors(newErrors);
+      if (!result.success) {
+          const formattedErrors: Record<string, string> = {};
+          result.error.issues.forEach(issue => {
+              // Map path (e.g., ['name']) to key 'name'
+              if (issue.path[0]) {
+                  formattedErrors[issue.path[0].toString()] = issue.message;
+              }
+          });
+          setErrors(formattedErrors);
           return;
       }
 
       setIsSubmitting(true);
 
       const fullStudent: Student = {
+          ...result.data as Student, // Type assertion since schema matches interface mostly
           id: Math.random().toString(36).substr(2, 9),
-          studentId: newStudent.studentId!,
-          name: newStudent.name!,
-          gender: newStudent.gender as any,
-          departmentCode: newStudent.departmentCode!,
-          grade: newStudent.grade || '1',
-          status: newStudent.status as any,
-          tribeCode: newStudent.tribeCode!,
-          hometownCity: newStudent.hometownCity || '',
-          hometownDistrict: newStudent.hometownDistrict || '',
-          highRisk: newStudent.highRisk as any,
-          careStatus: 'OPEN',
-          phone: newStudent.phone || '',
-          email: newStudent.email || '',
-          addressOfficial: '',
-          addressCurrent: '',
-          housingType: 'COMMUTE',
-          housingInfo: '',
           avatarUrl: 'https://ui-avatars.com/api/?name=' + newStudent.name + '&background=random',
           statusHistory: []
       };
 
       try {
-          const success = await onAddStudent(fullStudent);
+          const success = await addStudent(fullStudent);
           if (success) {
               setIsAddModalOpen(false);
               setNewStudent({ gender: '男', status: StudentStatus.ACTIVE, highRisk: HighRiskStatus.NONE, careStatus: 'OPEN' });
@@ -181,6 +170,8 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
           setIsSubmitting(false);
       }
   };
+
+  if (isLoading) return <div className="p-4 text-center">Loading...</div>;
 
   return (
     <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border border-gray-200">
@@ -389,6 +380,7 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
                               className={`w-full border rounded px-3 py-2 ${errors.studentId ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`}
                               value={newStudent.studentId || ''} 
                               onChange={e => { setNewStudent({...newStudent, studentId: e.target.value}); setErrors({...errors, studentId: ''}); }} 
+                              placeholder="例: 11200123A"
                           />
                           {errors.studentId && <p className="text-red-500 text-xs mt-1">{errors.studentId}</p>}
                       </div>
@@ -425,6 +417,27 @@ export const StudentList: React.FC<StudentListProps> = ({ students, configs, onS
                               {tribes.map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
                           </select>
                           {errors.tribeCode && <p className="text-red-500 text-xs mt-1">{errors.tribeCode}</p>}
+                      </div>
+                      <div className="col-span-2 md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                          <input 
+                              type="email" 
+                              className={`w-full border rounded px-3 py-2 ${errors.email ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`}
+                              value={newStudent.email || ''} 
+                              onChange={e => { setNewStudent({...newStudent, email: e.target.value}); setErrors({...errors, email: ''}); }} 
+                          />
+                          {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                      </div>
+                      <div className="col-span-2 md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">手機</label>
+                          <input 
+                              type="text" 
+                              className={`w-full border rounded px-3 py-2 ${errors.phone ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`}
+                              value={newStudent.phone || ''} 
+                              onChange={e => { setNewStudent({...newStudent, phone: e.target.value}); setErrors({...errors, phone: ''}); }} 
+                              placeholder="09xxxxxxxx"
+                          />
+                          {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                       </div>
                   </div>
                   <div className="p-4 border-t border-gray-200 flex justify-end gap-2 bg-gray-50 rounded-b-lg">
