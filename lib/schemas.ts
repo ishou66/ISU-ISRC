@@ -106,7 +106,8 @@ export const studentSchema = z.object({
     accountNumber: z.string(),
     accountName: z.string(),
     passbookUrl: z.string().optional(),
-    lastUpdated: z.string().optional()
+    lastUpdated: z.string().optional(),
+    isVerified: z.boolean().optional()
   }).optional()
 });
 

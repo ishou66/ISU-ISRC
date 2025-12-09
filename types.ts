@@ -1,4 +1,5 @@
 
+
 export enum ModuleId {
   DASHBOARD = 'DASHBOARD',
   STUDENTS = 'STUDENTS',
@@ -118,6 +119,7 @@ export interface StudentBankInfo {
   accountName: string;
   passbookUrl?: string; // Base64 image
   lastUpdated?: string;
+  isVerified?: boolean;
 }
 
 export interface FamilyMember {
@@ -161,6 +163,7 @@ export interface Student {
   departmentCode: string; 
   grade: string;
   enrollmentYear: string; // 入學年度 (必填)
+  admissionChannel?: string; // 入學管道 (New)
   status: StudentStatus;
   
   tribeCode: string; 
@@ -299,9 +302,26 @@ export interface ActivityRecord {
 
 export interface ConfigItem {
   id: string;
-  category: 'DEPT' | 'TRIBE' | 'SCHOLARSHIP' | 'COUNSEL_METHOD' | 'COUNSEL_CATEGORY' | 'COUNSEL_RECOMMENDATION' | 'INDIGENOUS_CITY' | 'INDIGENOUS_DISTRICT' | 'LANGUAGE_DIALECT' | 'DROPOUT_REASON' | 'SUSPENSION_REASON';
+  category: 
+    | 'DEPT' 
+    | 'TRIBE' 
+    | 'SCHOLARSHIP' // Legacy?
+    | 'SCHOLARSHIP_NAME' // New
+    | 'COUNSEL_METHOD' 
+    | 'COUNSEL_CATEGORY' 
+    | 'COUNSEL_RECOMMENDATION' 
+    | 'INDIGENOUS_CITY' 
+    | 'INDIGENOUS_DISTRICT' 
+    | 'LANGUAGE_DIALECT' 
+    | 'LANGUAGE_LEVEL' // New
+    | 'ADMISSION_CHANNEL' // New
+    | 'DROPOUT_REASON' 
+    | 'SUSPENSION_REASON';
   code: string;
   label: string;
+  description?: string; // New
+  color?: string; // New: 'red' | 'blue' | 'green' | 'yellow' | 'gray' | 'purple'
+  isSystemDefault?: boolean; // New
   parentCode?: string; 
   isActive: boolean;
   order: number;

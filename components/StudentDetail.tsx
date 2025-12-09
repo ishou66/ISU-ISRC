@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Student, ConfigItem, HighRiskStatus, StatusRecord, FamilyMember, Sibling } from '../types';
 import { ICONS } from '../constants';
@@ -6,6 +7,7 @@ import { useStudents } from '../contexts/StudentContext';
 import { useSystem } from '../contexts/SystemContext';
 import { usePermissionContext } from '../contexts/PermissionContext';
 import { studentSchema } from '../lib/schemas';
+import { useToast } from '../contexts/ToastContext';
 
 // --- Helper Constants ---
 const PERSONAL_FACTORS = [
@@ -22,7 +24,6 @@ const EXTERNAL_FACTORS = [
 // --- Helper Components ---
 
 const MaskedData: React.FC<{ value: string; label: string; onReveal: () => void }> = ({ value, label, onReveal }) => {
-    // ... (Keep existing mask logic if needed, or simplify)
     return <span className="font-mono text-gray-900">{value || '-'}</span>;
 };
 
@@ -42,9 +43,11 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
   const { updateStudent } = useStudents();
   const { configs } = useSystem();
   const { currentUser, logAction } = usePermissionContext();
+  const { notify } = useToast();
 
-  // --- Local State for Editing ---
+  // --- Local State ---
   const [activeTab, setActiveTab] = useState<'IDENTITY' | 'CONTACT' | 'FAMILY' | 'BANK' | 'MONEY' | 'COUNSEL' | 'ACTIVITY'>('IDENTITY');
+  const [isEditing, setIsEditing] = useState(false); // Controls View/Edit Mode
   const [formData, setFormData] = useState<Student>(student);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
@@ -61,7 +64,11 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setFormData(student); }, [student]);
+  // Reset form data when student prop changes or when cancelling edit
+  useEffect(() => { 
+      setFormData(student); 
+      setErrors({});
+  }, [student]);
 
   // --- Handlers ---
 
@@ -73,29 +80,48 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
           if (keys.length === 3) return { ...prev, [keys[0]]: { ...(prev as any)[keys[0]], [keys[1]]: { ...(prev as any)[keys[0]][keys[1]], [keys[2]]: value } } };
           return prev;
       });
+      // Clear error for this field
       if (errors[field]) setErrors(prev => { const n = {...prev}; delete n[field]; return n; });
   };
 
-  const handleBlur = (field: string, value: any) => {
-      // Basic validation on blur
-      if (field === 'studentId') {
-          const res = studentSchema.shape.studentId.safeParse(value);
-          if (!res.success) setErrors(prev => ({...prev, studentId: res.error.issues[0].message}));
-      }
-      updateStudent(formData);
-  };
-
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!isEditing) return; // Only allow upload in edit mode
       const file = e.target.files?.[0];
       if (file) {
           const reader = new FileReader();
           reader.onloadend = () => {
               const base = reader.result as string;
               handleFieldChange('avatarUrl', base);
-              updateStudent({ ...formData, avatarUrl: base }); 
           };
           reader.readAsDataURL(file);
       }
+  };
+
+  const handleSave = async () => {
+      // Basic validation check before save
+      if (!formData.studentId || !formData.name) {
+          notify('請填寫必填欄位 (學號、姓名)', 'alert');
+          return;
+      }
+      
+      const success = await updateStudent(formData);
+      if (success) {
+          setIsEditing(false);
+          notify('資料已更新');
+      } else {
+          notify('更新失敗', 'alert');
+      }
+  };
+
+  const handleCancel = () => {
+      setFormData(student); // Revert changes
+      setErrors({});
+      setIsEditing(false);
+      notify('已取消編輯');
+  };
+
+  const handlePrint = () => {
+      window.print();
   };
 
   const handleSaveStatusChange = () => {
@@ -131,8 +157,22 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
 
   // --- Render Helpers ---
 
+  // Unified Field Renderer: Handles View Mode (Text) vs Edit Mode (Input)
+  const RenderField = ({ label, value, renderInput, className = "" }: { label: string, value: React.ReactNode, renderInput: () => React.ReactNode, className?: string }) => (
+      <div className={`${className} border-b border-dashed border-gray-100 pb-2 mb-2 last:border-0 last:pb-0 print:border-none print:mb-0 print:pb-0`}>
+          <label className="text-xs text-gray-500 font-bold block mb-1 print:text-black">{label}</label>
+          {isEditing ? (
+              renderInput()
+          ) : (
+              <div className="text-sm text-gray-900 font-medium min-h-[20px] break-words print:text-black">
+                  {value || <span className="text-gray-300 print:hidden">-</span>}
+              </div>
+          )}
+      </div>
+  );
+
   const renderStatusButton = () => (
-      <div className="flex gap-2 mt-2">
+      <div className="flex gap-2 mt-2 no-print">
           {['休學', '退學', '畢業'].map(st => (
               <button 
                 key={st}
@@ -157,25 +197,65 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
   const renderFamilyMemberForm = (role: 'father' | 'mother' | 'guardian', label: string) => {
       const member = formData.familyData?.[role] || {} as FamilyMember;
       return (
-          <div className="bg-gray-50 p-4 rounded border border-gray-200 mb-4">
-              <h4 className="font-bold text-gray-700 text-sm mb-3 border-b pb-2 flex justify-between items-center">
+          <div className="bg-white p-4 rounded border border-gray-200 mb-4 print:border-black print:break-inside-avoid">
+              <h4 className="font-bold text-gray-700 text-sm mb-3 border-b pb-2 flex justify-between items-center print:text-black print:border-black">
                   <span>{label}資料</span>
-                  <label className="flex items-center gap-2 text-xs font-normal cursor-pointer">
-                      <input type="checkbox" checked={member.isAlive !== false} onChange={e => handleFieldChange(`familyData.${role}.isAlive`, e.target.checked)} />
-                      <span>存</span>
-                  </label>
+                  {isEditing && (
+                    <label className="flex items-center gap-2 text-xs font-normal cursor-pointer bg-white px-2 py-1 rounded border no-print">
+                        <input type="checkbox" checked={member.isAlive !== false} onChange={e => handleFieldChange(`familyData.${role}.isAlive`, e.target.checked)} />
+                        <span>存/歿</span>
+                    </label>
+                  )}
+                  {!isEditing && (
+                      <span className={`text-xs px-2 py-0.5 rounded print:border print:border-black ${member.isAlive !== false ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                          {member.isAlive !== false ? '存' : '歿'}
+                      </span>
+                  )}
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                  <div className="col-span-1"><label className="text-xs text-gray-500 font-bold block mb-1">姓名</label><input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.name || ''} onChange={e => handleFieldChange(`familyData.${role}.name`, e.target.value)} /></div>
-                  <div className="col-span-1"><label className="text-xs text-gray-500 font-bold block mb-1">教育程度</label><input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.education || ''} onChange={e => handleFieldChange(`familyData.${role}.education`, e.target.value)} /></div>
-                  <div className="col-span-1"><label className="text-xs text-gray-500 font-bold block mb-1">職業</label><input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.occupation || ''} onChange={e => handleFieldChange(`familyData.${role}.occupation`, e.target.value)} /></div>
-                  <div className="col-span-1 lg:col-span-2"><label className="text-xs text-gray-500 font-bold block mb-1">工作機關.職稱</label><input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.companyTitle || ''} onChange={e => handleFieldChange(`familyData.${role}.companyTitle`, e.target.value)} /></div>
-                  <div className="col-span-1"><label className="text-xs text-gray-500 font-bold block mb-1">電話</label><input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.phone || ''} onChange={e => handleFieldChange(`familyData.${role}.phone`, e.target.value)} /></div>
+                  <RenderField 
+                      label="姓名" className="col-span-1"
+                      value={member.name} 
+                      renderInput={() => <input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.name || ''} onChange={e => handleFieldChange(`familyData.${role}.name`, e.target.value)} />} 
+                  />
+                  <RenderField 
+                      label="教育程度" className="col-span-1"
+                      value={member.education} 
+                      renderInput={() => <input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.education || ''} onChange={e => handleFieldChange(`familyData.${role}.education`, e.target.value)} />} 
+                  />
+                  <RenderField 
+                      label="職業" className="col-span-1"
+                      value={member.occupation} 
+                      renderInput={() => <input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.occupation || ''} onChange={e => handleFieldChange(`familyData.${role}.occupation`, e.target.value)} />} 
+                  />
+                  <RenderField 
+                      label="工作機關.職稱" className="col-span-1 lg:col-span-2"
+                      value={member.companyTitle} 
+                      renderInput={() => <input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.companyTitle || ''} onChange={e => handleFieldChange(`familyData.${role}.companyTitle`, e.target.value)} />} 
+                  />
+                  <RenderField 
+                      label="電話" className="col-span-1"
+                      value={member.phone} 
+                      renderInput={() => <input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.phone || ''} onChange={e => handleFieldChange(`familyData.${role}.phone`, e.target.value)} />} 
+                  />
+                  
                   {role === 'guardian' && (
                       <>
-                          <div className="col-span-1"><label className="text-xs text-gray-500 font-bold block mb-1">性別</label><input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.gender || ''} onChange={e => handleFieldChange(`familyData.${role}.gender`, e.target.value)} /></div>
-                          <div className="col-span-1"><label className="text-xs text-gray-500 font-bold block mb-1">關係</label><input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.relation || ''} onChange={e => handleFieldChange(`familyData.${role}.relation`, e.target.value)} /></div>
-                          <div className="col-span-2 lg:col-span-4"><label className="text-xs text-gray-500 font-bold block mb-1">通訊地址</label><input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.address || ''} onChange={e => handleFieldChange(`familyData.${role}.address`, e.target.value)} /></div>
+                          <RenderField 
+                              label="性別" className="col-span-1"
+                              value={member.gender} 
+                              renderInput={() => <input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.gender || ''} onChange={e => handleFieldChange(`familyData.${role}.gender`, e.target.value)} />} 
+                          />
+                          <RenderField 
+                              label="關係" className="col-span-1"
+                              value={member.relation} 
+                              renderInput={() => <input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.relation || ''} onChange={e => handleFieldChange(`familyData.${role}.relation`, e.target.value)} />} 
+                          />
+                          <RenderField 
+                              label="通訊地址" className="col-span-2 lg:col-span-4"
+                              value={member.address} 
+                              renderInput={() => <input type="text" className="w-full border rounded px-2 py-1 text-sm" value={member.address || ''} onChange={e => handleFieldChange(`familyData.${role}.address`, e.target.value)} />} 
+                          />
                       </>
                   )}
               </div>
@@ -184,43 +264,83 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      {/* 1. Header Area */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm p-6 no-print">
-           <div className="flex items-start gap-6">
-                <div className="relative group w-32 h-40 cursor-pointer flex-shrink-0" onClick={() => fileInputRef.current?.click()}>
-                    <img src={formData.avatarUrl} alt="Avatar" className="w-full h-full rounded-lg object-cover border border-gray-300 shadow-sm bg-gray-100" />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs rounded-lg">更換照片</div>
-                    <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoUpload} />
+    <div className="flex flex-col h-full bg-gray-50 print:bg-white print:h-auto print:block">
+      {/* 1. Sticky Header Area */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm p-4 md:p-6 print:static print:shadow-none print:border-none print:p-0">
+           <div className="flex flex-col md:flex-row items-start gap-6 print:flex-row">
+                {/* Avatar Section */}
+                <div className={`relative w-24 h-32 md:w-32 md:h-40 flex-shrink-0 ${isEditing ? 'cursor-pointer group' : ''}`} onClick={() => isEditing && fileInputRef.current?.click()}>
+                    <img src={formData.avatarUrl} alt="Avatar" className={`w-full h-full rounded-lg object-cover border border-gray-300 shadow-sm bg-gray-100 ${isEditing ? 'ring-2 ring-isu-red ring-offset-2' : ''} print:border-black`} />
+                    {isEditing && (
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs rounded-lg flex-col gap-1">
+                            <ICONS.Upload size={20} />
+                            更換照片
+                        </div>
+                    )}
+                    <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handlePhotoUpload} disabled={!isEditing} />
                 </div>
                 
-                <div className="flex-1 grid grid-cols-1 gap-y-2 content-center">
-                    <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1 rounded text-sm font-bold ${formData.status === '在學' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{formData.status}</span>
+                {/* Main Info Section */}
+                <div className="flex-1 grid grid-cols-1 gap-y-1 content-center">
+                    <div className="flex items-center gap-3 mb-1">
+                         {/* Status Tags */}
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold border ${formData.status === '在學' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'} print:border-black print:text-black print:bg-transparent`}>
+                            {formData.status}
+                        </span>
+                        {formData.highRisk !== HighRiskStatus.NONE && (
+                            <span className="px-2 py-0.5 rounded text-xs font-bold bg-red-600 text-white flex items-center gap-1 shadow-sm print:text-black print:bg-transparent print:border print:border-black">
+                                <ICONS.Alert size={10} className="print:hidden"/> {formData.highRisk}
+                            </span>
+                        )}
+                        <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 border border-gray-200 print:text-black print:bg-transparent print:border-black">
+                             {formData.careStatus === 'OPEN' ? '開案中' : '已結案'}
+                        </span>
                     </div>
-                    <div className="flex items-baseline gap-3">
-                        <h1 className="text-3xl font-bold text-gray-900">{formData.name}</h1>
-                        {formData.indigenousName && <span className="text-lg text-gray-500 font-medium">({formData.indigenousName})</span>}
+
+                    <div className="flex items-baseline gap-3 flex-wrap">
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 print:text-black">{formData.name}</h1>
+                        {formData.indigenousName && <span className="text-lg text-gray-500 font-medium print:text-black">({formData.indigenousName})</span>}
                     </div>
-                    <div className="font-mono text-xl font-bold text-gray-700 tracking-wide">{formData.studentId}</div>
-                    <div className="text-sm text-gray-600 flex items-center gap-2">
-                        <span className="font-bold">{getLabel(formData.departmentCode, 'DEPT', configs)}</span>
+                    
+                    <div className="font-mono text-lg md:text-xl font-bold text-gray-700 tracking-wide print:text-black">{formData.studentId}</div>
+                    
+                    <div className="text-sm text-gray-600 flex items-center gap-2 mt-1 print:text-black">
+                        <span className="font-bold bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-100 print:border-none print:bg-transparent print:text-black print:p-0">
+                            {getLabel(formData.departmentCode, 'DEPT', configs)}
+                        </span>
                         <span>/</span>
                         <span>{formData.grade} 年級</span>
-                        <span className="text-gray-400 text-xs">({formData.enrollmentYear} 入學)</span>
-                    </div>
-                    <div className="text-sm text-gray-600 flex items-center gap-2">
-                        <ICONS.Phone size={14} className="text-gray-400"/> {formData.phone}
+                        <span className="text-gray-400 text-xs print:text-black">({formData.enrollmentYear} 入學)</span>
                     </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-2">
-                     <button onClick={onBack} className="text-gray-500 hover:text-gray-800 text-sm mb-2">返回列表</button>
-                     <button onClick={() => updateStudent(formData)} className="bg-isu-red text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-red-800 font-medium flex items-center gap-2"><ICONS.Save size={14}/> 儲存變更</button>
+                {/* Actions (Hidden on Print) */}
+                <div className="flex flex-col items-end gap-2 w-full md:w-auto mt-4 md:mt-0 no-print">
+                     {!isEditing ? (
+                         <div className="flex gap-2">
+                             <button onClick={handlePrint} className="text-gray-600 bg-white border border-gray-300 px-3 py-2 rounded shadow-sm text-sm hover:bg-gray-50 font-medium flex items-center gap-2">
+                                 <ICONS.Print size={16}/> 列印資料卡
+                             </button>
+                             <button onClick={onBack} className="text-gray-500 hover:text-gray-800 text-sm px-3 py-2 border rounded hover:bg-gray-50">
+                                 返回列表
+                             </button>
+                             <button onClick={() => setIsEditing(true)} className="bg-isu-dark text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-gray-800 font-medium flex items-center gap-2">
+                                 <ICONS.Edit size={14}/> 進入編輯
+                             </button>
+                         </div>
+                     ) : (
+                         <div className="flex gap-2">
+                             <button onClick={handleCancel} className="text-gray-600 bg-white border px-4 py-2 rounded shadow-sm text-sm hover:bg-gray-50 font-medium">取消</button>
+                             <button onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-green-700 font-medium flex items-center gap-2 animate-pulse">
+                                 <ICONS.Save size={14}/> 儲存變更
+                             </button>
+                         </div>
+                     )}
                 </div>
            </div>
            
-           <div className="flex mt-6 border-b border-gray-200 overflow-x-auto gap-1">
+           {/* Navigation Tabs (Hidden on Print) */}
+           <div className="flex mt-6 overflow-x-auto gap-1 no-print">
                 {[{ id: 'IDENTITY', label: '學籍資料', icon: ICONS.UserCheck }, { id: 'CONTACT', label: '通訊聯絡', icon: ICONS.Phone }, { id: 'FAMILY', label: '家庭經濟', icon: ICONS.Home }, { id: 'BANK', label: '學生帳戶', icon: ICONS.Bank }, { id: 'MONEY', label: '獎助學金', icon: ICONS.Money }, { id: 'COUNSEL', label: '輔導紀錄', icon: ICONS.Counseling }, { id: 'ACTIVITY', label: '活動紀錄', icon: ICONS.Activity }].map(t => (
                     <button key={t.id} onClick={() => setActiveTab(t.id as any)} 
                         className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === t.id ? 'border-isu-red text-isu-red bg-red-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}>
@@ -230,71 +350,130 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
            </div>
       </div>
 
-      <div className="p-6 overflow-auto max-w-7xl mx-auto w-full">
+      <div className="p-4 md:p-6 overflow-auto max-w-7xl mx-auto w-full print:p-0 print:w-full print:overflow-visible">
            {/* === IDENTITY TAB === */}
-           {activeTab === 'IDENTITY' && (
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                   {/* Basic Info */}
-                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                       <h3 className="font-bold text-gray-800 mb-4 border-b pb-2">基本學籍資料</h3>
-                       <div className="grid grid-cols-2 gap-4">
-                           <div><label className="text-xs text-gray-500 font-bold block mb-1">性別</label><select className="w-full border rounded px-2 py-1.5 text-sm" value={formData.gender} onChange={e => handleFieldChange('gender', e.target.value)}><option value="男">男</option><option value="女">女</option><option value="其他">其他</option></select></div>
-                           <div><label className="text-xs text-gray-500 font-bold block mb-1">婚姻狀態</label><select className="w-full border rounded px-2 py-1.5 text-sm" value={formData.maritalStatus || '未婚'} onChange={e => handleFieldChange('maritalStatus', e.target.value)}><option value="未婚">未婚</option><option value="已婚">已婚</option><option value="其他">其他</option></select></div>
-                           <div><label className="text-xs text-gray-500 font-bold block mb-1">入學管道</label><select className="w-full border rounded px-2 py-1.5 text-sm" disabled><option>繁星推薦</option><option>個人申請</option></select></div>
-                           <div><label className="text-xs text-gray-500 font-bold block mb-1">族語名字</label><input type="text" className="w-full border rounded px-2 py-1.5 text-sm" value={formData.indigenousName || ''} onChange={e => handleFieldChange('indigenousName', e.target.value)} /></div>
+           {(activeTab === 'IDENTITY' || window.matchMedia('print').matches) && (
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:block print:space-y-6">
+                   
+                   {/* Card 1: Academic Data */}
+                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full print:border-black print:shadow-none print:break-inside-avoid">
+                       <h3 className="font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2 print:text-black print:border-black">
+                           <ICONS.GraduationCap className="text-isu-red print:hidden" size={18}/>
+                           基本學籍資料
+                       </h3>
+                       <div className="space-y-3 flex-1">
+                            <RenderField 
+                               label="入學管道" 
+                               value={getLabel(formData.admissionChannel, 'ADMISSION_CHANNEL', configs)}
+                               renderInput={() => <select className="w-full border rounded px-2 py-1 text-sm" value={formData.admissionChannel || ''} onChange={e => handleFieldChange('admissionChannel', e.target.value)}><option value="">請選擇</option>{configs.filter(c => c.category === 'ADMISSION_CHANNEL').map(o => <option key={o.code} value={o.code}>{o.label}</option>)}</select>} 
+                            />
+                           <RenderField 
+                               label="性別" 
+                               value={formData.gender} 
+                               renderInput={() => <select className="w-full border rounded px-2 py-1.5 text-sm" value={formData.gender} onChange={e => handleFieldChange('gender', e.target.value)}><option value="男">男</option><option value="女">女</option><option value="其他">其他</option></select>} 
+                           />
+                           <RenderField 
+                               label="婚姻狀態" 
+                               value={formData.maritalStatus || '未婚'} 
+                               renderInput={() => <select className="w-full border rounded px-2 py-1.5 text-sm" value={formData.maritalStatus || '未婚'} onChange={e => handleFieldChange('maritalStatus', e.target.value)}><option value="未婚">未婚</option><option value="已婚">已婚</option><option value="其他">其他</option></select>} 
+                           />
+                           <RenderField 
+                               label="手機號碼" 
+                               value={formData.phone} 
+                               renderInput={() => <input type="text" className="w-full border rounded px-3 py-2 text-sm" value={formData.phone} onChange={e => handleFieldChange('phone', e.target.value)} />} 
+                           />
+                            <RenderField 
+                               label="Email (個人)" 
+                               value={formData.emails?.personal} 
+                               renderInput={() => <input type="text" className="w-full border rounded px-3 py-2 text-sm" value={formData.emails?.personal || ''} onChange={e => handleFieldChange('emails.personal', e.target.value)} />} 
+                           />
                        </div>
                    </div>
 
-                   {/* Indigenous Data */}
-                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                       <h3 className="font-bold text-gray-800 mb-4 border-b pb-2">原住民籍資料</h3>
-                       <div className="grid grid-cols-2 gap-4 mb-4">
-                           <div className="col-span-2"><label className="text-xs text-gray-500 font-bold block mb-1">族籍別</label><select className="w-full border rounded px-2 py-1.5 text-sm" value={formData.tribeCode} onChange={e => handleFieldChange('tribeCode', e.target.value)}>{configs.filter(c => c.category === 'TRIBE').map(t => <option key={t.code} value={t.code}>{t.code}: {t.label}</option>)}</select></div>
-                           <div><label className="text-xs text-gray-500 font-bold block mb-1">所屬原鄉(縣市)</label><select className="w-full border rounded px-2 py-1.5 text-sm" value={formData.indigenousTownship?.city || ''} onChange={e => handleFieldChange('indigenousTownship.city', e.target.value)}><option value="">請選擇</option>{configs.filter(c => c.category === 'INDIGENOUS_CITY').map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select></div>
-                           <div><label className="text-xs text-gray-500 font-bold block mb-1">所屬原鄉(鄉鎮)</label><select className="w-full border rounded px-2 py-1.5 text-sm" value={formData.indigenousTownship?.district || ''} onChange={e => handleFieldChange('indigenousTownship.district', e.target.value)}><option value="">請選擇</option>{configs.filter(c => c.category === 'INDIGENOUS_DISTRICT' && c.parentCode === formData.indigenousTownship?.city).map(d => <option key={d.code} value={d.code}>{d.label}</option>)}</select></div>
-                       </div>
-                       <div className="bg-gray-50 p-3 rounded border border-gray-200">
-                           <label className="text-xs text-gray-500 font-bold block mb-2">族語能力</label>
-                           <div className="flex gap-2">
-                               <select className="flex-1 border rounded px-2 py-1 text-xs" value={formData.languageAbility?.dialect || ''} onChange={e => handleFieldChange('languageAbility.dialect', e.target.value)}><option value="">選擇方言...</option>{configs.filter(c => c.category === 'LANGUAGE_DIALECT').map(l => <option key={l.code} value={l.code}>{l.label}</option>)}</select>
-                               <select className="w-24 border rounded px-2 py-1 text-xs" value={formData.languageAbility?.level || ''} onChange={e => handleFieldChange('languageAbility.level', e.target.value)}><option value="">級別...</option><option value="初級">初級</option><option value="中級">中級</option><option value="中高級">中高級</option><option value="高級">高級</option><option value="優級">優級</option></select>
+                   {/* Card 2: Indigenous Data */}
+                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full print:border-black print:shadow-none print:break-inside-avoid">
+                       <h3 className="font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2 print:text-black print:border-black">
+                           <ICONS.MapPin className="text-isu-red print:hidden" size={18}/>
+                           原住民籍資料
+                       </h3>
+                       <div className="space-y-3 flex-1">
+                           <RenderField 
+                               label="族籍別" 
+                               value={getLabel(formData.tribeCode, 'TRIBE', configs)} 
+                               renderInput={() => <select className="w-full border rounded px-2 py-1.5 text-sm" value={formData.tribeCode} onChange={e => handleFieldChange('tribeCode', e.target.value)}>{configs.filter(c => c.category === 'TRIBE').map(t => <option key={t.code} value={t.code}>{t.label}</option>)}</select>} 
+                           />
+                           <RenderField 
+                               label="族語名字" 
+                               value={formData.indigenousName} 
+                               renderInput={() => <input type="text" className="w-full border rounded px-2 py-1.5 text-sm" value={formData.indigenousName || ''} onChange={e => handleFieldChange('indigenousName', e.target.value)} />} 
+                           />
+                           <div className="grid grid-cols-2 gap-2">
+                                <RenderField 
+                                    label="原鄉 (縣市)" 
+                                    value={getLabel(formData.indigenousTownship?.city, 'INDIGENOUS_CITY', configs)} 
+                                    renderInput={() => <select className="w-full border rounded px-2 py-1.5 text-sm" value={formData.indigenousTownship?.city || ''} onChange={e => handleFieldChange('indigenousTownship.city', e.target.value)}><option value="">請選擇</option>{configs.filter(c => c.category === 'INDIGENOUS_CITY').map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select>} 
+                                />
+                                <RenderField 
+                                    label="原鄉 (鄉鎮)" 
+                                    value={getLabel(formData.indigenousTownship?.district, 'INDIGENOUS_DISTRICT', configs)} 
+                                    renderInput={() => <select className="w-full border rounded px-2 py-1.5 text-sm" value={formData.indigenousTownship?.district || ''} onChange={e => handleFieldChange('indigenousTownship.district', e.target.value)}><option value="">請選擇</option>{configs.filter(c => c.category === 'INDIGENOUS_DISTRICT' && c.parentCode === formData.indigenousTownship?.city).map(d => <option key={d.code} value={d.code}>{d.label}</option>)}</select>} 
+                                />
+                           </div>
+                           <div className="pt-2 border-t border-dashed mt-2">
+                               <label className="text-xs font-bold text-gray-500 mb-1 block print:text-black">族語能力認證</label>
+                               <div className="grid grid-cols-2 gap-2">
+                                   <RenderField 
+                                        label="方言別"
+                                        value={getLabel(formData.languageAbility?.dialect, 'LANGUAGE_DIALECT', configs)}
+                                        renderInput={() => <select className="w-full border rounded px-2 py-1 text-sm" value={formData.languageAbility?.dialect || ''} onChange={e => handleFieldChange('languageAbility.dialect', e.target.value)}>{configs.filter(c => c.category === 'LANGUAGE_DIALECT').map(l => <option key={l.code} value={l.code}>{l.label}</option>)}</select>}
+                                   />
+                                   <RenderField 
+                                        label="級別"
+                                        value={getLabel(formData.languageAbility?.level, 'LANGUAGE_LEVEL', configs)}
+                                        renderInput={() => <select className="w-full border rounded px-2 py-1 text-sm" value={formData.languageAbility?.level || ''} onChange={e => handleFieldChange('languageAbility.level', e.target.value)}>{configs.filter(c => c.category === 'LANGUAGE_LEVEL').map(l => <option key={l.code} value={l.code}>{l.label}</option>)}</select>}
+                                   />
+                               </div>
                            </div>
                        </div>
                    </div>
 
-                   {/* MOE Mirror Data */}
-                   <div className="col-span-full bg-blue-50 p-4 rounded border border-blue-100">
-                        <h4 className="text-xs font-bold text-blue-700 mb-2">學基庫填報資料 (資料連動)</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                            <div><label className="block text-gray-500 mb-1">族籍別</label><select className="w-full border rounded px-2 py-1" value={formData.moeData?.tribeCode || formData.tribeCode} onChange={e => handleFieldChange('moeData.tribeCode', e.target.value)}>{configs.filter(c => c.category === 'TRIBE').map(t => <option key={t.code} value={t.code}>{t.code}: {t.label}</option>)}</select></div>
-                            <div><label className="block text-gray-500 mb-1">所屬原鄉</label><div className="flex gap-1"><select className="w-1/2 border rounded px-1" value={formData.moeData?.indigenousTownship?.city || formData.indigenousTownship?.city} onChange={e => handleFieldChange('moeData.indigenousTownship.city', e.target.value)}><option value="">縣市</option>{configs.filter(c => c.category === 'INDIGENOUS_CITY').map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select><select className="w-1/2 border rounded px-1" value={formData.moeData?.indigenousTownship?.district || formData.indigenousTownship?.district} onChange={e => handleFieldChange('moeData.indigenousTownship.district', e.target.value)}><option value="">鄉鎮</option>{configs.filter(c => c.category === 'INDIGENOUS_DISTRICT' && c.parentCode === (formData.moeData?.indigenousTownship?.city || formData.indigenousTownship?.city)).map(d => <option key={d.code} value={d.code}>{d.label}</option>)}</select></div></div>
-                            <div><label className="block text-gray-500 mb-1">族語能力</label><div className="flex gap-1"><select className="flex-1 border rounded px-1" value={formData.moeData?.languageAbility?.dialect || formData.languageAbility?.dialect} onChange={e => handleFieldChange('moeData.languageAbility.dialect', e.target.value)}><option value="">方言</option>{configs.filter(c => c.category === 'LANGUAGE_DIALECT').map(l => <option key={l.code} value={l.code}>{l.label}</option>)}</select><select className="w-16 border rounded px-1" value={formData.moeData?.languageAbility?.level || formData.languageAbility?.level} onChange={e => handleFieldChange('moeData.languageAbility.level', e.target.value)}><option value="">級</option><option>初級</option><option>中級</option></select></div></div>
-                        </div>
-                   </div>
-
-                   {/* Status History */}
-                   <div className="col-span-full bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                       <div className="flex justify-between items-center mb-4 border-b pb-2">
-                           <h3 className="font-bold text-gray-800">學籍狀態紀錄</h3>
-                           {renderStatusButton()}
-                       </div>
-                       <div className="space-y-4 max-h-64 overflow-y-auto">
-                           {formData.statusHistory?.map((log, idx) => (
-                               <div key={idx} className="flex gap-4 items-start text-sm">
-                                   <div className="w-24 text-gray-500 text-xs pt-1">{log.date}</div>
-                                   <div className="flex-1 bg-gray-50 p-3 rounded border border-gray-100">
-                                       <div className="flex justify-between items-start">
-                                            <div>
-                                                <span className="font-bold text-gray-800 mr-2">{log.type}</span>
-                                                <span className="text-gray-600">{log.mainReason}</span>
-                                            </div>
-                                            {log.docNumber && <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">單號: {log.docNumber}</span>}
-                                       </div>
-                                       {log.interview?.content && <div className="text-xs text-gray-500 mt-2 p-2 bg-white rounded border border-gray-200 italic">"{log.interview.content}"</div>}
-                                       <div className="text-xs text-gray-400 mt-1 flex justify-end">承辦人: {log.editor}</div>
-                                   </div>
+                    {/* Card 3: Residence & Status History */}
+                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full print:border-black print:shadow-none print:break-inside-avoid">
+                       <h3 className="font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2 print:text-black print:border-black">
+                           <ICONS.Home className="text-isu-red print:hidden" size={18}/>
+                           住宿與異動
+                       </h3>
+                       <div className="space-y-3">
+                            <RenderField 
+                               label="住宿類型" 
+                               value={formData.housingType === 'DORM' ? '學校宿舍' : formData.housingType === 'RENTAL' ? '校外租屋' : formData.housingType === 'COMMUTE' ? '住家' : '其他'} 
+                               renderInput={() => <select className="w-full border rounded px-3 py-2 text-sm" value={formData.housingType} onChange={e => handleFieldChange('housingType', e.target.value)}><option value="DORM">學校宿舍</option><option value="RENTAL">校外租屋</option><option value="COMMUTE">住家</option><option value="OTHER">其他</option></select>} 
+                           />
+                           <RenderField 
+                               label="詳細地址/房號" 
+                               value={formData.housingInfo} 
+                               renderInput={() => <input type="text" className="w-full border rounded px-3 py-2 text-sm" value={formData.housingInfo || ''} onChange={e => handleFieldChange('housingInfo', e.target.value)} />} 
+                           />
+                           
+                           {/* Status History Mini-List */}
+                           <div className="pt-4 mt-2 border-t border-gray-100 print:border-black">
+                               <div className="flex justify-between items-center mb-2">
+                                   <label className="text-xs font-bold text-gray-500 print:text-black">近期異動紀錄</label>
+                                   {isEditing && renderStatusButton()}
                                </div>
-                           ))}
+                               <div className="space-y-2 max-h-40 overflow-y-auto print:max-h-none">
+                                   {formData.statusHistory?.slice(0, 3).map((log, idx) => (
+                                       <div key={idx} className="text-xs bg-gray-50 p-2 rounded border border-gray-200 print:border-black print:bg-transparent">
+                                           <div className="flex justify-between font-bold text-gray-700 print:text-black">
+                                               <span>{log.type}</span>
+                                               <span>{log.date}</span>
+                                           </div>
+                                           <div className="text-gray-500 mt-1 print:text-black">{log.mainReason}</div>
+                                       </div>
+                                   ))}
+                                   {(!formData.statusHistory || formData.statusHistory.length === 0) && <div className="text-gray-400 text-xs italic">無異動紀錄</div>}
+                               </div>
+                           </div>
                        </div>
                    </div>
                </div>
@@ -303,23 +482,18 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
            {/* === CONTACT TAB === */}
            {activeTab === 'CONTACT' && (
                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-6">
-                   <h3 className="font-bold text-gray-800 border-b pb-2 mb-4">聯絡資料</h3>
-                   <div className="grid grid-cols-2 gap-6">
-                       <div><label className="text-xs text-gray-500 font-bold block mb-1">手機號碼</label><input type="text" className="w-full border rounded px-3 py-2 text-sm" value={formData.phone} onChange={e => handleFieldChange('phone', e.target.value)} onBlur={() => handleBlur('phone', formData.phone)} /></div>
-                       <div><label className="text-xs text-gray-500 font-bold block mb-1">學校 Email</label><input type="text" className="w-full border rounded px-3 py-2 text-sm bg-gray-50" value={formData.emails?.school || ''} disabled /></div>
-                       <div className="col-span-2"><label className="text-xs text-gray-500 font-bold block mb-1">個人 Email</label><input type="text" className="w-full border rounded px-3 py-2 text-sm" value={formData.emails?.personal || ''} onChange={e => handleFieldChange('emails.personal', e.target.value)} /></div>
-                   </div>
-                   
-                   <div className="border-t pt-4">
-                       <h4 className="font-bold text-gray-700 mb-4">住宿與地址</h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           <div><label className="text-xs text-gray-500 font-bold block mb-1">通訊地址</label><input type="text" className="w-full border rounded px-3 py-2 text-sm" value={formData.addressCurrent} onChange={e => handleFieldChange('addressCurrent', e.target.value)} /></div>
-                           <div><label className="text-xs text-gray-500 font-bold block mb-1">住宿類型</label><select className="w-full border rounded px-3 py-2 text-sm" value={formData.housingType} onChange={e => handleFieldChange('housingType', e.target.value)}><option value="DORM">學校宿舍</option><option value="RENTAL">校外租屋</option><option value="COMMUTE">住家</option><option value="OTHER">其他</option></select></div>
-                           <div>
-                               <label className="text-xs text-gray-500 font-bold block mb-1">{formData.housingType === 'DORM' ? '寢室號碼' : '租屋處地址'}</label>
-                               <input type="text" className="w-full border rounded px-3 py-2 text-sm" value={formData.housingInfo || ''} onChange={e => handleFieldChange('housingInfo', e.target.value)} />
-                           </div>
-                       </div>
+                   <h3 className="font-bold text-gray-800 border-b pb-2">詳細通訊資料</h3>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <RenderField 
+                           label="戶籍地址" 
+                           value={formData.addressOfficial} 
+                           renderInput={() => <input type="text" className="w-full border rounded px-3 py-2 text-sm" value={formData.addressOfficial} onChange={e => handleFieldChange('addressOfficial', e.target.value)} />} 
+                       />
+                       <RenderField 
+                           label="現居地址" 
+                           value={formData.addressCurrent} 
+                           renderInput={() => <input type="text" className="w-full border rounded px-3 py-2 text-sm" value={formData.addressCurrent} onChange={e => handleFieldChange('addressCurrent', e.target.value)} />} 
+                       />
                    </div>
                </div>
            )}
@@ -330,17 +504,25 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                        <div className="flex justify-between items-center mb-4 border-b pb-2">
                            <h3 className="font-bold text-gray-800">經濟狀況</h3>
-                           <div className="flex items-center gap-2">
-                               <label className="text-xs font-bold text-gray-500">家庭經濟等級:</label>
-                               <select className="border rounded px-2 py-1 text-sm font-bold text-isu-red" value={formData.familyData?.economicStatus || '一般'} onChange={e => handleFieldChange('familyData.economicStatus', e.target.value)}>
-                                   <option value="富裕">富裕</option><option value="小康">小康</option><option value="清寒">清寒</option><option value="中低收">中低收</option><option value="低收">低收</option><option value="急難">急難</option>
-                               </select>
-                           </div>
+                           {isEditing && (
+                               <div className="flex items-center gap-2">
+                                   <label className="text-xs font-bold text-gray-500">家庭經濟等級:</label>
+                                   <select className="border rounded px-2 py-1 text-sm font-bold text-isu-red" value={formData.familyData?.economicStatus || '一般'} onChange={e => handleFieldChange('familyData.economicStatus', e.target.value)}>
+                                       <option value="富裕">富裕</option><option value="小康">小康</option><option value="清寒">清寒</option><option value="中低收">中低收</option><option value="低收">低收</option><option value="急難">急難</option>
+                                   </select>
+                               </div>
+                           )}
+                           {!isEditing && (
+                               <div className="flex items-center gap-2">
+                                   <label className="text-xs font-bold text-gray-500">等級:</label>
+                                   <span className="font-bold text-isu-red">{formData.familyData?.economicStatus || '一般'}</span>
+                               </div>
+                           )}
                        </div>
                        <div className="flex items-center gap-4 text-sm">
                            <label className="font-bold text-gray-600">相關證明文件:</label>
                            {formData.familyData?.proofDocumentUrl ? <a href="#" className="text-blue-600 hover:underline flex items-center gap-1"><ICONS.File size={14}/> 已上傳證明</a> : <span className="text-gray-400">未上傳</span>}
-                           <button className="text-xs border px-2 py-1 rounded hover:bg-gray-50">上傳文件</button>
+                           {isEditing && <button className="text-xs border px-2 py-1 rounded hover:bg-gray-50">上傳文件</button>}
                        </div>
                    </div>
 
@@ -366,6 +548,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                                {(!formData.siblings || formData.siblings.length === 0) && <tr><td colSpan={6} className="p-4 text-center text-gray-400">無資料</td></tr>}
                            </tbody>
                        </table>
+                       {isEditing && <div className="mt-2 text-center"><button className="text-xs text-blue-600 border border-blue-200 px-3 py-1 rounded hover:bg-blue-50">+ 新增兄弟姊妹</button></div>}
                    </div>
                </div>
            )}

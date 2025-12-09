@@ -82,7 +82,8 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
       status: StudentStatus.ACTIVE,
       highRisk: HighRiskStatus.NONE,
       housingType: 'DORM',
-      careStatus: 'OPEN'
+      careStatus: 'OPEN',
+      grade: '1' // Default grade
   });
 
   const departments = configs.filter(c => c.category === 'DEPT' && c.isActive);
@@ -143,7 +144,28 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
   const handleSaveNewStudent = async () => {
       if (!checkOrFail(ModuleId.STUDENTS, 'add')) return;
 
-      const result = studentSchema.safeParse(newStudent);
+      // --- Data Transformation & Enrichment for Strict Schema ---
+      const studentId = newStudent.studentId?.toUpperCase() || '';
+      // Extract Enrollment Year (first 3 chars of Student ID)
+      const enrollmentYear = studentId.length >= 3 ? studentId.substring(0, 3) : '';
+
+      const preparedData = {
+          ...newStudent,
+          studentId: studentId,
+          enrollmentYear: enrollmentYear,
+          // Map single email input to new structure
+          emails: {
+              personal: newStudent.email || '',
+              school: `${studentId}@isu.edu.tw` // Auto-generate school email
+          },
+          // Provide defaults for required nested objects
+          indigenousTownship: { city: '', district: '' },
+          familyData: { economicStatus: '小康' },
+          siblings: [],
+          statusHistory: []
+      };
+
+      const result = studentSchema.safeParse(preparedData);
 
       if (!result.success) {
           const formattedErrors: Record<string, string> = {};
@@ -169,7 +191,15 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
           const success = await addStudent(fullStudent);
           if (success) {
               setIsAddModalOpen(false);
-              setNewStudent({ gender: '男', status: StudentStatus.ACTIVE, highRisk: HighRiskStatus.NONE, careStatus: 'OPEN' });
+              // Reset form
+              setNewStudent({ 
+                  gender: '男', 
+                  status: StudentStatus.ACTIVE, 
+                  highRisk: HighRiskStatus.NONE, 
+                  careStatus: 'OPEN',
+                  grade: '1',
+                  housingType: 'DORM'
+              });
               setErrors({});
           }
       } catch (e) {
