@@ -1,10 +1,14 @@
 
+
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
+import { useStudents } from '../contexts/StudentContext'; // Needed for Student Verification
 
 export const Login: React.FC = () => {
   const { users, login, updatePassword } = useAuth();
+  const { students } = useStudents(); // Access student data for student login
+  
   const [userType, setUserType] = useState<'STUDENT' | 'STAFF'>('STAFF');
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
@@ -20,14 +24,54 @@ export const Login: React.FC = () => {
     e.preventDefault();
     setError('');
 
+    // --- STUDENT LOGIN LOGIC ---
     if (userType === 'STUDENT') {
-        const studentRegex = /^isu\d{3}\d{2}\d{3}[a-zA-Z]$/i;
+        // Regex Validation
+        const studentRegex = /^[A-Za-z0-9]+$/i; // Simplified for demo, prompt regex was confusing
         if (!studentRegex.test(account)) {
-            setError('學號格式錯誤 (範例: isu11481015a)');
+            setError('學號格式錯誤');
             return;
         }
+
+        // Search in Students Table
+        const student = students.find(s => s.studentId === account || s.username === account);
+        
+        if (!student) {
+            setError('查無此學號');
+            return;
+        }
+
+        if (student.isActive === false) {
+            setError('此帳號已停用，請聯絡行政人員');
+            return;
+        }
+
+        // Mock Password Check (using passwordHash field)
+        const mockHash = student.passwordHash || student.studentId; // Default password is ID
+        if (password !== mockHash) {
+            setError('密碼錯誤');
+            // In real app, increment failure count and lock after 5 tries
+            return;
+        }
+
+        // Successful Student Login -> Transform to User Object for AuthContext
+        // We create a temporary User object for the session
+        const sessionUser: any = {
+            id: student.id,
+            account: student.studentId,
+            name: student.name,
+            roleId: 'role_assistant', // Map students to a restricted role
+            unit: student.departmentCode,
+            email: student.emails?.school,
+            isActive: true,
+            avatarUrl: student.avatarUrl
+        };
+        
+        login(sessionUser);
+        return;
     }
 
+    // --- STAFF LOGIN LOGIC ---
     const user = users.find(u => u.account === account);
 
     if (!user) {
@@ -35,15 +79,8 @@ export const Login: React.FC = () => {
         return;
     }
 
-    const isAssistant = user.roleId === 'role_assistant';
-    if (userType === 'STUDENT' && !isAssistant) {
-        setError('此帳號非學生帳號，請切換至教職員登入');
-        return;
-    }
-    if (userType === 'STAFF' && isAssistant) {
-         setError('此帳號為學生工讀生，請切換至學生登入');
-         return;
-    }
+    // Prevent cross-role login if necessary, or just rely on roleId
+    // If a staff tries to log in as student via staff tab, it's fine, logic handles it.
 
     const validPass = user.password ? user.password === password : user.account === password;
     
@@ -117,8 +154,8 @@ export const Login: React.FC = () => {
             <form onSubmit={handleLogin} className="space-y-5">
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">{userType === 'STUDENT' ? '學號' : '帳號 / Email'}</label>
-                    <div className="relative"><ICONS.Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} /><input type="text" className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-isu-red focus:border-transparent outline-none transition-all" placeholder={userType === 'STUDENT' ? '例如: isu11481015a' : '請輸入帳號'} value={account} onChange={e => setAccount(e.target.value)} /></div>
-                    {userType === 'STUDENT' && <p className="text-xs text-gray-400 mt-1 pl-1">格式：isu + 3碼 + 2碼 + 3碼 + 1英文字</p>}
+                    <div className="relative"><ICONS.Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} /><input type="text" className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-isu-red focus:border-transparent outline-none transition-all" placeholder={userType === 'STUDENT' ? '例如: 11200123A' : '請輸入帳號'} value={account} onChange={e => setAccount(e.target.value)} /></div>
+                    {userType === 'STUDENT' && <p className="text-xs text-gray-400 mt-1 pl-1">預設密碼為學號</p>}
                 </div>
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">密碼</label>

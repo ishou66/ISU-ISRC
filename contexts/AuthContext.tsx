@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, RoleDefinition } from '../types';
+import { User, RoleDefinition, ModuleId } from '../types';
 import { StorageService } from '../services/StorageService';
 import { DEFAULT_USERS, DEFAULT_ROLES } from '../constants';
 import { useToast } from './ToastContext';
@@ -28,6 +28,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>(() => StorageService.load(KEYS.USERS, DEFAULT_USERS));
   const [roles, setRoles] = useState<RoleDefinition[]>(() => StorageService.load(KEYS.ROLES, DEFAULT_ROLES));
   const { notify } = useToast();
+
+  // --- Auto-Migration Logic: Fix Missing Permissions in Stored Roles ---
+  useEffect(() => {
+      let hasUpdates = false;
+      const updatedRoles = roles.map(role => {
+          // Find corresponding default role (by ID) to see if we are missing keys
+          const defaultRole = DEFAULT_ROLES.find(dr => dr.id === role.id);
+          // Also check generic modules if it's a custom role
+          const allModules = Object.values(ModuleId);
+          
+          let roleChanged = false;
+          const newPermissions = { ...role.permissions };
+
+          allModules.forEach(moduleId => {
+              if (!newPermissions[moduleId]) {
+                  // If missing, try to take from default role, otherwise default to all false (hidden)
+                  if (defaultRole && defaultRole.permissions[moduleId]) {
+                      newPermissions[moduleId] = defaultRole.permissions[moduleId];
+                  } else {
+                      // For admin, auto-grant everything. For others, default false.
+                      const isAdmin = role.id === 'role_admin';
+                      newPermissions[moduleId] = {
+                          view: isAdmin, add: isAdmin, edit: isAdmin, delete: isAdmin, export: isAdmin, viewSensitive: isAdmin
+                      };
+                  }
+                  roleChanged = true;
+              }
+          });
+
+          if (roleChanged) {
+              hasUpdates = true;
+              return { ...role, permissions: newPermissions };
+          }
+          return role;
+      });
+
+      if (hasUpdates) {
+          console.log('System: Migrated roles with new permissions.');
+          setRoles(updatedRoles);
+          StorageService.save(KEYS.ROLES, updatedRoles);
+          notify('系統已自動更新您的權限設定以支援新功能');
+      }
+  }, []); // Run once on mount
 
   useEffect(() => {
     StorageService.save(KEYS.USERS, users);

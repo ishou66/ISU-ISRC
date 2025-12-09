@@ -1,14 +1,14 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { ICONS } from '../constants';
-import { HighRiskStatus, ScholarshipStatus, PriorityLevel, ScholarshipRecord, Student } from '../types';
+import { HighRiskStatus, ScholarshipStatus, PriorityLevel, ScholarshipRecord, Student, ModuleId } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useStudents } from '../contexts/StudentContext';
 import { useScholarships } from '../contexts/ScholarshipContext';
 import { useSystem } from '../contexts/SystemContext';
 import { getPriority, getTimeRemaining, STATUS_LABELS, STATUS_COLORS } from '../utils/stateMachine';
 import { useToast } from '../contexts/ToastContext';
+import { usePermission } from '../hooks/usePermission';
 
 interface DashboardProps {
     onNavigate: (view: string, params?: any) => void;
@@ -122,6 +122,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { scholarships, updateScholarships } = useScholarships();
   const { configs } = useSystem();
   const { notify } = useToast();
+  const { can } = usePermission();
 
   const [viewMode, setViewMode] = useState<'OVERVIEW' | 'TASKS'>('OVERVIEW');
   

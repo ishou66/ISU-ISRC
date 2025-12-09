@@ -1,4 +1,5 @@
 
+
 import { SystemLog } from '../types';
 
 const APP_PREFIX = 'ISU_CARE_SYS_';

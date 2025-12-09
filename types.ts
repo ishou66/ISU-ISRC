@@ -46,18 +46,6 @@ export interface User {
   avatarUrl?: string;
 }
 
-// --- Student Account (New) ---
-export interface StudentAccount {
-    studentId: string; // Foreign Key to Student.studentId
-    username: string;
-    passwordHash: string; // bcrypt hash mock
-    email: string;
-    phone: string;
-    isActive: boolean;
-    lastLogin?: string;
-    createdAt: string;
-}
-
 // --- Business Domain Types ---
 
 export enum HighRiskStatus {
@@ -173,6 +161,15 @@ export interface Student {
   gender: '男' | '女' | '其他';
   maritalStatus?: '未婚' | '已婚' | '其他';
   
+  // Account Fields (New)
+  username?: string; // Usually studentId
+  passwordHash?: string; 
+  isActive?: boolean;
+  lastLogin?: string;
+  passwordCreatedAt?: string;
+  passwordResetToken?: string;
+  passwordResetExpires?: string;
+
   departmentCode: string; 
   grade: string;
   enrollmentYear: string; // 入學年度 (必填)

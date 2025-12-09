@@ -28,7 +28,7 @@ export const Layout: React.FC<LayoutProps> = ({
     setIsMobileMenuOpen(false); 
   };
 
-  const NavItem = ({ view, moduleId, label, icon: Icon }: { view: string, moduleId: ModuleId, label: string, icon: any }) => {
+  const NavItem = ({ view, moduleId, label, icon: Icon, isNew = false }: { view: string, moduleId: ModuleId, label: string, icon: any, isNew?: boolean }) => {
       // Permission Check using Context Hook
       if (!can(moduleId, 'view')) return null;
 
@@ -36,7 +36,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <button
           onClick={() => handleNavigate(view)}
           className={`
-            w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-l-4
+            w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-l-4 relative
             ${currentView === view 
                 ? 'bg-gray-800 text-white border-isu-red' 
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white border-transparent'}
@@ -44,6 +44,7 @@ export const Layout: React.FC<LayoutProps> = ({
         >
           <Icon size={18} />
           {label}
+          {isNew && <span className="absolute right-2 top-3 bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded animate-pulse">NEW</span>}
         </button>
       );
   };
@@ -97,10 +98,10 @@ export const Layout: React.FC<LayoutProps> = ({
           {!isStudent && (
              <>
               <NavItem view="DASHBOARD" moduleId={ModuleId.DASHBOARD} label="儀表板" icon={ICONS.Dashboard} />
+              <NavItem view="REDEMPTION_MANAGER" moduleId={ModuleId.REDEMPTION} label="兌換核銷中心" icon={ICONS.Review} /> 
               <NavItem view="STUDENTS" moduleId={ModuleId.STUDENTS} label="學生資料管理" icon={ICONS.Students} />
               <NavItem view="COUNSELING_MANAGER" moduleId={ModuleId.COUNSELING_MANAGER} label="輔導關懷紀錄" icon={ICONS.CounselingManager} />
               <NavItem view="SCHOLARSHIP" moduleId={ModuleId.SCHOLARSHIP} label="獎助學金管理" icon={ICONS.Financial} />
-              <NavItem view="REDEMPTION_MANAGER" moduleId={ModuleId.REDEMPTION} label="兌換核銷中心" icon={ICONS.Review} /> 
               <NavItem view="ACTIVITY" moduleId={ModuleId.ACTIVITY} label="活動參與紀錄" icon={ICONS.Activity} />
              </>
           )}

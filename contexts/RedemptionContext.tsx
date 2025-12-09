@@ -1,4 +1,5 @@
 
+
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { RedemptionRecord, SurplusHour, RedemptionStatus, Student } from '../types';
 import { StorageService } from '../services/StorageService';
@@ -162,7 +163,7 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         const updated: RedemptionRecord = {
             ...target,
-            status: RedemptionStatus.L3_SUBMITTED,
+            status: RedemptionStatus.L3_SUBMITTED, // Changed: Does NOT go to APPROVED
             layer3Info: {
                 submittedBy: user,
                 date: new Date().toISOString(),
@@ -170,7 +171,7 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
         };
         dispatch({ type: 'UPDATE_REDEMPTION', payload: updated });
-        notify('核銷資訊已提交，等待簽核');
+        notify('核銷資訊已提交，等待主管簽核');
     };
 
     const signOff = (id: string, result: 'APPROVED' | 'RETURNED', user: string, remarks?: string) => {

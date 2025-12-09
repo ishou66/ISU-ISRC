@@ -1,5 +1,4 @@
 
-
 import { 
   Student, StudentStatus, HighRiskStatus, ConfigItem, CounselingLog, ScholarshipRecord, ActivityRecord, Event,
   User, RoleDefinition, ModuleId, ScholarshipConfig, ScholarshipStatus, RedemptionRecord, RedemptionStatus, SurplusHour
@@ -175,9 +174,13 @@ export const MOCK_EVENTS: Event[] = [
 ];
 
 export const MOCK_STUDENTS: Student[] = [
+  // 1. 標準模範生: Panay (阿美族, 資訊工程, 成績優異, 家庭小康)
   {
     id: 's1',
     studentId: '11288123A',
+    username: '11288123A',
+    passwordHash: '123',
+    isActive: true,
     name: '巴奈',
     indigenousName: 'Panay',
     gender: '女',
@@ -189,8 +192,8 @@ export const MOCK_STUDENTS: Student[] = [
     status: StudentStatus.ACTIVE,
     highRisk: HighRiskStatus.NONE,
     careStatus: 'CLOSED',
-    tribeCode: '1', // 阿美族
-    indigenousTownship: { city: 'HUA', district: 'JIAN' }, // 花蓮吉安
+    tribeCode: '1', // 阿美
+    indigenousTownship: { city: 'HUA', district: 'JIAN' }, 
     languageAbility: { dialect: 'AMI_N', level: '中級', certified: true },
     phone: '0912345678',
     emails: { personal: 'panay@gmail.com', school: '11288123A@isu.edu.tw' },
@@ -215,9 +218,13 @@ export const MOCK_STUDENTS: Student[] = [
         isVerified: true
     }
   },
+  // 2. 高關懷個案: Walis (泰雅族, 護理系, 單親低收, 課業預警)
   {
     id: 's2',
     studentId: '11344001B',
+    username: '11344001B',
+    passwordHash: '123',
+    isActive: true,
     name: '瓦歷斯',
     indigenousName: 'Walis',
     gender: '男',
@@ -227,30 +234,36 @@ export const MOCK_STUDENTS: Student[] = [
     enrollmentYear: '113',
     admissionChannel: 'INDIGENOUS_SPEC',
     status: StudentStatus.ACTIVE,
-    highRisk: HighRiskStatus.CRITICAL,
+    highRisk: HighRiskStatus.CRITICAL, // 高關懷
     careStatus: 'OPEN',
-    tribeCode: '2', // 泰雅族
+    tribeCode: '2', // 泰雅
     indigenousTownship: { city: 'NTO', district: 'REN_AI' }, 
     languageAbility: { dialect: 'ATA_S', level: '初級', certified: false },
     phone: '0988777666',
     emails: { personal: 'walis@yahoo.com', school: '11344001B@isu.edu.tw' },
-    addressOfficial: '南投縣仁愛鄉...',
-    addressCurrent: '高雄市楠梓區...',
+    addressOfficial: '南投縣仁愛鄉中正路50號',
+    addressCurrent: '高雄市楠梓區楠梓新路123號',
     housingType: 'RENTAL',
-    housingInfo: '楠梓新路123號',
+    housingInfo: '123號3樓',
     familyData: {
-        father: { relation: '父', name: '林志豪', isAlive: false },
-        mother: { relation: '母', name: '張秀英', isAlive: true, occupation: '服務業', phone: '0933...', education: '高中', companyTitle: '7-11店員' },
+        father: { relation: '父', name: '林志豪', isAlive: false }, // 歿
+        mother: { relation: '母', name: '張秀英', isAlive: true, occupation: '服務業', phone: '0933444555', education: '高中', companyTitle: '7-11店員' },
         economicStatus: '低收',
         proofDocumentUrl: 'doc_url_mock'
     },
-    siblings: [],
-    avatarUrl: 'https://ui-avatars.com/api/?name=Walis&background=random',
+    siblings: [
+        { id: 'sib1', order: 1, title: '弟', name: '林小弟', birthYear: '98', schoolStatus: '國中', note: '' }
+    ],
+    avatarUrl: 'https://ui-avatars.com/api/?name=Walis&background=ef4444&color=fff', // Red background
     statusHistory: []
   },
+  // 3. 休學中: Ibu (布農族, 社工系, 懷孕待產)
   {
     id: 's3',
     studentId: '11166005A',
+    username: '11166005A',
+    passwordHash: '123',
+    isActive: false, 
     name: '田雅婷',
     indigenousName: 'Ibu',
     gender: '女',
@@ -259,19 +272,21 @@ export const MOCK_STUDENTS: Student[] = [
     grade: '3',
     enrollmentYear: '111',
     admissionChannel: 'EXAM',
-    status: StudentStatus.SUSPENDED,
+    status: StudentStatus.SUSPENDED, // 休學
     highRisk: HighRiskStatus.NONE,
     careStatus: 'CLOSED',
-    tribeCode: '4', // 布農族
+    tribeCode: '4', // 布農
     indigenousTownship: { city: 'TTT', district: 'HAIDUAN' }, 
     languageAbility: { dialect: 'BUN_T', level: '高級', certified: true },
     phone: '0955444333',
     emails: { personal: 'ibu@gmail.com', school: '11166005A@isu.edu.tw' },
-    addressOfficial: '台東縣海端鄉...',
-    addressCurrent: '台東縣海端鄉...',
+    addressOfficial: '台東縣海端鄉海端村2鄰10號',
+    addressCurrent: '台東縣海端鄉海端村2鄰10號',
     housingType: 'OTHER',
-    housingInfo: '返鄉',
+    housingInfo: '返鄉待產',
     familyData: {
+        father: { relation: '父', name: '田國榮', isAlive: true, phone: '0911...', occupation: '公', companyTitle: '鄉公所' },
+        mother: { relation: '母', name: '古麗君', isAlive: true, phone: '0922...', occupation: '教', companyTitle: '國小老師' },
         economicStatus: '一般'
     },
     siblings: [],
@@ -295,7 +310,145 @@ export const MOCK_STUDENTS: Student[] = [
             },
             editor: '陳專員'
         }
+    ],
+    bankInfo: {
+        bankCode: '822',
+        accountNumber: '123456789',
+        accountName: '田雅婷',
+        isVerified: true
+    }
+  },
+  // 4. 退學案例: Teyra (排灣族, 企管系, 志趣不合, 轉學)
+  {
+    id: 's4',
+    studentId: '11233088C',
+    username: '11233088C',
+    passwordHash: '123',
+    isActive: false,
+    name: '林大山',
+    indigenousName: 'Teyra',
+    gender: '男',
+    maritalStatus: '未婚',
+    departmentCode: 'BA',
+    grade: '2',
+    enrollmentYear: '112',
+    admissionChannel: 'SPORT', // 運動績優
+    status: StudentStatus.DROPPED, // 退學
+    highRisk: HighRiskStatus.NONE,
+    careStatus: 'CLOSED',
+    tribeCode: '3', // 排灣
+    indigenousTownship: { city: 'PTH', district: 'MAJIA' },
+    languageAbility: { dialect: 'PAI_N', level: '初級', certified: false },
+    phone: '0977888999',
+    emails: { personal: 'teyra@hotmail.com', school: '11233088C@isu.edu.tw' },
+    addressOfficial: '屏東縣瑪家鄉...',
+    addressCurrent: '已搬離宿舍',
+    housingType: 'OTHER',
+    housingInfo: '-',
+    familyData: { economicStatus: '小康' },
+    siblings: [],
+    avatarUrl: 'https://ui-avatars.com/api/?name=Teyra&background=gray&color=fff',
+    statusHistory: [
+        {
+            id: 'sh_drop_1',
+            type: 'DROPOUT',
+            date: '2024-06-30',
+            oldStatus: '在學',
+            newStatus: '退學',
+            docNumber: '112-D-099',
+            mainReason: '志趣不合',
+            interview: {
+                date: '2024-06-15',
+                start: '10:00', end: '11:00', location: '系辦公室', participants: '導師',
+                personalFactors: ['志趣不合', '轉學至公立學校'],
+                externalFactors: [],
+                content: '學生表示錄取國立大學體育系，決定辦理退學轉學。'
+            },
+            editor: '陳專員'
+        }
     ]
+  },
+  // 5. 畢業校友: Kalei (卑南族, 電機系, 已就業)
+  {
+    id: 's5',
+    studentId: '10922001A',
+    username: '10922001A',
+    passwordHash: '123',
+    isActive: true, // 校友帳號可能保留
+    name: '張志明',
+    indigenousName: 'Kalei',
+    gender: '男',
+    maritalStatus: '未婚',
+    departmentCode: 'EE',
+    grade: '4', // 畢業時年級
+    enrollmentYear: '109',
+    admissionChannel: 'EXAM',
+    status: StudentStatus.GRADUATED, // 畢業
+    highRisk: HighRiskStatus.NONE,
+    careStatus: 'CLOSED',
+    tribeCode: '5', // 卑南
+    indigenousTownship: { city: 'TTT', district: 'BEINAN' },
+    languageAbility: { dialect: 'PUM_N', level: '中高級', certified: true },
+    phone: '0911222333',
+    emails: { personal: 'kalei@gmail.com', school: '10922001A@isu.edu.tw' },
+    addressOfficial: '台東縣卑南鄉...',
+    addressCurrent: '新竹科學園區...',
+    housingType: 'OTHER',
+    housingInfo: '公司宿舍',
+    familyData: { economicStatus: '小康' },
+    siblings: [],
+    avatarUrl: 'https://ui-avatars.com/api/?name=Kalei&background=green&color=fff',
+    statusHistory: [
+        {
+            id: 'sh_grad_1',
+            type: 'GRADUATION',
+            date: '2024-06-15',
+            oldStatus: '在學',
+            newStatus: '畢業',
+            docNumber: '112-G-001',
+            mainReason: '修業期滿',
+            editor: '系統自動'
+        }
+    ]
+  },
+  // 6. 新生需關注: Yapas (魯凱族, 護理系, 經濟急難)
+  {
+    id: 's6',
+    studentId: '11344055C',
+    username: '11344055C',
+    passwordHash: '123',
+    isActive: true,
+    name: '陳小雲',
+    indigenousName: 'Yapas',
+    gender: '女',
+    maritalStatus: '未婚',
+    departmentCode: 'NUR',
+    grade: '1',
+    enrollmentYear: '113',
+    admissionChannel: 'INDIGENOUS_SPEC',
+    status: StudentStatus.ACTIVE,
+    highRisk: HighRiskStatus.WATCH, // 需關注
+    careStatus: 'OPEN',
+    tribeCode: '7', // 魯凱
+    indigenousTownship: { city: 'PTH', district: 'WUTAI' },
+    languageAbility: { dialect: 'NONE', level: '初級', certified: false },
+    phone: '0966777888',
+    emails: { personal: 'yapas@gmail.com', school: '11344055C@isu.edu.tw' },
+    addressOfficial: '屏東縣霧台鄉...',
+    addressCurrent: '學校宿舍B棟',
+    housingType: 'DORM',
+    housingInfo: 'B棟101',
+    familyData: {
+        father: { relation: '父', name: '陳天助', isAlive: true, occupation: '臨時工' },
+        mother: { relation: '母', name: '杜美珠', isAlive: false }, // 單親
+        economicStatus: '急難',
+        proofDocumentUrl: 'doc_url_mock'
+    },
+    siblings: [
+        { id: 'sib1', order: 1, title: '弟', name: '陳小弟', birthYear: '100', schoolStatus: '國小', note: '需照顧' }
+    ],
+    avatarUrl: 'https://ui-avatars.com/api/?name=Yapas&background=orange&color=fff',
+    statusHistory: []
   }
 ];
 
@@ -328,6 +481,19 @@ export const MOCK_COUNSELING_LOGS: CounselingLog[] = [
         isHighRisk: true,
         needsTracking: true,
         trackingDetail: '持續觀察出席率'
+    },
+    {
+        id: 'cl_3',
+        studentId: 's4',
+        date: '2024-05-10',
+        consultTime: '15:00',
+        counselorName: '陳專員',
+        method: 'FACE',
+        categories: ['CAREER'],
+        content: '學生主動求助，表示對目前科系無興趣，想轉考體育系。給予轉學考相關資訊，並鼓勵與家人溝通。',
+        recommendations: ['CLOSE'],
+        isHighRisk: false,
+        needsTracking: false
     }
 ];
 
@@ -367,19 +533,41 @@ export const MOCK_SCHOLARSHIPS: ScholarshipRecord[] = [
             { date: '2024-02-20', action: 'CREATE', actor: 'System' },
             { date: '2024-03-01', action: 'SUBMITTED', actor: 'Walis' }
         ]
+    },
+    // s6 的申請: 需補正
+    {
+        id: 'sch_3',
+        studentId: 's6',
+        semester: '113-1',
+        name: '急難救助金',
+        amount: 5000,
+        serviceHoursRequired: 0,
+        serviceHoursCompleted: 0,
+        status: ScholarshipStatus.HOURS_REJECTED,
+        statusUpdatedAt: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(), // 1 day ago
+        statusDeadline: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(), // 2 days left
+        rejectionCount: 1,
+        manualHours: [],
+        auditHistory: [
+            { date: '2024-09-01', action: 'SUBMITTED', actor: 'Yapas' },
+            { date: '2024-09-03', action: 'HOURS_REJECTED', actor: '陳專員', comment: '缺戶籍謄本影本，請補件。' }
+        ]
     }
 ];
 
 export const MOCK_ACTIVITIES: ActivityRecord[] = [
     { id: 'act_1', eventId: 'evt_1', studentId: 's1', role: 'PARTICIPANT', hours: 2, status: 'CONFIRMED' },
     { id: 'act_2', eventId: 'evt_2', studentId: 's1', role: 'PARTICIPANT', hours: 3, status: 'CONFIRMED' },
-    { id: 'act_3', eventId: 'evt_1', studentId: 's2', role: 'PARTICIPANT', hours: 2, status: 'PENDING' }
+    { id: 'act_3', eventId: 'evt_1', studentId: 's2', role: 'PARTICIPANT', hours: 2, status: 'PENDING' },
+    { id: 'act_4', eventId: 'evt_2', studentId: 's6', role: 'PARTICIPANT', hours: 3, status: 'CONFIRMED' }
 ];
 
+// --- REDEMPTIONS (RICH MOCK DATA) ---
 export const MOCK_REDEMPTIONS: RedemptionRecord[] = [
+    // 1. Pending Layer 1 Check (Submitted by Student s2)
     {
         id: 'red_1',
-        studentId: 's1',
+        studentId: 's2',
         scholarshipName: '原住民學生獎助學金',
         amount: 12000,
         requiredHours: 48,
@@ -387,6 +575,118 @@ export const MOCK_REDEMPTIONS: RedemptionRecord[] = [
         surplusHours: 4,
         appliedDate: '2024-05-01',
         status: RedemptionStatus.SUBMITTED
+    },
+    // 2. Pending Layer 2 Check (Passed L1, Student s3)
+    {
+        id: 'red_2',
+        studentId: 's3',
+        scholarshipName: '生活助學金',
+        amount: 6000,
+        requiredHours: 30,
+        completedHours: 30,
+        surplusHours: 0,
+        appliedDate: '2024-04-28',
+        status: RedemptionStatus.L1_PASS,
+        layer1Check: { checkedBy: '陳專員', date: '2024-04-29', result: 'PASS' }
+    },
+    // 3. Pending Layer 3 Info (Passed L2, Student s1)
+    {
+        id: 'red_3',
+        studentId: 's1',
+        scholarshipName: '原住民學生獎助學金',
+        amount: 12000,
+        requiredHours: 48,
+        completedHours: 60,
+        surplusHours: 12,
+        appliedDate: '2024-04-25',
+        status: RedemptionStatus.L2_PASS,
+        layer1Check: { checkedBy: '陳專員', date: '2024-04-26', result: 'PASS' },
+        layer2Check: { checkedBy: '陳專員', date: '2024-04-27', result: 'PASS', remarks: '活動時數充足' }
+    },
+    // 4. Pending Sign-off (Filled L3, Student s1)
+    {
+        id: 'red_4',
+        studentId: 's1',
+        scholarshipName: '急難救助金',
+        amount: 5000,
+        requiredHours: 0,
+        completedHours: 0,
+        surplusHours: 0,
+        appliedDate: '2024-04-20',
+        status: RedemptionStatus.L3_SUBMITTED,
+        layer1Check: { checkedBy: '陳專員', date: '2024-04-21', result: 'PASS' },
+        layer2Check: { checkedBy: '陳專員', date: '2024-04-21', result: 'PASS', remarks: '免時數' },
+        layer3Info: { submittedBy: '陳專員', date: '2024-04-22', paymentMethod: 'CASH', requisitionNumber: 'REQ-113005', requester: '陳專員' }
+    },
+    // 5. School Processing (Approved, Student s2)
+    {
+        id: 'red_5',
+        studentId: 's2',
+        scholarshipName: '上學期保留款',
+        amount: 2000,
+        requiredHours: 0,
+        completedHours: 0,
+        surplusHours: 0,
+        appliedDate: '2024-04-10',
+        status: RedemptionStatus.APPROVED,
+        signOff: { approverName: '王組長', date: '2024-04-12', result: 'APPROVED', remarks: '同意核銷' },
+        schoolSystemInfo: { status: 'ACCOUNTING_REVIEW' }
+    },
+    // 6. School Approved / Waiting Disbursement (Student s1)
+    {
+        id: 'red_6',
+        studentId: 's1',
+        scholarshipName: '原住民學生獎助學金 (112-1)',
+        amount: 12000,
+        requiredHours: 48,
+        completedHours: 50,
+        surplusHours: 2,
+        appliedDate: '2024-01-15',
+        status: RedemptionStatus.SCHOOL_APPROVED,
+        signOff: { approverName: '王組長', date: '2024-01-20', result: 'APPROVED' },
+        schoolSystemInfo: { status: 'APPROVED', voucherNumber: 'V-1129988', approvalDate: '2024-01-25' }
+    },
+    // 7. Disbursed (Completed, Student s3)
+    {
+        id: 'red_7',
+        studentId: 's3',
+        scholarshipName: '急難救助金',
+        amount: 3000,
+        requiredHours: 0,
+        completedHours: 0,
+        surplusHours: 0,
+        appliedDate: '2023-11-10',
+        status: RedemptionStatus.DISBURSED,
+        signOff: { approverName: '王組長', date: '2023-11-12', result: 'APPROVED' },
+        schoolSystemInfo: { status: 'DISBURSED', voucherNumber: 'V-1125566', approvalDate: '2023-11-15', transferDate: '2023-11-18', transferMethod: 'TRANSFER' }
+    },
+    // 8. Returned (Rejected at L2, Student s2)
+    {
+        id: 'red_8',
+        studentId: 's2',
+        scholarshipName: '生活助學金',
+        amount: 6000,
+        requiredHours: 30,
+        completedHours: 10,
+        surplusHours: 0,
+        appliedDate: '2024-03-01',
+        status: RedemptionStatus.L2_REJECTED,
+        layer1Check: { checkedBy: '陳專員', date: '2024-03-02', result: 'PASS' },
+        layer2Check: { checkedBy: '陳專員', date: '2024-03-03', result: 'REJECTED', remarks: '時數嚴重不足，請補足後再送' }
+    },
+    // 9. L3 Check for new student s6
+    {
+        id: 'red_9',
+        studentId: 's6',
+        scholarshipName: '急難救助金',
+        amount: 5000,
+        requiredHours: 0,
+        completedHours: 0,
+        surplusHours: 0,
+        appliedDate: '2024-09-01',
+        status: RedemptionStatus.L2_PASS,
+        layer1Check: { checkedBy: '陳專員', date: '2024-09-02', result: 'PASS' },
+        layer2Check: { checkedBy: '陳專員', date: '2024-09-02', result: 'PASS', remarks: '免時數，符合急難條件' }
     }
 ];
 
@@ -399,18 +699,29 @@ export const MOCK_SURPLUS_HOURS: SurplusHour[] = [
         createdAt: '2023-06-01',
         expiryDate: '2024-06-01',
         status: 'ACTIVE'
+    },
+    {
+        id: 'sur_2',
+        studentId: 's1',
+        scholarshipId: 'red_6', // Linked to the historical redemption
+        surplusHours: 2,
+        createdAt: '2024-01-15',
+        expiryDate: '2025-01-15',
+        status: 'ACTIVE'
+    },
+    {
+        id: 'sur_3',
+        studentId: 's3',
+        scholarshipId: 'old_1',
+        surplusHours: 10,
+        createdAt: '2022-01-01',
+        expiryDate: '2023-01-01',
+        status: 'EXPIRED'
     }
 ];
 
 // --- SYSTEM CONFIGS (FULL REAL-WORLD DATA) ---
 export const SYSTEM_CONFIGS: ConfigItem[] = [
-    // ... Keeping all previous configs ...
-    // Note: Due to XML limit, I am assuming the previous configs are retained
-    // Just ensuring the file structure is correct.
-    // In a real patch, I'd include the full list or just the changes.
-    // For this context, I will assume the previous full list is here.
-    // I will output a truncated version for brevity if allowed, but instructions say "Full content".
-    // I will include the full SYSTEM_CONFIGS from previous context for safety.
   // --- 1. 族別 (Tribe) ---
   { id: 't1', category: 'TRIBE', code: '1', label: '阿美族', isActive: true, order: 1, isSystemDefault: true, color: 'blue' },
   { id: 't2', category: 'TRIBE', code: '2', label: '泰雅族', isActive: true, order: 2, isSystemDefault: true, color: 'blue' },
