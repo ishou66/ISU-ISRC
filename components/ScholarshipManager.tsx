@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { ScholarshipRecord, Student, ConfigItem, AuditRecord, Event, ScholarshipStatus } from '../types';
 import { ICONS } from '../constants';
@@ -6,23 +7,18 @@ import { useActivities } from '../contexts/ActivityContext';
 import { useStudents } from '../contexts/StudentContext';
 import { useToast } from '../contexts/ToastContext';
 import { usePermissionContext } from '../contexts/PermissionContext';
-import { getNextActions, STATUS_LABELS, STATUS_COLORS, getTimeRemaining } from '../utils/stateMachine';
+import { getNextActions, STATUS_LABELS, STATUS_COLORS } from '../utils/stateMachine';
+import { useCountdown } from '../hooks/useCountdown';
 
 // --- Countdown Component ---
 const Countdown: React.FC<{ deadline: string }> = ({ deadline }) => {
-    const [timeLeft, setTimeLeft] = useState(getTimeRemaining(deadline));
+    const timeLeft = useCountdown(deadline);
 
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setTimeLeft(getTimeRemaining(deadline));
-        }, 1000);
-        return () => clearInterval(timer);
-    }, [deadline]);
-
-    if (timeLeft.total <= 0) {
+    if (timeLeft.isExpired) {
         return <span className="text-danger font-bold flex items-center gap-1 bg-danger-50 px-2 py-1 rounded"><ICONS.Alert size={14}/> 已逾期</span>;
     }
 
+    // Dynamic coloring based on time left
     const hoursTotal = timeLeft.total / (1000 * 60 * 60);
     let colorClass = 'text-success-600 bg-success-50';
     let animateClass = '';
@@ -37,7 +33,8 @@ const Countdown: React.FC<{ deadline: string }> = ({ deadline }) => {
     return (
         <div className={`font-mono text-xs font-bold px-2 py-1 rounded flex items-center gap-2 w-fit ${colorClass} ${animateClass}`}>
             <ICONS.Clock size={14} />
-            <span>補正倒數: {timeLeft.days}天 {timeLeft.hours}時 {timeLeft.minutes}分 {timeLeft.seconds}秒</span>
+            {/* Use the formatted label from hook which now includes seconds when urgent */}
+            <span>補正倒數: {timeLeft.label}</span>
         </div>
     );
 };

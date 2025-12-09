@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ICONS } from '../constants';
 import { User, RoleDefinition, ModuleId } from '../types';
 import { StorageService } from '../services/StorageService';
@@ -21,6 +21,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const currentRole = roles.find(r => r.id === currentUser.roleId);
   const { can } = usePermission();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleNavigate = (view: string) => {
     onNavigate(view);
@@ -61,8 +62,35 @@ export const Layout: React.FC<LayoutProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `ISU_Backup_${new Date().toISOString().slice(0,10)}.json`;
+      const dateStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
+      link.download = `ISU_Backup_${dateStr}_Signed.json`;
       link.click();
+  };
+
+  const handleRestoreClick = () => {
+      if(confirm('注意：還原操作將會覆蓋目前的系統資料。\n建議先執行備份。\n\n確定要繼續嗎？')) {
+          fileInputRef.current?.click();
+      }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+          const content = event.target?.result as string;
+          if (content) {
+              const success = await StorageService.restoreBackup(content);
+              if (success) {
+                  alert('系統還原成功！將重新整理頁面。');
+                  window.location.reload();
+              }
+          }
+      };
+      reader.readAsText(file);
+      // Reset input
+      e.target.value = '';
   };
 
   // Check if user is "Student Role"
@@ -156,14 +184,19 @@ export const Layout: React.FC<LayoutProps> = ({
                 </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 mb-2">
                 <button onClick={handleBackup} className="text-[10px] text-gray-400 hover:text-white border border-gray-600 hover:bg-gray-700 rounded py-2 flex flex-col items-center justify-center transition-colors">
                     <ICONS.Download size={14} className="mb-1"/> 備份資料
                 </button>
-                <button onClick={handleFactoryReset} className="text-[10px] text-danger hover:text-white border border-gray-600 hover:bg-danger rounded py-2 flex flex-col items-center justify-center transition-colors">
-                    <ICONS.Close size={14} className="mb-1"/> 系統重置
+                <button onClick={handleRestoreClick} className="text-[10px] text-gray-400 hover:text-white border border-gray-600 hover:bg-gray-700 rounded py-2 flex flex-col items-center justify-center transition-colors">
+                    <ICONS.Upload size={14} className="mb-1"/> 還原資料
                 </button>
+                <input type="file" ref={fileInputRef} hidden accept=".json" onChange={handleFileChange} />
             </div>
+            
+            <button onClick={handleFactoryReset} className="w-full text-[10px] text-danger hover:text-white border border-gray-600 hover:bg-danger rounded py-2 flex flex-col items-center justify-center transition-colors">
+                <ICONS.Close size={14} className="mb-1"/> 系統重置
+            </button>
         </div>
       </aside>
 

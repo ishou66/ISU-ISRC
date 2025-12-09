@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { ScholarshipRecord, ScholarshipConfig, AuditRecord, ScholarshipStatus } from '../types';
 import { StorageService } from '../services/StorageService';
@@ -103,7 +102,6 @@ export const ScholarshipProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const updatedList = state.scholarships.map(s => {
           if (!s.statusDeadline) return s;
           
-          const deadline = new Date(s.statusDeadline);
           const timeInfo = getTimeRemaining(s.statusDeadline);
           
           // Logic 1: Auto-Expire
@@ -130,14 +128,8 @@ export const ScholarshipProvider: React.FC<{ children: React.ReactNode }> = ({ c
              // Urgent Warning (< 6h)
              if (hoursLeft < 6 && !notificationSent) {
                  notify(`緊急提醒：案件 ${s.name} 補正期限剩餘 ${Math.floor(hoursLeft)} 小時！`, 'alert');
-                 notificationSent = true; // Avoid spamming multiple toasts in one loop
+                 notificationSent = true; 
                  logAction('UPDATE', `Sent URGENT notification for ${s.id}`, 'SUCCESS');
-             }
-             // Standard Warning (< 24h)
-             else if (hoursLeft < 24 && !notificationSent) {
-                 // In a real system, check if already notified. Here just simulating occasionally.
-                 // For demo, we won't spam toast unless triggered manually via "Refresh".
-                 // notify(`提醒：案件 ${s.name} 補正期限剩餘 1 天`, 'alert');
              }
           }
 
@@ -151,9 +143,13 @@ export const ScholarshipProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
   };
 
-  // Run check periodically
+  // Run check periodically AND immediately on load
   useEffect(() => {
       if (state.isLoading) return;
+      
+      // Run immediate check to catch up on any missed deadlines while app was closed
+      checkDeadlines();
+
       const interval = setInterval(checkDeadlines, 60 * 1000); // Check every minute
       return () => clearInterval(interval);
   }, [state.scholarships, state.isLoading]);

@@ -123,8 +123,14 @@ export const getTimeRemaining = (deadline: string): TimeRemaining => {
     let label = '';
     if (total <= 0) {
         label = '已逾期';
+    } else if (days > 1) {
+        label = `${days}天 ${hours}小時`;
+    } else if (days === 1) {
+        label = `${days}天 ${hours}時 ${minutes}分`;
+    } else if (hours > 0) {
+        label = `${hours}時 ${minutes}分 ${seconds}秒`;
     } else {
-        label = `${days}天 ${hours}小時 ${minutes}分`;
+        label = `${minutes}分 ${seconds}秒`;
     }
 
     return {

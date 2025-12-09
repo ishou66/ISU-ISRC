@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ICONS } from '../constants';
 import { HighRiskStatus, ScholarshipStatus, PriorityLevel, ScholarshipRecord, Student } from '../types';
@@ -5,8 +6,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { useStudents } from '../contexts/StudentContext';
 import { useScholarships } from '../contexts/ScholarshipContext';
 import { useSystem } from '../contexts/SystemContext';
-import { getPriority, getTimeRemaining, STATUS_LABELS } from '../utils/stateMachine';
+import { getPriority, STATUS_LABELS } from '../utils/stateMachine';
 import { useToast } from '../contexts/ToastContext';
+import { useCountdown } from '../hooks/useCountdown';
 
 interface DashboardProps {
     onNavigate: (view: string, params?: any) => void;
@@ -69,19 +71,7 @@ interface TaskCardProps {
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({ record, student, priority, onAction }) => {
-    const [timeLeft, setTimeLeft] = useState<{ label: string, isExpired: boolean } | null>(null);
-
-    useEffect(() => {
-        if (record.statusDeadline) {
-            const updateTime = () => {
-                const tr = getTimeRemaining(record.statusDeadline!);
-                setTimeLeft({ label: tr.label, isExpired: tr.isExpired });
-            };
-            updateTime();
-            const timer = setInterval(updateTime, 1000);
-            return () => clearInterval(timer);
-        }
-    }, [record.statusDeadline]);
+    const timeLeft = useCountdown(record.statusDeadline);
 
     // Priority colors mapping
     const borderStyle = {
@@ -122,7 +112,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ record, student, priority, onAction
                 </div>
                 
                 <div className="text-right flex flex-col items-end">
-                    {timeLeft && (
+                    {record.statusDeadline && (
                         <div className={`text-lg font-bold font-mono leading-none mb-1 tracking-tight ${timeLeft.isExpired || priority === 'P0' ? 'text-danger' : priority === 'P1' ? 'text-primary' : 'text-neutral-gray'}`}>
                             {timeLeft.label}
                         </div>
