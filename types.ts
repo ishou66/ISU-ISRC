@@ -9,7 +9,8 @@ export enum ModuleId {
   ACTIVITY = 'ACTIVITY',
   SYSTEM_SETTINGS = 'SYSTEM_SETTINGS',
   USER_MANAGEMENT = 'USER_MANAGEMENT',
-  AUDIT_LOGS = 'AUDIT_LOGS'
+  AUDIT_LOGS = 'AUDIT_LOGS',
+  REDEMPTION = 'REDEMPTION' // New
 }
 
 export interface PermissionDetails {
@@ -43,6 +44,18 @@ export interface User {
   isActive: boolean;
   lastLogin?: string;
   avatarUrl?: string;
+}
+
+// --- Student Account (New) ---
+export interface StudentAccount {
+    studentId: string; // Foreign Key to Student.studentId
+    username: string;
+    passwordHash: string; // bcrypt hash mock
+    email: string;
+    phone: string;
+    isActive: boolean;
+    lastLogin?: string;
+    createdAt: string;
 }
 
 // --- Business Domain Types ---
@@ -264,7 +277,36 @@ export interface AuditRecord {
   action: string;
   actor: string;
   comment?: string;
+  oldStatus?: string;
+  newStatus?: string;
 }
+
+// --- 14-State Machine Statuses ---
+export enum ScholarshipStatus {
+  // 1. Application Phase
+  DRAFT = 'DRAFT',                        // 草稿編輯中
+  SUBMITTED = 'SUBMITTED',                // 已提交，等待審核
+  
+  // 2. Hours Verification Phase
+  HOURS_VERIFICATION = 'HOURS_VERIFICATION', // 時數審核中 (Admin Reviewing)
+  HOURS_APPROVED = 'HOURS_APPROVED',         // 時數審核通過
+  HOURS_REJECTED = 'HOURS_REJECTED',         // 時數不符，需補正 (Deadline: 3 days)
+  RESUBMITTED = 'RESUBMITTED',               // 補正已重新提交
+  HOURS_REJECTION_EXPIRED = 'HOURS_REJECTION_EXPIRED', // 補正逾期 (Admin Intervention)
+
+  // 3. Disbursement Phase
+  DISBURSEMENT_PENDING = 'DISBURSEMENT_PENDING',    // 等待核銷程序
+  DISBURSEMENT_PROCESSING = 'DISBURSEMENT_PROCESSING', // 核銷進行中 (e.g. Sending to Bank)
+  ACCOUNTING_REVIEW = 'ACCOUNTING_REVIEW',          // 會計室審核
+  ACCOUNTING_APPROVED = 'ACCOUNTING_APPROVED',      // 會計簽准，待轉帳
+
+  // 4. Completion Phase
+  DISBURSED = 'DISBURSED',   // 已撥款完成
+  CANCELLED = 'CANCELLED',   // 已取消
+  RETURNED = 'RETURNED'      // 已退款
+}
+
+export type PriorityLevel = 'P0' | 'P1' | 'P2' | 'P3';
 
 export interface ScholarshipRecord {
   id: string;
@@ -273,7 +315,14 @@ export interface ScholarshipRecord {
   semester: string; 
   name: string;
   amount: number;
-  status: 'UNDER_HOURS' | 'MET_HOURS' | 'REVIEWING' | 'PENDING_DOC' | 'APPROVED' | 'DISBURSED' | 'REJECTED' | 'PENDING'; 
+  
+  // State Machine Fields
+  status: ScholarshipStatus; 
+  statusDeadline?: string; // ISO Date String
+  statusUpdatedAt: string; // ISO Date String
+  statusUpdatedBy?: string; 
+  rejectionCount: number; // To track strikes (e.g. > 3 cancels)
+
   serviceHoursRequired: number;
   serviceHoursCompleted: number;
   bankInfo?: BankInfo; 
@@ -357,4 +406,86 @@ export interface CRUDResult<T> {
   message: string;
   data?: T;
   error?: string;
+}
+
+// --- NEW TYPES FOR REDEMPTION WORKFLOW ---
+
+export enum RedemptionStatus {
+    SUBMITTED = 'SUBMITTED',           // 學生已送出
+    L1_PASS = 'L1_PASS',               // 通過第一層 (未重複)
+    L1_FAIL = 'L1_FAIL',               // 第一層駁回 (已兌換過)
+    L2_PASS = 'L2_PASS',               // 通過第二層 (時數OK)
+    L2_REJECTED = 'L2_REJECTED',       // 第二層退回 (時數不符)
+    L3_SUBMITTED = 'L3_SUBMITTED',     // 第三層已填寫 (核銷資訊)
+    APPROVED = 'APPROVED',             // 主管已簽核 (送出學校)
+    RETURNED = 'RETURNED',             // 主管/學校退回
+    SCHOOL_PROCESSING = 'SCHOOL_PROCESSING', // 會計處審核中
+    SCHOOL_APPROVED = 'SCHOOL_APPROVED', // 學校已簽准 (傳票)
+    DISBURSED = 'DISBURSED',           // 已撥款 (結案)
+}
+
+export interface SurplusHour {
+    id: string;
+    studentId: string;
+    scholarshipId: string;
+    surplusHours: number;
+    createdAt: string;
+    expiryDate: string; // 1 year later
+    status: 'ACTIVE' | 'EXPIRED' | 'USED';
+    usedFor?: string; // If used, which scholarship ID
+}
+
+export interface RedemptionRecord {
+    id: string;
+    studentId: string;
+    scholarshipName: string; // Snapshot
+    amount: number;
+    requiredHours: number;
+    completedHours: number;
+    surplusHours: number;
+    appliedDate: string;
+    status: RedemptionStatus;
+    
+    // Layer 1 Check
+    layer1Check?: {
+        checkedBy: string;
+        date: string;
+        result: 'PASS' | 'ALREADY_REDEEMED';
+    };
+
+    // Layer 2 Check
+    layer2Check?: {
+        checkedBy: string;
+        date: string;
+        result: 'PASS' | 'REJECTED';
+        remarks?: string;
+    };
+
+    // Layer 3 Info (Input by Admin)
+    layer3Info?: {
+        submittedBy: string;
+        date: string;
+        paymentMethod: string;
+        requisitionNumber: string; // 應付單號
+        requester: string;
+        documentUrl?: string;
+    };
+
+    // Sign Off (Approver)
+    signOff?: {
+        approverName: string;
+        date: string;
+        result: 'APPROVED' | 'RETURNED';
+        remarks?: string;
+    };
+
+    // School System Tracking
+    schoolSystemInfo?: {
+        status: 'ACCOUNTING_REVIEW' | 'APPROVED' | 'DISBURSED' | 'RETURNED';
+        voucherNumber?: string; // 傳票編號
+        approvalDate?: string;
+        transferDate?: string;
+        transferMethod?: string;
+        returnReason?: string;
+    };
 }

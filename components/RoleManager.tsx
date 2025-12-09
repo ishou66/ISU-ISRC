@@ -13,7 +13,8 @@ const MODULE_LABELS: Record<ModuleId, string> = {
   [ModuleId.ACTIVITY]: '活動參與紀錄',
   [ModuleId.SYSTEM_SETTINGS]: '系統參數設定',
   [ModuleId.USER_MANAGEMENT]: '使用者與權限',
-  [ModuleId.AUDIT_LOGS]: '資安稽核日誌'
+  [ModuleId.AUDIT_LOGS]: '資安稽核日誌',
+  [ModuleId.REDEMPTION]: '兌換核銷中心'
 };
 
 export const RoleManager: React.FC = () => {

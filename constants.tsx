@@ -2,13 +2,13 @@
 
 import { 
   Student, StudentStatus, HighRiskStatus, ConfigItem, CounselingLog, ScholarshipRecord, ActivityRecord, Event,
-  User, RoleDefinition, ModuleId, ScholarshipConfig
+  User, RoleDefinition, ModuleId, ScholarshipConfig, ScholarshipStatus, RedemptionRecord, RedemptionStatus, SurplusHour
 } from './types';
 import { 
   Users, LayoutDashboard, FileText, Settings, Heart, Database, 
   GraduationCap, AlertTriangle, Eye, EyeOff, Search, Plus, Filter,
   ChevronRight, Home, Phone, MapPin, Download, Save, X, Edit2, Check,
-  ArrowRightLeft, UserCheck, UserMinus, Calendar, ShieldAlert, Lock, Printer, LogIn, Key, Menu, Clock, CheckCircle, ClipboardList, Briefcase, FileCheck, Send, DollarSign, Upload, Image, CreditCard
+  ArrowRightLeft, UserCheck, UserMinus, Calendar, ShieldAlert, Lock, Printer, LogIn, Key, Menu, Clock, CheckCircle, ClipboardList, Briefcase, FileCheck, Send, DollarSign, Upload, Image, CreditCard, Archive
 } from 'lucide-react';
 
 export const ICONS = {
@@ -21,6 +21,7 @@ export const ICONS = {
   Activity: GraduationCap, 
   Settings: Settings,
   Alert: AlertTriangle,
+  AlertTriangle: AlertTriangle,
   Eye: Eye,
   EyeOff: EyeOff,
   Search: Search,
@@ -55,7 +56,8 @@ export const ICONS = {
   Upload: Upload,
   Image: Image,
   Bank: CreditCard,
-  GraduationCap: GraduationCap
+  GraduationCap: GraduationCap,
+  Archive: Archive
 };
 
 // --- DEFAULT ROLES ---
@@ -76,6 +78,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       [ModuleId.SYSTEM_SETTINGS]: { view: true, add: true, edit: true, delete: true, export: true, viewSensitive: true },
       [ModuleId.USER_MANAGEMENT]: { view: true, add: true, edit: true, delete: true, export: true, viewSensitive: true },
       [ModuleId.AUDIT_LOGS]: { view: true, add: true, edit: true, delete: true, export: true, viewSensitive: true },
+      [ModuleId.REDEMPTION]: { view: true, add: true, edit: true, delete: true, export: true, viewSensitive: true },
     }
   },
   {
@@ -93,6 +96,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       [ModuleId.SYSTEM_SETTINGS]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
       [ModuleId.USER_MANAGEMENT]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
       [ModuleId.AUDIT_LOGS]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+      [ModuleId.REDEMPTION]: { view: true, add: true, edit: true, delete: false, export: true, viewSensitive: false },
     }
   },
   {
@@ -110,6 +114,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
          [ModuleId.SYSTEM_SETTINGS]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
          [ModuleId.USER_MANAGEMENT]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
          [ModuleId.AUDIT_LOGS]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+         [ModuleId.REDEMPTION]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
      }
   }
 ];
@@ -335,12 +340,14 @@ export const MOCK_SCHOLARSHIPS: ScholarshipRecord[] = [
         amount: 12000,
         serviceHoursRequired: 48,
         serviceHoursCompleted: 50,
-        status: 'DISBURSED',
+        status: ScholarshipStatus.DISBURSED,
+        statusUpdatedAt: '2024-01-20',
+        rejectionCount: 0,
         manualHours: [],
         currentHandler: '已結案',
         auditHistory: [
             { date: '2023-09-15', action: 'CREATE', actor: 'System' },
-            { date: '2024-01-10', action: 'APPROVED', actor: '陳專員', comment: '時數已達標' },
+            { date: '2024-01-10', action: 'HOURS_APPROVED', actor: '陳專員', comment: '時數已達標' },
             { date: '2024-01-20', action: 'DISBURSED', actor: '陳專員', comment: '已匯款' }
         ]
     },
@@ -352,10 +359,13 @@ export const MOCK_SCHOLARSHIPS: ScholarshipRecord[] = [
         amount: 12000,
         serviceHoursRequired: 48,
         serviceHoursCompleted: 12,
-        status: 'UNDER_HOURS',
+        status: ScholarshipStatus.HOURS_VERIFICATION,
+        statusUpdatedAt: '2024-03-01',
+        rejectionCount: 0,
         manualHours: [],
         auditHistory: [
-            { date: '2024-02-20', action: 'CREATE', actor: 'System' }
+            { date: '2024-02-20', action: 'CREATE', actor: 'System' },
+            { date: '2024-03-01', action: 'SUBMITTED', actor: 'Walis' }
         ]
     }
 ];
@@ -366,9 +376,41 @@ export const MOCK_ACTIVITIES: ActivityRecord[] = [
     { id: 'act_3', eventId: 'evt_1', studentId: 's2', role: 'PARTICIPANT', hours: 2, status: 'PENDING' }
 ];
 
-// --- SYSTEM CONFIGS (FULL REAL-WORLD DATA) ---
+export const MOCK_REDEMPTIONS: RedemptionRecord[] = [
+    {
+        id: 'red_1',
+        studentId: 's1',
+        scholarshipName: '原住民學生獎助學金',
+        amount: 12000,
+        requiredHours: 48,
+        completedHours: 52,
+        surplusHours: 4,
+        appliedDate: '2024-05-01',
+        status: RedemptionStatus.SUBMITTED
+    }
+];
 
+export const MOCK_SURPLUS_HOURS: SurplusHour[] = [
+    {
+        id: 'sur_1',
+        studentId: 's1',
+        scholarshipId: 'sch_1',
+        surplusHours: 4,
+        createdAt: '2023-06-01',
+        expiryDate: '2024-06-01',
+        status: 'ACTIVE'
+    }
+];
+
+// --- SYSTEM CONFIGS (FULL REAL-WORLD DATA) ---
 export const SYSTEM_CONFIGS: ConfigItem[] = [
+    // ... Keeping all previous configs ...
+    // Note: Due to XML limit, I am assuming the previous configs are retained
+    // Just ensuring the file structure is correct.
+    // In a real patch, I'd include the full list or just the changes.
+    // For this context, I will assume the previous full list is here.
+    // I will output a truncated version for brevity if allowed, but instructions say "Full content".
+    // I will include the full SYSTEM_CONFIGS from previous context for safety.
   // --- 1. 族別 (Tribe) ---
   { id: 't1', category: 'TRIBE', code: '1', label: '阿美族', isActive: true, order: 1, isSystemDefault: true, color: 'blue' },
   { id: 't2', category: 'TRIBE', code: '2', label: '泰雅族', isActive: true, order: 2, isSystemDefault: true, color: 'blue' },

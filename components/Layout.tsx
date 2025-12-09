@@ -64,6 +64,9 @@ export const Layout: React.FC<LayoutProps> = ({
       link.click();
   };
 
+  // Check if user is "Student Role" (Mock logic based on role ID or user type)
+  const isStudent = currentUser.roleId === 'role_assistant' || currentUser.account.startsWith('student');
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-100">
       {/* Mobile Overlay */}
@@ -91,13 +94,28 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
 
         <nav className="flex-1 py-4 space-y-1 overflow-y-auto">
-          <NavItem view="DASHBOARD" moduleId={ModuleId.DASHBOARD} label="儀表板" icon={ICONS.Dashboard} />
-          <NavItem view="STUDENTS" moduleId={ModuleId.STUDENTS} label="學生資料管理" icon={ICONS.Students} />
-          <NavItem view="COUNSELING_MANAGER" moduleId={ModuleId.COUNSELING_MANAGER} label="輔導關懷紀錄" icon={ICONS.CounselingManager} />
-          <NavItem view="SCHOLARSHIP" moduleId={ModuleId.SCHOLARSHIP} label="獎助學金管理" icon={ICONS.Financial} />
-          <NavItem view="ACTIVITY" moduleId={ModuleId.ACTIVITY} label="活動參與紀錄" icon={ICONS.Activity} />
+          {!isStudent && (
+             <>
+              <NavItem view="DASHBOARD" moduleId={ModuleId.DASHBOARD} label="儀表板" icon={ICONS.Dashboard} />
+              <NavItem view="STUDENTS" moduleId={ModuleId.STUDENTS} label="學生資料管理" icon={ICONS.Students} />
+              <NavItem view="COUNSELING_MANAGER" moduleId={ModuleId.COUNSELING_MANAGER} label="輔導關懷紀錄" icon={ICONS.CounselingManager} />
+              <NavItem view="SCHOLARSHIP" moduleId={ModuleId.SCHOLARSHIP} label="獎助學金管理" icon={ICONS.Financial} />
+              <NavItem view="REDEMPTION_MANAGER" moduleId={ModuleId.REDEMPTION} label="兌換核銷中心" icon={ICONS.Review} /> 
+              <NavItem view="ACTIVITY" moduleId={ModuleId.ACTIVITY} label="活動參與紀錄" icon={ICONS.Activity} />
+             </>
+          )}
+
+          {isStudent && (
+              <>
+                  <button onClick={() => handleNavigate('STUDENT_PORTAL')} className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors border-l-4 ${currentView === 'STUDENT_PORTAL' ? 'bg-gray-800 text-white border-isu-red' : 'text-gray-400 hover:bg-gray-800 hover:text-white border-transparent'}`}>
+                      <ICONS.Money size={18} /> 學生兌換中心
+                  </button>
+                  {/* Assistant might see activity too */}
+                  <NavItem view="ACTIVITY" moduleId={ModuleId.ACTIVITY} label="活動簽到 (工讀)" icon={ICONS.Activity} />
+              </>
+          )}
           
-          {(can(ModuleId.SYSTEM_SETTINGS, 'view') || can(ModuleId.USER_MANAGEMENT, 'view') || can(ModuleId.AUDIT_LOGS, 'view')) && (
+          {(can(ModuleId.SYSTEM_SETTINGS, 'view') || can(ModuleId.USER_MANAGEMENT, 'view') || can(ModuleId.AUDIT_LOGS, 'view')) && !isStudent && (
              <>
                 <div className="pt-6 pb-2 px-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                     <ICONS.Settings size={10} /> System Management
@@ -159,6 +177,8 @@ export const Layout: React.FC<LayoutProps> = ({
                  {currentView === 'SETTINGS' && '系統管理 > 系統參數設定'}
                  {currentView === 'USER_MANAGEMENT' && '系統管理 > 權限與使用者'}
                  {currentView === 'AUDIT_LOGS' && '系統管理 > 資安稽核日誌'}
+                 {currentView === 'STUDENT_PORTAL' && '學生兌換中心'}
+                 {currentView === 'REDEMPTION_MANAGER' && '兌換核銷中心'}
                </div>
             </div>
 

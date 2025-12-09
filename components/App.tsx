@@ -12,6 +12,8 @@ import { AuditLogManager } from './components/AuditLogManager';
 import { RoleManager } from './components/RoleManager';
 import { UserManager } from './components/UserManager';
 import { CounselingManager } from './components/CounselingManager';
+import { StudentRedemption } from './components/StudentRedemption'; // New
+import { RedemptionManager } from './components/RedemptionManager'; // New
 
 // Context Providers
 import { PermissionProvider, usePermissionContext } from './contexts/PermissionContext';
@@ -21,6 +23,7 @@ import { ActivityProvider } from './contexts/ActivityContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SystemProvider, useSystem } from './contexts/SystemContext';
+import { RedemptionProvider } from './contexts/RedemptionContext'; // New
 
 import { Student } from './types';
 import { StorageService } from './services/StorageService';
@@ -62,10 +65,7 @@ const AppContent: React.FC = () => {
         
       case 'DETAIL':
         if (!selectedStudent) return <div>Error: No student selected</div>;
-        // Re-fetch latest student data from context
         const freshStudent = students.find(s => s.id === selectedStudent.id) || selectedStudent;
-        
-        // StudentDetail now consumes other data from Contexts directly
         return (
           <StudentDetail 
             student={freshStudent} 
@@ -95,6 +95,13 @@ const AppContent: React.FC = () => {
         
       case 'ACTIVITY':
         return <ActivityManager />;
+        
+      // --- NEW VIEWS ---
+      case 'STUDENT_PORTAL':
+        return <StudentRedemption currentUser={currentUser} />;
+        
+      case 'REDEMPTION_MANAGER':
+        return <RedemptionManager />;
         
       default:
         return <div>Not Found</div>;
@@ -133,7 +140,9 @@ export default function App() {
                     <StudentProvider>
                         <ScholarshipProvider>
                             <ActivityProvider>
-                                <AppContent />
+                                <RedemptionProvider>
+                                    <AppContent />
+                                </RedemptionProvider>
                             </ActivityProvider>
                         </ScholarshipProvider>
                     </StudentProvider>
