@@ -7,83 +7,107 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+      
+      :root {
+        /* 1. Primary Brand & Interaction */
+        --color-primary: #d96a1a;
+        --color-cta: #f0822d;
+        --color-primary-hover: #ab5415;
+
+        /* 2. Functional & Status Colors */
+        --color-success: #109967;
+        --color-info: #3c7e8b;
+        --color-danger: #d9101a;
+        --color-link: #0419d4;
+        --color-link-hover: #031089;
+
+        /* 3. Neutrals & Backgrounds */
+        --color-bg-body: #f5f5f5;
+        --color-bg-card: #ffffff;
+        --color-text-main: #212529;
+        --color-border: #bbbbbb;
+        --color-bli-gray: #757575;
+      }
+
       body {
         font-family: 'Inter', 'Noto Sans TC', sans-serif;
-        background-color: #f3f4f6;
+        background-color: var(--color-bg-body);
+        color: var(--color-text-main);
       }
-      /* Custom Scrollbar for dense data tables */
+      
+      /* Card UI Base Style */
+      .card {
+        background: var(--color-bg-card);
+        border-radius: 0.5rem; /* Standard Bootstrap-like radius */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 1px solid var(--color-border);
+        transition: all 0.2s ease-in-out;
+      }
+      .card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      }
+
+      /* Professional Table Styles */
+      .pro-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .pro-table thead {
+        background-color: #e9ecef; /* Light gray for header */
+        color: var(--color-text-main);
+        font-weight: 700;
+        border-bottom: 2px solid var(--color-border);
+      }
+      .pro-table th, .pro-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--color-border);
+        text-align: left;
+      }
+      .pro-table tbody tr:hover {
+        background-color: rgba(217, 106, 26, 0.05); /* Very light orange tint */
+      }
+
+      /* Buttons */
+      .btn-primary {
+        background-color: var(--color-primary);
+        color: white;
+      }
+      .btn-primary:hover {
+        background-color: var(--color-primary-hover);
+      }
+
+      /* Links */
+      a {
+        color: var(--color-link);
+        text-decoration: none;
+      }
+      a:hover {
+        color: var(--color-link-hover);
+        text-decoration: underline;
+      }
+
+      /* Custom Scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #f1f1f1; 
+        background: #e9ecef; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #cbd5e1; 
+        background: var(--color-bli-gray); 
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8; 
+        background: var(--color-text-main); 
       }
 
-      /* PRINT STYLES - A4 Optimized */
+      /* PRINT STYLES */
       @media print {
-        @page {
-          size: A4;
-          margin: 1cm;
-        }
-        body {
-          background-color: white;
-          font-size: 12pt;
-        }
-        /* Hide UI elements */
-        .no-print, aside, header, button, input, select, .shadow-sm, .border-b, .pagination {
-          display: none !important;
-        }
-        /* Layout resets */
-        .flex-col, .overflow-auto {
-          display: block !important;
-          overflow: visible !important;
-          height: auto !important;
-        }
-        /* Table enhancements */
-        table {
-          width: 100% !important;
-          border-collapse: collapse !important;
-          font-size: 10pt;
-        }
-        th, td {
-          border: 1px solid #000 !important;
-          padding: 8px !important;
-          color: black !important;
-        }
-        thead {
-          background-color: #f0f0f0 !important;
-          -webkit-print-color-adjust: exact;
-        }
-        /* Report Header */
-        .print-only {
-          display: block !important;
-          margin-bottom: 20px;
-        }
-        /* Signature Area */
-        .print-signature {
-          display: flex !important;
-          justify-content: space-between;
-          margin-top: 50px;
-          page-break-inside: avoid;
-        }
-        /* Tag adjustments */
-        .bg-blue-50, .bg-red-50, .bg-green-100 {
-          background-color: transparent !important;
-          border: none !important;
-          padding: 0 !important;
-        }
-      }
-      
-      .print-only, .print-signature {
-        display: none;
+        @page { size: A4; margin: 1cm; }
+        body { background-color: white; color: black; }
+        .no-print, aside, header, button, input, select { display: none !important; }
+        .card { border: none; box-shadow: none; }
       }
     </style>
     <script>
@@ -91,10 +115,36 @@
         theme: {
           extend: {
             colors: {
-              isu: {
-                red: '#6e2124',
-                dark: '#2c3e50',
-                light: '#f8f9fa'
+              primary: {
+                DEFAULT: 'var(--color-primary)',
+                hover: 'var(--color-primary-hover)',
+                cta: 'var(--color-cta)',
+                50: '#fff3e0', // Light Orange tint
+                100: '#ffe0b2',
+                500: 'var(--color-primary)',
+                600: 'var(--color-primary-hover)',
+                700: '#ab5415',
+              },
+              success: {
+                DEFAULT: 'var(--color-success)',
+                50: '#e8f5e9', // Light Green tint
+                600: 'var(--color-success)',
+              },
+              info: {
+                DEFAULT: 'var(--color-info)',
+                50: '#e0f7fa',
+              },
+              danger: {
+                DEFAULT: 'var(--color-danger)',
+                50: '#ffebee',
+              },
+              neutral: {
+                bg: 'var(--color-bg-body)',
+                card: 'var(--color-bg-card)',
+                text: 'var(--color-text-main)',
+                border: 'var(--color-border)',
+                gray: 'var(--color-bli-gray)',
+                dark: '#212529', // Using Text Color as Dark Background
               }
             }
           }

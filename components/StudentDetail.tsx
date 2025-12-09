@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Student, ConfigItem, HighRiskStatus, StatusRecord, FamilyMember, Sibling } from '../types';
 import { ICONS } from '../constants';
@@ -24,7 +22,7 @@ const EXTERNAL_FACTORS = [
 // --- Helper Components ---
 
 const MaskedData: React.FC<{ value: string; label: string; onReveal: () => void }> = ({ value, label, onReveal }) => {
-    return <span className="font-mono text-gray-900">{value || '-'}</span>;
+    return <span className="font-mono text-neutral-text">{value || '-'}</span>;
 };
 
 const getLabel = (code: string | undefined, type: string, configs: ConfigItem[]) => {
@@ -159,12 +157,12 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
 
   // Unified Field Renderer: Handles View Mode (Text) vs Edit Mode (Input)
   const RenderField = ({ label, value, renderInput, className = "" }: { label: string, value: React.ReactNode, renderInput: () => React.ReactNode, className?: string }) => (
-      <div className={`${className} border-b border-dashed border-gray-100 pb-2 mb-2 last:border-0 last:pb-0 print:border-none print:mb-0 print:pb-0`}>
-          <label className="text-xs text-gray-500 font-bold block mb-1 print:text-black">{label}</label>
+      <div className={`${className} border-b border-dashed border-neutral-border pb-2 mb-2 last:border-0 last:pb-0 print:border-none print:mb-0 print:pb-0`}>
+          <label className="text-xs text-neutral-gray font-bold block mb-1 print:text-black">{label}</label>
           {isEditing ? (
               renderInput()
           ) : (
-              <div className="text-sm text-gray-900 font-medium min-h-[20px] break-words print:text-black">
+              <div className="text-sm text-neutral-text font-medium min-h-[20px] break-words print:text-black">
                   {value || <span className="text-gray-300 print:hidden">-</span>}
               </div>
           )}
@@ -178,7 +176,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                 key={st}
                 disabled={formData.status === st}
                 onClick={() => { setTargetStatus(st); setStatusForm({ mainReason: '', interview: { ...statusForm.interview } as any }); setIsStatusModalOpen(true); }}
-                className={`px-3 py-1 rounded text-xs border ${formData.status === st ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-red-50 text-red-600 border-red-200'}`}
+                className={`px-3 py-1 rounded text-xs border ${formData.status === st ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-danger-50 text-danger border-danger/30'}`}
               >
                   轉為{st}
               </button>
@@ -186,7 +184,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
           {formData.status !== '在學' && (
               <button 
                 onClick={() => { setTargetStatus('在學'); setStatusForm({ mainReason: '復學', interview: { ...statusForm.interview } as any }); setIsStatusModalOpen(true); }}
-                className="px-3 py-1 rounded text-xs bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
+                className="px-3 py-1 rounded text-xs bg-success-50 text-success border border-success-600/30 hover:bg-green-100"
               >
                   復學
               </button>
@@ -197,8 +195,8 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
   const renderFamilyMemberForm = (role: 'father' | 'mother' | 'guardian', label: string) => {
       const member = formData.familyData?.[role] || {} as FamilyMember;
       return (
-          <div className="bg-white p-4 rounded border border-gray-200 mb-4 print:border-black print:break-inside-avoid">
-              <h4 className="font-bold text-gray-700 text-sm mb-3 border-b pb-2 flex justify-between items-center print:text-black print:border-black">
+          <div className="bg-white p-4 rounded border border-neutral-border mb-4 print:border-black print:break-inside-avoid">
+              <h4 className="font-bold text-neutral-text text-sm mb-3 border-b pb-2 flex justify-between items-center print:text-black print:border-black">
                   <span>{label}資料</span>
                   {isEditing && (
                     <label className="flex items-center gap-2 text-xs font-normal cursor-pointer bg-white px-2 py-1 rounded border no-print">
@@ -207,7 +205,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                     </label>
                   )}
                   {!isEditing && (
-                      <span className={`text-xs px-2 py-0.5 rounded print:border print:border-black ${member.isAlive !== false ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded print:border print:border-black ${member.isAlive !== false ? 'bg-success-50 text-success' : 'bg-gray-200 text-gray-500'}`}>
                           {member.isAlive !== false ? '存' : '歿'}
                       </span>
                   )}
@@ -264,13 +262,13 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 print:bg-white print:h-auto print:block">
+    <div className="flex flex-col h-full bg-neutral-bg print:bg-white print:h-auto print:block">
       {/* 1. Sticky Header Area */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm p-4 md:p-6 print:static print:shadow-none print:border-none print:p-0">
+      <div className="bg-white border-b border-neutral-border sticky top-0 z-20 shadow-sm p-4 md:p-6 print:static print:shadow-none print:border-none print:p-0">
            <div className="flex flex-col md:flex-row items-start gap-6 print:flex-row">
                 {/* Avatar Section */}
                 <div className={`relative w-24 h-32 md:w-32 md:h-40 flex-shrink-0 ${isEditing ? 'cursor-pointer group' : ''}`} onClick={() => isEditing && fileInputRef.current?.click()}>
-                    <img src={formData.avatarUrl} alt="Avatar" className={`w-full h-full rounded-lg object-cover border border-gray-300 shadow-sm bg-gray-100 ${isEditing ? 'ring-2 ring-isu-red ring-offset-2' : ''} print:border-black`} />
+                    <img src={formData.avatarUrl} alt="Avatar" className={`w-full h-full rounded-lg object-cover border border-neutral-border shadow-sm bg-gray-100 ${isEditing ? 'ring-2 ring-primary ring-offset-2' : ''} print:border-black`} />
                     {isEditing && (
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs rounded-lg flex-col gap-1">
                             <ICONS.Upload size={20} />
@@ -284,33 +282,33 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                 <div className="flex-1 grid grid-cols-1 gap-y-1 content-center">
                     <div className="flex items-center gap-3 mb-1">
                          {/* Status Tags */}
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold border ${formData.status === '在學' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'} print:border-black print:text-black print:bg-transparent`}>
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold border ${formData.status === '在學' ? 'bg-success-50 text-success border-success-600/30' : 'bg-danger-50 text-danger border-danger/30'} print:border-black print:text-black print:bg-transparent`}>
                             {formData.status}
                         </span>
                         {formData.highRisk !== HighRiskStatus.NONE && (
-                            <span className="px-2 py-0.5 rounded text-xs font-bold bg-red-600 text-white flex items-center gap-1 shadow-sm print:text-black print:bg-transparent print:border print:border-black">
+                            <span className="px-2 py-0.5 rounded text-xs font-bold bg-danger text-white flex items-center gap-1 shadow-sm print:text-black print:bg-transparent print:border print:border-black">
                                 <ICONS.Alert size={10} className="print:hidden"/> {formData.highRisk}
                             </span>
                         )}
-                        <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 border border-gray-200 print:text-black print:bg-transparent print:border-black">
+                        <span className="px-2 py-0.5 rounded text-xs bg-neutral-bg text-neutral-gray border border-neutral-border print:text-black print:bg-transparent print:border-black">
                              {formData.careStatus === 'OPEN' ? '開案中' : '已結案'}
                         </span>
                     </div>
 
                     <div className="flex items-baseline gap-3 flex-wrap">
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 print:text-black">{formData.name}</h1>
-                        {formData.indigenousName && <span className="text-lg text-gray-500 font-medium print:text-black">({formData.indigenousName})</span>}
+                        <h1 className="text-2xl md:text-3xl font-bold text-neutral-text print:text-black">{formData.name}</h1>
+                        {formData.indigenousName && <span className="text-lg text-neutral-gray font-medium print:text-black">({formData.indigenousName})</span>}
                     </div>
                     
                     <div className="font-mono text-lg md:text-xl font-bold text-gray-700 tracking-wide print:text-black">{formData.studentId}</div>
                     
-                    <div className="text-sm text-gray-600 flex items-center gap-2 mt-1 print:text-black">
-                        <span className="font-bold bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-100 print:border-none print:bg-transparent print:text-black print:p-0">
+                    <div className="text-sm text-neutral-gray flex items-center gap-2 mt-1 print:text-black">
+                        <span className="font-bold bg-info-50 text-info px-2 py-0.5 rounded border border-info/20 print:border-none print:bg-transparent print:text-black print:p-0">
                             {getLabel(formData.departmentCode, 'DEPT', configs)}
                         </span>
                         <span>/</span>
                         <span>{formData.grade} 年級</span>
-                        <span className="text-gray-400 text-xs print:text-black">({formData.enrollmentYear} 入學)</span>
+                        <span className="text-neutral-gray text-xs print:text-black">({formData.enrollmentYear} 入學)</span>
                     </div>
                 </div>
 
@@ -318,20 +316,20 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                 <div className="flex flex-col items-end gap-2 w-full md:w-auto mt-4 md:mt-0 no-print">
                      {!isEditing ? (
                          <div className="flex gap-2">
-                             <button onClick={handlePrint} className="text-gray-600 bg-white border border-gray-300 px-3 py-2 rounded shadow-sm text-sm hover:bg-gray-50 font-medium flex items-center gap-2">
+                             <button onClick={handlePrint} className="text-neutral-text bg-white border border-neutral-border px-3 py-2 rounded shadow-sm text-sm hover:bg-neutral-bg font-medium flex items-center gap-2">
                                  <ICONS.Print size={16}/> 列印資料卡
                              </button>
-                             <button onClick={onBack} className="text-gray-500 hover:text-gray-800 text-sm px-3 py-2 border rounded hover:bg-gray-50">
+                             <button onClick={onBack} className="text-neutral-gray hover:text-neutral-text text-sm px-3 py-2 border border-neutral-border rounded hover:bg-neutral-bg">
                                  返回列表
                              </button>
-                             <button onClick={() => setIsEditing(true)} className="bg-isu-dark text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-gray-800 font-medium flex items-center gap-2">
+                             <button onClick={() => setIsEditing(true)} className="btn-primary px-4 py-2 rounded shadow-sm text-sm font-medium flex items-center gap-2">
                                  <ICONS.Edit size={14}/> 進入編輯
                              </button>
                          </div>
                      ) : (
                          <div className="flex gap-2">
-                             <button onClick={handleCancel} className="text-gray-600 bg-white border px-4 py-2 rounded shadow-sm text-sm hover:bg-gray-50 font-medium">取消</button>
-                             <button onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-green-700 font-medium flex items-center gap-2 animate-pulse">
+                             <button onClick={handleCancel} className="text-neutral-text bg-white border border-neutral-border px-4 py-2 rounded shadow-sm text-sm hover:bg-neutral-bg font-medium">取消</button>
+                             <button onClick={handleSave} className="bg-success text-white px-4 py-2 rounded shadow-sm text-sm hover:bg-success-600 font-medium flex items-center gap-2 animate-pulse">
                                  <ICONS.Save size={14}/> 儲存變更
                              </button>
                          </div>
@@ -343,7 +341,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
            <div className="flex mt-6 overflow-x-auto gap-1 no-print">
                 {[{ id: 'IDENTITY', label: '學籍資料', icon: ICONS.UserCheck }, { id: 'CONTACT', label: '通訊聯絡', icon: ICONS.Phone }, { id: 'FAMILY', label: '家庭經濟', icon: ICONS.Home }, { id: 'BANK', label: '學生帳戶', icon: ICONS.Bank }, { id: 'MONEY', label: '獎助學金', icon: ICONS.Money }, { id: 'COUNSEL', label: '輔導紀錄', icon: ICONS.Counseling }, { id: 'ACTIVITY', label: '活動紀錄', icon: ICONS.Activity }].map(t => (
                     <button key={t.id} onClick={() => setActiveTab(t.id as any)} 
-                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === t.id ? 'border-isu-red text-isu-red bg-red-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}>
+                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === t.id ? 'border-primary text-primary bg-primary-50/20' : 'border-transparent text-neutral-gray hover:text-neutral-text hover:bg-neutral-bg'}`}>
                         <t.icon size={16} /> {t.label}
                     </button>
                 ))}
@@ -356,9 +354,9 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:block print:space-y-6">
                    
                    {/* Card 1: Academic Data */}
-                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full print:border-black print:shadow-none print:break-inside-avoid">
-                       <h3 className="font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2 print:text-black print:border-black">
-                           <ICONS.GraduationCap className="text-isu-red print:hidden" size={18}/>
+                   <div className="bg-white p-6 rounded-lg shadow-sm border border-neutral-border flex flex-col h-full print:border-black print:shadow-none print:break-inside-avoid">
+                       <h3 className="font-bold text-neutral-text border-b pb-2 mb-4 flex items-center gap-2 print:text-black print:border-black">
+                           <ICONS.GraduationCap className="text-primary print:hidden" size={18}/>
                            基本學籍資料
                        </h3>
                        <div className="space-y-3 flex-1">
@@ -391,9 +389,9 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                    </div>
 
                    {/* Card 2: Indigenous Data */}
-                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full print:border-black print:shadow-none print:break-inside-avoid">
-                       <h3 className="font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2 print:text-black print:border-black">
-                           <ICONS.MapPin className="text-isu-red print:hidden" size={18}/>
+                   <div className="bg-white p-6 rounded-lg shadow-sm border border-neutral-border flex flex-col h-full print:border-black print:shadow-none print:break-inside-avoid">
+                       <h3 className="font-bold text-neutral-text border-b pb-2 mb-4 flex items-center gap-2 print:text-black print:border-black">
+                           <ICONS.MapPin className="text-primary print:hidden" size={18}/>
                            原住民籍資料
                        </h3>
                        <div className="space-y-3 flex-1">
@@ -420,7 +418,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                                 />
                            </div>
                            <div className="pt-2 border-t border-dashed mt-2">
-                               <label className="text-xs font-bold text-gray-500 mb-1 block print:text-black">族語能力認證</label>
+                               <label className="text-xs font-bold text-neutral-gray mb-1 block print:text-black">族語能力認證</label>
                                <div className="grid grid-cols-2 gap-2">
                                    <RenderField 
                                         label="方言別"
@@ -438,9 +436,9 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                    </div>
 
                     {/* Card 3: Residence & Status History */}
-                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full print:border-black print:shadow-none print:break-inside-avoid">
-                       <h3 className="font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2 print:text-black print:border-black">
-                           <ICONS.Home className="text-isu-red print:hidden" size={18}/>
+                   <div className="bg-white p-6 rounded-lg shadow-sm border border-neutral-border flex flex-col h-full print:border-black print:shadow-none print:break-inside-avoid">
+                       <h3 className="font-bold text-neutral-text border-b pb-2 mb-4 flex items-center gap-2 print:text-black print:border-black">
+                           <ICONS.Home className="text-primary print:hidden" size={18}/>
                            住宿與異動
                        </h3>
                        <div className="space-y-3">
@@ -456,19 +454,19 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                            />
                            
                            {/* Status History Mini-List */}
-                           <div className="pt-4 mt-2 border-t border-gray-100 print:border-black">
+                           <div className="pt-4 mt-2 border-t border-neutral-border print:border-black">
                                <div className="flex justify-between items-center mb-2">
-                                   <label className="text-xs font-bold text-gray-500 print:text-black">近期異動紀錄</label>
+                                   <label className="text-xs font-bold text-neutral-gray print:text-black">近期異動紀錄</label>
                                    {isEditing && renderStatusButton()}
                                </div>
                                <div className="space-y-2 max-h-40 overflow-y-auto print:max-h-none">
                                    {formData.statusHistory?.slice(0, 3).map((log, idx) => (
-                                       <div key={idx} className="text-xs bg-gray-50 p-2 rounded border border-gray-200 print:border-black print:bg-transparent">
-                                           <div className="flex justify-between font-bold text-gray-700 print:text-black">
+                                       <div key={idx} className="text-xs bg-neutral-bg p-2 rounded border border-neutral-border print:border-black print:bg-transparent">
+                                           <div className="flex justify-between font-bold text-neutral-text print:text-black">
                                                <span>{log.type}</span>
                                                <span>{log.date}</span>
                                            </div>
-                                           <div className="text-gray-500 mt-1 print:text-black">{log.mainReason}</div>
+                                           <div className="text-neutral-gray mt-1 print:text-black">{log.mainReason}</div>
                                        </div>
                                    ))}
                                    {(!formData.statusHistory || formData.statusHistory.length === 0) && <div className="text-gray-400 text-xs italic">無異動紀錄</div>}
@@ -481,8 +479,8 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
 
            {/* === CONTACT TAB === */}
            {activeTab === 'CONTACT' && (
-               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-6">
-                   <h3 className="font-bold text-gray-800 border-b pb-2">詳細通訊資料</h3>
+               <div className="bg-white p-6 rounded-lg shadow-sm border border-neutral-border space-y-6">
+                   <h3 className="font-bold text-neutral-text border-b pb-2">詳細通訊資料</h3>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                        <RenderField 
                            label="戶籍地址" 
@@ -501,28 +499,28 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
            {/* === FAMILY TAB === */}
            {activeTab === 'FAMILY' && (
                <div className="space-y-6">
-                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                   <div className="bg-white p-6 rounded-lg shadow-sm border border-neutral-border">
                        <div className="flex justify-between items-center mb-4 border-b pb-2">
-                           <h3 className="font-bold text-gray-800">經濟狀況</h3>
+                           <h3 className="font-bold text-neutral-text">經濟狀況</h3>
                            {isEditing && (
                                <div className="flex items-center gap-2">
-                                   <label className="text-xs font-bold text-gray-500">家庭經濟等級:</label>
-                                   <select className="border rounded px-2 py-1 text-sm font-bold text-isu-red" value={formData.familyData?.economicStatus || '一般'} onChange={e => handleFieldChange('familyData.economicStatus', e.target.value)}>
+                                   <label className="text-xs font-bold text-neutral-gray">家庭經濟等級:</label>
+                                   <select className="border rounded px-2 py-1 text-sm font-bold text-primary" value={formData.familyData?.economicStatus || '一般'} onChange={e => handleFieldChange('familyData.economicStatus', e.target.value)}>
                                        <option value="富裕">富裕</option><option value="小康">小康</option><option value="清寒">清寒</option><option value="中低收">中低收</option><option value="低收">低收</option><option value="急難">急難</option>
                                    </select>
                                </div>
                            )}
                            {!isEditing && (
                                <div className="flex items-center gap-2">
-                                   <label className="text-xs font-bold text-gray-500">等級:</label>
-                                   <span className="font-bold text-isu-red">{formData.familyData?.economicStatus || '一般'}</span>
+                                   <label className="text-xs font-bold text-neutral-gray">等級:</label>
+                                   <span className="font-bold text-primary">{formData.familyData?.economicStatus || '一般'}</span>
                                </div>
                            )}
                        </div>
                        <div className="flex items-center gap-4 text-sm">
                            <label className="font-bold text-gray-600">相關證明文件:</label>
-                           {formData.familyData?.proofDocumentUrl ? <a href="#" className="text-blue-600 hover:underline flex items-center gap-1"><ICONS.File size={14}/> 已上傳證明</a> : <span className="text-gray-400">未上傳</span>}
-                           {isEditing && <button className="text-xs border px-2 py-1 rounded hover:bg-gray-50">上傳文件</button>}
+                           {formData.familyData?.proofDocumentUrl ? <a href="#" className="text-link hover:underline flex items-center gap-1"><ICONS.File size={14}/> 已上傳證明</a> : <span className="text-gray-400">未上傳</span>}
+                           {isEditing && <button className="text-xs border px-2 py-1 rounded hover:bg-neutral-bg">上傳文件</button>}
                        </div>
                    </div>
 
@@ -530,10 +528,10 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                    {renderFamilyMemberForm('mother', '母親')}
                    {renderFamilyMemberForm('guardian', '監護人')}
 
-                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                       <h3 className="font-bold text-gray-800 mb-4">兄弟姊妹</h3>
+                   <div className="bg-white p-6 rounded-lg shadow-sm border border-neutral-border">
+                       <h3 className="font-bold text-neutral-text mb-4">兄弟姊妹</h3>
                        <table className="w-full text-sm text-left">
-                           <thead className="bg-gray-50 text-gray-500"><tr><th className="p-2">排行</th><th className="p-2">稱謂</th><th className="p-2">姓名</th><th className="p-2">出生年次</th><th className="p-2">畢肄業學校</th><th className="p-2">備註</th></tr></thead>
+                           <thead className="bg-neutral-bg text-neutral-gray"><tr><th className="p-2">排行</th><th className="p-2">稱謂</th><th className="p-2">姓名</th><th className="p-2">出生年次</th><th className="p-2">畢肄業學校</th><th className="p-2">備註</th></tr></thead>
                            <tbody>
                                {formData.siblings?.map(sib => (
                                    <tr key={sib.id} className="border-t">
@@ -548,36 +546,36 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                                {(!formData.siblings || formData.siblings.length === 0) && <tr><td colSpan={6} className="p-4 text-center text-gray-400">無資料</td></tr>}
                            </tbody>
                        </table>
-                       {isEditing && <div className="mt-2 text-center"><button className="text-xs text-blue-600 border border-blue-200 px-3 py-1 rounded hover:bg-blue-50">+ 新增兄弟姊妹</button></div>}
+                       {isEditing && <div className="mt-2 text-center"><button className="text-xs text-primary border border-primary/30 px-3 py-1 rounded hover:bg-primary-50">+ 新增兄弟姊妹</button></div>}
                    </div>
                </div>
            )}
 
            {/* === OTHER TABS === */}
-           {activeTab === 'BANK' && <div className="text-center py-20 bg-white rounded border text-gray-400">學生帳戶模組 (連結至 ScholarshipManager)</div>}
-           {activeTab === 'MONEY' && <div className="text-center py-20 bg-white rounded border text-gray-400">獎助學金列表</div>}
-           {activeTab === 'COUNSEL' && <div className="text-center py-20 bg-white rounded border text-gray-400">輔導關懷紀錄列表</div>}
-           {activeTab === 'ACTIVITY' && <div className="text-center py-20 bg-white rounded border text-gray-400">活動參與紀錄列表</div>}
+           {activeTab === 'BANK' && <div className="text-center py-20 bg-white rounded border border-neutral-border text-gray-400">學生帳戶模組 (連結至 ScholarshipManager)</div>}
+           {activeTab === 'MONEY' && <div className="text-center py-20 bg-white rounded border border-neutral-border text-gray-400">獎助學金列表</div>}
+           {activeTab === 'COUNSEL' && <div className="text-center py-20 bg-white rounded border border-neutral-border text-gray-400">輔導關懷紀錄列表</div>}
+           {activeTab === 'ACTIVITY' && <div className="text-center py-20 bg-white rounded border border-neutral-border text-gray-400">活動參與紀錄列表</div>}
       </div>
 
       {/* --- MODAL: Status Change --- */}
       {isStatusModalOpen && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-                  <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
-                      <h3 className="font-bold text-lg text-red-600">學籍異動確認：{targetStatus}</h3>
+                  <div className="p-4 border-b border-neutral-border flex justify-between items-center bg-neutral-bg rounded-t-lg">
+                      <h3 className="font-bold text-lg text-danger">學籍異動確認：{targetStatus}</h3>
                       <button onClick={() => setIsStatusModalOpen(false)}><ICONS.Close size={20}/></button>
                   </div>
                   <div className="p-6 overflow-y-auto space-y-6">
                       {/* Form Header */}
                       <div className="grid grid-cols-2 gap-4">
-                          <div><label className="block text-xs font-bold text-gray-500 mb-1">填表日期 *</label><input type="date" className="w-full border rounded p-2 text-sm" value={statusForm.interview?.date} onChange={e => setStatusForm({...statusForm, interview: { ...statusForm.interview!, date: e.target.value }})} /></div>
-                          <div><label className="block text-xs font-bold text-gray-500 mb-1">異動單號 *</label><input type="text" className="w-full border rounded p-2 text-sm" value={statusForm.docNumber || ''} onChange={e => setStatusForm({...statusForm, docNumber: e.target.value})} placeholder="例如: 112-Susp-001" /></div>
+                          <div><label className="block text-xs font-bold text-neutral-gray mb-1">填表日期 *</label><input type="date" className="w-full border rounded p-2 text-sm" value={statusForm.interview?.date} onChange={e => setStatusForm({...statusForm, interview: { ...statusForm.interview!, date: e.target.value }})} /></div>
+                          <div><label className="block text-xs font-bold text-neutral-gray mb-1">異動單號 *</label><input type="text" className="w-full border rounded p-2 text-sm" value={statusForm.docNumber || ''} onChange={e => setStatusForm({...statusForm, docNumber: e.target.value})} placeholder="例如: 112-Susp-001" /></div>
                       </div>
                       
                       {/* Reason Selection */}
                       <div>
-                          <label className="block text-xs font-bold text-gray-500 mb-1">主要原因 *</label>
+                          <label className="block text-xs font-bold text-neutral-gray mb-1">主要原因 *</label>
                           <select className="w-full border rounded p-2 text-sm" value={statusForm.mainReason || ''} onChange={e => setStatusForm({...statusForm, mainReason: e.target.value})}>
                               <option value="">請選擇...</option>
                               {configs.filter(c => c.category === (targetStatus === '休學' ? 'SUSPENSION_REASON' : 'DROPOUT_REASON')).map(r => <option key={r.code} value={r.label}>{r.label}</option>)}
@@ -585,14 +583,14 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                       </div>
 
                       {/* Detailed Interview Checklist */}
-                      <div className="bg-white p-4 rounded border border-gray-200">
-                          <h4 className="font-bold text-gray-700 mb-3 border-b pb-1">詳細原因勾選 (晤談結果)</h4>
+                      <div className="bg-white p-4 rounded border border-neutral-border">
+                          <h4 className="font-bold text-neutral-text mb-3 border-b pb-1">詳細原因勾選 (晤談結果)</h4>
                           
                           <div className="mb-3">
-                              <span className="text-xs font-bold text-blue-600 block mb-1">個人因素</span>
+                              <span className="text-xs font-bold text-primary block mb-1">個人因素</span>
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                   {PERSONAL_FACTORS.map(f => (
-                                      <label key={f} className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                      <label key={f} className="flex items-center gap-1.5 text-xs text-neutral-text cursor-pointer hover:bg-neutral-bg p-1 rounded">
                                           <input 
                                               type="checkbox" 
                                               checked={statusForm.interview?.personalFactors?.includes(f)}
@@ -609,10 +607,10 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                           </div>
 
                           <div className="mb-3">
-                              <span className="text-xs font-bold text-blue-600 block mb-1">外在因素</span>
+                              <span className="text-xs font-bold text-primary block mb-1">外在因素</span>
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                   {EXTERNAL_FACTORS.map(f => (
-                                      <label key={f} className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                      <label key={f} className="flex items-center gap-1.5 text-xs text-neutral-text cursor-pointer hover:bg-neutral-bg p-1 rounded">
                                           <input 
                                               type="checkbox" 
                                               checked={statusForm.interview?.externalFactors?.includes(f)}
@@ -629,28 +627,28 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                           </div>
                           
                           <div>
-                              <label className="block text-xs font-bold text-gray-500 mb-1">其他原因 (簡述)</label>
+                              <label className="block text-xs font-bold text-neutral-gray mb-1">其他原因 (簡述)</label>
                               <input type="text" className="w-full border rounded p-2 text-sm" value={statusForm.interview?.otherFactor || ''} onChange={e => setStatusForm({...statusForm, interview: { ...statusForm.interview!, otherFactor: e.target.value }})} />
                           </div>
                       </div>
 
                       {/* Interview Log */}
-                      <div className="bg-blue-50 p-4 rounded border border-blue-100">
-                          <h4 className="text-xs font-bold text-blue-800 mb-2">輔導晤談細節</h4>
+                      <div className="bg-info-50 p-4 rounded border border-info/30">
+                          <h4 className="text-xs font-bold text-info mb-2">輔導晤談細節</h4>
                           <div className="grid grid-cols-3 gap-2 mb-2">
-                              <div><label className="text-[10px] block text-gray-500">時間起</label><input type="time" className="w-full border rounded p-1 text-xs" value={statusForm.interview?.start} onChange={e => setStatusForm({...statusForm, interview: { ...statusForm.interview!, start: e.target.value }})} /></div>
-                              <div><label className="text-[10px] block text-gray-500">時間迄</label><input type="time" className="w-full border rounded p-1 text-xs" value={statusForm.interview?.end} onChange={e => setStatusForm({...statusForm, interview: { ...statusForm.interview!, end: e.target.value }})} /></div>
-                              <div><label className="text-[10px] block text-gray-500">地點</label><input type="text" className="w-full border rounded p-1 text-xs" value={statusForm.interview?.location} onChange={e => setStatusForm({...statusForm, interview: { ...statusForm.interview!, location: e.target.value }})} /></div>
+                              <div><label className="text-[10px] block text-neutral-gray">時間起</label><input type="time" className="w-full border rounded p-1 text-xs" value={statusForm.interview?.start} onChange={e => setStatusForm({...statusForm, interview: { ...statusForm.interview!, start: e.target.value }})} /></div>
+                              <div><label className="text-[10px] block text-neutral-gray">時間迄</label><input type="time" className="w-full border rounded p-1 text-xs" value={statusForm.interview?.end} onChange={e => setStatusForm({...statusForm, interview: { ...statusForm.interview!, end: e.target.value }})} /></div>
+                              <div><label className="text-[10px] block text-neutral-gray">地點</label><input type="text" className="w-full border rounded p-1 text-xs" value={statusForm.interview?.location} onChange={e => setStatusForm({...statusForm, interview: { ...statusForm.interview!, location: e.target.value }})} /></div>
                           </div>
                           <div className="mb-2">
-                              <label className="text-[10px] block text-gray-500">晤談內容摘要</label>
+                              <label className="text-[10px] block text-neutral-gray">晤談內容摘要</label>
                               <textarea className="w-full border rounded p-2 text-xs h-16" value={statusForm.interview?.content} onChange={e => setStatusForm({...statusForm, interview: { ...statusForm.interview!, content: e.target.value }})} />
                           </div>
                       </div>
                   </div>
-                  <div className="p-4 border-t border-gray-200 flex justify-end gap-2 bg-gray-50 rounded-b-lg">
+                  <div className="p-4 border-t border-neutral-border flex justify-end gap-2 bg-neutral-bg rounded-b-lg">
                       <button onClick={() => setIsStatusModalOpen(false)} className="px-4 py-2 border rounded text-gray-600">取消</button>
-                      <button onClick={handleSaveStatusChange} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">確認異動</button>
+                      <button onClick={handleSaveStatusChange} className="px-4 py-2 bg-danger text-white rounded hover:bg-red-700">確認異動</button>
                   </div>
               </div>
           </div>
