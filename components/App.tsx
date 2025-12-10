@@ -12,11 +12,12 @@ import { AuditLogManager } from './components/AuditLogManager';
 import { RoleManager } from './components/RoleManager';
 import { UserManager } from './components/UserManager';
 import { CounselingManager } from './components/CounselingManager';
-import { StudentPortal } from './components/StudentPortal'; // Updated
+import { StudentPortal } from './components/StudentPortal'; 
 import { RedemptionManager } from './components/RedemptionManager';
+import { TicketManager } from './components/TicketManager'; // New
 
 // Context Providers
-import { PermissionProvider, usePermissionContext } from './contexts/PermissionContext';
+import { PermissionProvider } from './contexts/PermissionContext';
 import { StudentProvider, useStudents } from './contexts/StudentContext'; 
 import { ScholarshipProvider } from './contexts/ScholarshipContext';
 import { ActivityProvider } from './contexts/ActivityContext';
@@ -24,10 +25,10 @@ import { ToastProvider } from './contexts/ToastContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SystemProvider, useSystem } from './contexts/SystemContext';
 import { RedemptionProvider } from './contexts/RedemptionContext';
+import { TicketProvider } from './contexts/TicketContext'; // New
 
 import { Student } from './types';
 import { StorageService } from './services/StorageService';
-import { ICONS } from './constants';
 
 const AppContent: React.FC = () => {
   // 1. User & System Management
@@ -98,24 +99,27 @@ const AppContent: React.FC = () => {
         
       case 'REDEMPTION_MANAGER':
         return <RedemptionManager />;
+
+      case 'TICKET_MANAGER': // New Route
+        return <TicketManager />;
         
       default:
         return <div>Not Found</div>;
     }
   };
 
+  // --- 1. Authentication Check ---
   if (!currentUser) {
       return <Login />;
   }
 
-  // --- Strict Security Check for Students ---
+  // --- 2. Authorization Fork (Strict Separation) ---
   // If user role is 'role_student', FORCE render StudentPortal.
-  // Do NOT render Layout or any Admin components.
   if (currentUser.roleId === 'role_student') {
       return <StudentPortal currentUser={currentUser} />;
   }
 
-  // For Admin/Staff/Assistants, render full layout
+  // --- 3. Admin/Staff Interface ---
   return (
     <Layout 
       currentView={currentView} 
@@ -145,7 +149,9 @@ export default function App() {
                         <ScholarshipProvider>
                             <ActivityProvider>
                                 <RedemptionProvider>
-                                    <AppContent />
+                                    <TicketProvider>
+                                        <AppContent />
+                                    </TicketProvider>
                                 </RedemptionProvider>
                             </ActivityProvider>
                         </ScholarshipProvider>

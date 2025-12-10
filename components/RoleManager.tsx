@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { RoleDefinition, PermissionMatrix, ModuleId } from '../types';
 import { ICONS } from '../constants';
@@ -15,7 +14,8 @@ const MODULE_LABELS: Record<ModuleId, string> = {
   [ModuleId.SYSTEM_SETTINGS]: '系統參數設定',
   [ModuleId.USER_MANAGEMENT]: '使用者與權限',
   [ModuleId.AUDIT_LOGS]: '資安稽核日誌',
-  [ModuleId.REDEMPTION]: '兌換核銷中心'
+  [ModuleId.REDEMPTION]: '兌換核銷中心',
+  [ModuleId.TICKETS]: '客服中心 (Tickets)'
 };
 
 export const RoleManager: React.FC = () => {

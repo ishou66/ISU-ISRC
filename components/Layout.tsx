@@ -130,6 +130,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <NavItem view="COUNSELING_MANAGER" moduleId={ModuleId.COUNSELING_MANAGER} label="輔導關懷紀錄" icon={ICONS.CounselingManager} />
           <NavItem view="ACTIVITY" moduleId={ModuleId.ACTIVITY} label="活動參與紀錄" icon={ICONS.Activity} />
           <NavItem view="REDEMPTION_MANAGER" moduleId={ModuleId.REDEMPTION} label="兌換核銷中心" icon={ICONS.Money} />
+          <NavItem view="TICKET_MANAGER" moduleId={ModuleId.TICKETS} label="客服中心" icon={ICONS.Message} isNew />
           
           {(can(ModuleId.SYSTEM_SETTINGS, 'view') || can(ModuleId.USER_MANAGEMENT, 'view') || can(ModuleId.AUDIT_LOGS, 'view')) && (
              <>
@@ -206,6 +207,7 @@ export const Layout: React.FC<LayoutProps> = ({
                      {currentView === 'USER_MANAGEMENT' && 'User Access'}
                      {currentView === 'AUDIT_LOGS' && 'Audit Logs'}
                      {currentView === 'ACTIVITY' && 'Activities'}
+                     {currentView === 'TICKET_MANAGER' && 'Customer Support'}
                    </h1>
                </div>
             </div>

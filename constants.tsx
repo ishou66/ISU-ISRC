@@ -1,13 +1,15 @@
 
 import { 
   Student, StudentStatus, HighRiskStatus, ConfigItem, CounselingLog, ScholarshipRecord, ActivityRecord, Event,
-  User, RoleDefinition, ModuleId, ScholarshipConfig, ScholarshipStatus, RedemptionRecord, RedemptionStatus, SurplusHour, Announcement
+  User, RoleDefinition, ModuleId, ScholarshipConfig, ScholarshipStatus, RedemptionRecord, RedemptionStatus, SurplusHour, Announcement,
+  Ticket, TicketStatus, TicketCategory
 } from './types';
 import { 
   Users, LayoutDashboard, FileText, Settings, Heart, Database, 
   GraduationCap, AlertTriangle, Eye, EyeOff, Search, Plus, Filter,
   ChevronRight, Home, Phone, MapPin, Download, Save, X, Edit2, Check,
-  ArrowRightLeft, UserCheck, UserMinus, Calendar, ShieldAlert, Lock, Printer, LogIn, Key, Menu, Clock, CheckCircle, ClipboardList, Briefcase, FileCheck, Send, DollarSign, Upload, Image, CreditCard, Archive, Bell, Megaphone, Camera, PieChart
+  ArrowRightLeft, UserCheck, UserMinus, Calendar, ShieldAlert, Lock, Printer, LogIn, Key, Menu, Clock, CheckCircle, ClipboardList, Briefcase, FileCheck, Send, DollarSign, Upload, Image, CreditCard, Archive, Bell, Megaphone, Camera, PieChart,
+  MessageCircle, HelpCircle, Inbox, UserPlus, CornerUpLeft
 } from 'lucide-react';
 
 export const ICONS = {
@@ -65,7 +67,12 @@ export const ICONS = {
   Bell: Bell,
   Megaphone: Megaphone,
   Camera: Camera,
-  PieChart: PieChart
+  PieChart: PieChart,
+  Message: MessageCircle,
+  Help: HelpCircle,
+  Inbox: Inbox,
+  Assign: UserPlus,
+  Reply: CornerUpLeft
 };
 
 // --- COUNSELING TEMPLATES ---
@@ -107,6 +114,14 @@ export const COUNSELING_TEMPLATES = [
     }
 ];
 
+// --- CANNED RESPONSES ---
+export const CANNED_RESPONSES = [
+    { id: '1', title: '收到，處理中', text: '同學您好，我們已收到您的提問，目前正在確認相關資訊，將儘快回覆您，請耐心等候。' },
+    { id: '2', title: '撥款進度', text: '同學您好，獎助學金已於昨日送出核銷，預計約 7-10 個工作天入帳，請留意您的銀行帳戶。' },
+    { id: '3', title: '補件通知', text: '同學您好，您的申請資料缺漏「身分證正反面影本」，請於本週五前補件至原資中心，以免影響權益。' },
+    { id: '4', title: '結案感謝', text: '同學您好，此問題已處理完畢。若還有其他疑問，歡迎隨時再次提問。' },
+];
+
 // --- DEFAULT ROLES ---
 
 export const DEFAULT_ROLES: RoleDefinition[] = [
@@ -126,6 +141,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       [ModuleId.USER_MANAGEMENT]: { view: true, add: true, edit: true, delete: true, export: true, viewSensitive: true },
       [ModuleId.AUDIT_LOGS]: { view: true, add: true, edit: true, delete: true, export: true, viewSensitive: true },
       [ModuleId.REDEMPTION]: { view: true, add: true, edit: true, delete: true, export: true, viewSensitive: true },
+      [ModuleId.TICKETS]: { view: true, add: true, edit: true, delete: true, export: true, viewSensitive: true },
     }
   },
   {
@@ -144,6 +160,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       [ModuleId.USER_MANAGEMENT]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
       [ModuleId.AUDIT_LOGS]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
       [ModuleId.REDEMPTION]: { view: true, add: true, edit: true, delete: false, export: true, viewSensitive: false },
+      [ModuleId.TICKETS]: { view: true, add: true, edit: true, delete: false, export: true, viewSensitive: false },
     }
   },
   {
@@ -162,6 +179,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
          [ModuleId.USER_MANAGEMENT]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
          [ModuleId.AUDIT_LOGS]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
          [ModuleId.REDEMPTION]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+         [ModuleId.TICKETS]: { view: true, add: false, edit: true, delete: false, export: false, viewSensitive: false },
      }
   },
   {
@@ -180,6 +198,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       [ModuleId.USER_MANAGEMENT]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
       [ModuleId.AUDIT_LOGS]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
       [ModuleId.REDEMPTION]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+      [ModuleId.TICKETS]: { view: true, add: true, edit: true, delete: false, export: false, viewSensitive: false },
     }
   }
 ];
@@ -486,4 +505,31 @@ export const MOCK_SURPLUS_HOURS: SurplusHour[] = [
 export const MOCK_ANNOUNCEMENTS: Announcement[] = [
     { id: 'ann_1', title: '112-2 獎助學金申請開跑', content: '請同學留意申請期限至 12/31 截止，逾期不候。', date: '2023-12-01', target: 'ALL', priority: 'URGENT', author: '陳專員' },
     { id: 'ann_2', title: '系統維護通知', content: '本週六凌晨 02:00-04:00 進行系統維護，暫停服務。', date: '2023-12-05', target: 'ALL', priority: 'NORMAL', author: '系統管理員' }
+];
+
+export const MOCK_TICKETS: Ticket[] = [
+    {
+        id: 'tk_1',
+        ticketNumber: 'PAY-20231210-001',
+        studentId: 'std_1',
+        studentName: '王小明',
+        category: TicketCategory.PAYMENT,
+        subject: '請問獎學金何時入帳？',
+        content: '老師好，我已經在兩週前完成時數核銷，但戶頭尚未收到款項，請問大約何時會撥款？',
+        status: TicketStatus.RESOLVED,
+        createdAt: '2023-12-10T10:00:00',
+        updatedAt: '2023-12-10T14:00:00',
+    },
+    {
+        id: 'tk_2',
+        ticketNumber: 'SCH-20231212-001',
+        studentId: 'std_2',
+        studentName: '李小花',
+        category: TicketCategory.SCHOLARSHIP,
+        subject: '申請書上傳失敗',
+        content: '系統一直顯示檔案格式錯誤，我已經轉成 PDF 了，請問該怎麼辦？',
+        status: TicketStatus.OPEN,
+        createdAt: '2023-12-12T09:30:00',
+        updatedAt: '2023-12-12T09:30:00',
+    }
 ];

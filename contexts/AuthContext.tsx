@@ -29,13 +29,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [roles, setRoles] = useState<RoleDefinition[]>(() => StorageService.load(KEYS.ROLES, DEFAULT_ROLES));
   const { notify } = useToast();
 
-  // --- Auto-Migration Logic: Fix Missing Permissions in Stored Roles ---
+  // --- Auto-Migration Logic: Fix Missing Permissions & Roles ---
   useEffect(() => {
       let hasUpdates = false;
-      const updatedRoles = roles.map(role => {
-          // Find corresponding default role (by ID) to see if we are missing keys
+      let currentRoles = [...roles];
+
+      // 1. Inject missing default roles (e.g., 'role_student' might be missing in old data)
+      DEFAULT_ROLES.forEach(defaultRole => {
+          if (!currentRoles.find(r => r.id === defaultRole.id)) {
+              console.log(`System: Injecting missing default role: ${defaultRole.name}`);
+              currentRoles.push(defaultRole);
+              hasUpdates = true;
+          }
+      });
+
+      // 2. Fix missing permissions in existing roles
+      const updatedRoles = currentRoles.map(role => {
           const defaultRole = DEFAULT_ROLES.find(dr => dr.id === role.id);
-          // Also check generic modules if it's a custom role
           const allModules = Object.values(ModuleId);
           
           let roleChanged = false;
@@ -43,11 +53,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           allModules.forEach(moduleId => {
               if (!newPermissions[moduleId]) {
-                  // If missing, try to take from default role, otherwise default to all false (hidden)
                   if (defaultRole && defaultRole.permissions[moduleId]) {
                       newPermissions[moduleId] = defaultRole.permissions[moduleId];
                   } else {
-                      // For admin, auto-grant everything. For others, default false.
                       const isAdmin = role.id === 'role_admin';
                       newPermissions[moduleId] = {
                           view: isAdmin, add: isAdmin, edit: isAdmin, delete: isAdmin, export: isAdmin, viewSensitive: isAdmin
@@ -65,12 +73,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (hasUpdates) {
-          console.log('System: Migrated roles with new permissions.');
+          console.log('System: Migrated roles with new definitions/permissions.');
           setRoles(updatedRoles);
           StorageService.save(KEYS.ROLES, updatedRoles);
-          notify('系統已自動更新您的權限設定以支援新功能');
+          notify('系統已自動更新您的角色與權限設定');
       }
-  }, []); // Run once on mount
+  }, []); 
 
   useEffect(() => {
     StorageService.save(KEYS.USERS, users);
@@ -116,7 +124,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const deleteUser = (userId: string) => {
-      // Logic delete usually, currently strictly removing
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, isActive: false } : u));
       notify('使用者已停用');
   };

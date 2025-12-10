@@ -9,7 +9,8 @@ export enum ModuleId {
   SYSTEM_SETTINGS = 'SYSTEM_SETTINGS',
   USER_MANAGEMENT = 'USER_MANAGEMENT',
   AUDIT_LOGS = 'AUDIT_LOGS',
-  REDEMPTION = 'REDEMPTION'
+  REDEMPTION = 'REDEMPTION',
+  TICKETS = 'TICKETS' // New Module
 }
 
 export interface PermissionDetails {
@@ -273,6 +274,8 @@ export interface CounselingBooking {
     status: BookingStatus;
     adminResponse?: string;
     createdAt: string;
+    assignedCounselorId?: string; // New: 分派
+    meetingType?: 'ONLINE' | 'FACE'; // New
 }
 
 export type GrantCategory = 'SCHOLARSHIP' | 'FINANCIAL_AID';
@@ -574,4 +577,49 @@ export interface WorkflowStep {
     stepName: string; // e.g. "初審 - 重複性檢核"
     relatedStatus: RedemptionStatus; // e.g. "SUBMITTED" -> "L1_PASS" logic
     authorizedRoleIds: string[]; // e.g. ['role_admin', 'role_staff']
+}
+
+// --- TICKETING SYSTEM ---
+
+export enum TicketStatus {
+    OPEN = 0,       // 待處理
+    PROCESSING = 1, // 處理中
+    RESOLVED = 2,   // 已回覆 (等待學生確認或自動結案)
+    CLOSED = 3      // 已結案
+}
+
+export enum TicketCategory {
+    SCHOLARSHIP = 'SCHOLARSHIP',
+    HOURS = 'HOURS',
+    PAYMENT = 'PAYMENT',
+    COUNSELING = 'COUNSELING',
+    OTHER = 'OTHER'
+}
+
+export interface TicketReply {
+    id: string;
+    ticketId: string;
+    userId: string;
+    userName: string; // Snapshot
+    userRole: string; // 'student' | 'admin' | 'staff'
+    message: string;
+    createdAt: string;
+}
+
+export interface Ticket {
+    id: string;
+    ticketNumber: string; // Readable: SCH-20231210-001
+    studentId: string;
+    studentName: string; // Snapshot
+    category: TicketCategory;
+    subject: string;
+    content: string; // Initial question
+    attachmentUrl?: string;
+    
+    status: TicketStatus;
+    assignedToId?: string; // ID of admin user
+    
+    createdAt: string;
+    updatedAt: string; // Last reply time
+    closedAt?: string;
 }

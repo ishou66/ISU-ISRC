@@ -124,6 +124,30 @@ const StudentContext = createContext<StudentContextType | undefined>(undefined);
 
 // --- Provider ---
 
+// Mock Bookings for Demo
+const MOCK_BOOKINGS: CounselingBooking[] = [
+    {
+        id: 'bk_1',
+        studentId: 'std_1',
+        requestDate: '2024-06-20',
+        requestTimeSlot: '14:00-15:00',
+        category: 'CAREER',
+        reason: '想詢問實習相關問題',
+        status: 'PENDING',
+        createdAt: '2024-06-18T10:00:00'
+    },
+    {
+        id: 'bk_2',
+        studentId: 'std_2',
+        requestDate: '2024-06-21',
+        requestTimeSlot: '10:00-11:00',
+        category: 'FINANCIAL',
+        reason: '獎助學金申請疑問',
+        status: 'CONFIRMED',
+        createdAt: '2024-06-15T09:00:00'
+    }
+];
+
 export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(studentReducer, initialState);
   const { currentUser, logAction } = usePermissionContext();
@@ -134,7 +158,7 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       try {
         const students = StorageService.load<Student[]>(KEYS.STUDENTS, MOCK_STUDENTS);
         const logs = StorageService.load<CounselingLog[]>(KEYS.LOGS, MOCK_COUNSELING_LOGS);
-        const bookings = StorageService.load<CounselingBooking[]>('ISU_CARE_SYS_BOOKINGS', []);
+        const bookings = StorageService.load<CounselingBooking[]>('ISU_CARE_SYS_BOOKINGS', MOCK_BOOKINGS);
         
         // Ensure new fields exist for legacy data
         const enrichedStudents = students.map(s => ({
