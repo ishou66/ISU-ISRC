@@ -1,11 +1,10 @@
 
-
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 import { useRedemptions } from '../contexts/RedemptionContext';
 import { useStudents } from '../contexts/StudentContext'; 
 import { useScholarships } from '../contexts/ScholarshipContext'; 
-import { useActivities } from '../contexts/ActivityContext'; // New import
+import { useActivities } from '../contexts/ActivityContext'; 
 import { RedemptionStatus, RedemptionRecord, Student } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -13,11 +12,48 @@ interface StudentRedemptionProps {
     currentUser: any; 
 }
 
+// --- Visual Stepper Component ---
+const WorkflowStepper = ({ status }: { status: RedemptionStatus }) => {
+    const steps = [
+        { id: 'SUBMIT', label: '已提交', activeStates: [RedemptionStatus.SUBMITTED, RedemptionStatus.L1_PASS, RedemptionStatus.L2_PASS, RedemptionStatus.L3_SUBMITTED, RedemptionStatus.APPROVED, RedemptionStatus.SCHOOL_PROCESSING, RedemptionStatus.SCHOOL_APPROVED, RedemptionStatus.DISBURSED] },
+        { id: 'REVIEW', label: '審核中', activeStates: [RedemptionStatus.L1_PASS, RedemptionStatus.L2_PASS, RedemptionStatus.L3_SUBMITTED, RedemptionStatus.APPROVED, RedemptionStatus.SCHOOL_PROCESSING, RedemptionStatus.SCHOOL_APPROVED, RedemptionStatus.DISBURSED] },
+        { id: 'SCHOOL', label: '學校作業', activeStates: [RedemptionStatus.APPROVED, RedemptionStatus.SCHOOL_PROCESSING, RedemptionStatus.SCHOOL_APPROVED, RedemptionStatus.DISBURSED] },
+        { id: 'FINISH', label: '已撥款', activeStates: [RedemptionStatus.DISBURSED] },
+    ];
+
+    const isRejected = status.includes('REJECTED') || status.includes('FAIL') || status.includes('RETURNED');
+
+    return (
+        <div className="flex items-center justify-between w-full mt-4 mb-2">
+            {steps.map((step, index) => {
+                const isActive = step.activeStates.includes(status);
+                const isLast = index === steps.length - 1;
+                
+                return (
+                    <div key={step.id} className="flex-1 flex items-center">
+                        <div className="flex flex-col items-center relative">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs z-10 transition-colors ${isActive ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'} ${isRejected && index === 0 ? 'bg-red-500' : ''}`}>
+                                {isActive ? <ICONS.Check size={14}/> : index + 1}
+                            </div>
+                            <span className={`text-[10px] mt-1 font-bold absolute -bottom-5 whitespace-nowrap ${isActive ? 'text-green-600' : 'text-gray-400'}`}>
+                                {step.label}
+                            </span>
+                        </div>
+                        {!isLast && (
+                            <div className={`flex-1 h-1 mx-2 rounded ${isActive ? 'bg-green-500' : 'bg-gray-200'}`}></div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
 export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUser }) => {
     const { redemptions, submitRedemption, surplusHours, calculateSurplus } = useRedemptions();
     const { students } = useStudents();
     const { scholarshipConfigs } = useScholarships();
-    const { getStudentTotalHours } = useActivities(); // Use helper
+    const { getStudentTotalHours } = useActivities(); 
     
     const student = students.find(s => s.studentId === currentUser.account) || students[0]; 
 
@@ -25,15 +61,16 @@ export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUse
     const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [keepSurplus, setKeepSurplus] = useState(false);
+    
+    // Upload Mock State
+    const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
     const myRedemptions = redemptions.filter(r => r.studentId === student?.id);
     const mySurplus = surplusHours.filter(s => s.studentId === student?.id);
 
     const selectedConfig = scholarshipConfigs.find(c => c.id === selectedConfigId);
     
-    // Calculate total eligible hours for the selected config's category
     const currentActivityHours = selectedConfig && student ? getStudentTotalHours(student.id, selectedConfig.category) : 0;
-    
     const surplusAmount = selectedConfig ? calculateSurplus(student?.id, selectedConfig.serviceHoursRequired, currentActivityHours) : 0;
 
     const handleSubmit = () => {
@@ -48,21 +85,20 @@ export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUse
             completedHours: currentActivityHours,
             surplusHours: keepSurplus ? surplusAmount : 0,
             appliedDate: new Date().toISOString().split('T')[0],
-            status: RedemptionStatus.SUBMITTED
+            status: RedemptionStatus.SUBMITTED,
+            // In a real app, we would upload the file and store the URL here
+            // layer3Info: { documentUrl: uploadedFile ? 'url_to_file' : undefined }
         };
 
         submitRedemption(newRecord, keepSurplus ? surplusAmount : 0);
         setShowConfirmModal(false);
+        setUploadedFile(null); // Reset
         setActiveTab('TRACK');
     };
 
-    const getStatusBadge = (status: RedemptionStatus) => {
-        switch (status) {
-            case RedemptionStatus.SUBMITTED: return <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">已提交</span>;
-            case RedemptionStatus.APPROVED: return <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">已簽核 (送學校)</span>;
-            case RedemptionStatus.DISBURSED: return <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">已撥款</span>;
-            case RedemptionStatus.RETURNED: return <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">已退回</span>;
-            default: return <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold">審核中</span>;
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setUploadedFile(e.target.files[0]);
         }
     };
 
@@ -125,40 +161,36 @@ export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUse
                 )}
 
                 {activeTab === 'TRACK' && (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         {myRedemptions.length === 0 && <div className="text-center text-gray-400 py-10">尚無兌換紀錄</div>}
                         {myRedemptions.map(r => (
-                            <div key={r.id} className="border border-gray-200 rounded-lg p-4 flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="font-bold text-gray-800">{r.scholarshipName}</h3>
-                                        {getStatusBadge(r.status)}
+                            <div key={r.id} className="border border-gray-200 rounded-lg p-5 bg-white shadow-sm">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 text-lg">{r.scholarshipName}</h3>
+                                        <div className="text-xs text-gray-500 mt-1 flex gap-3">
+                                            <span>申請日期: {r.appliedDate}</span>
+                                            <span>金額: ${r.amount.toLocaleString()}</span>
+                                        </div>
                                     </div>
-                                    <div className="text-xs text-gray-500 flex gap-4">
-                                        <span>申請日期: {r.appliedDate}</span>
-                                        <span>金額: ${r.amount.toLocaleString()}</span>
-                                        {r.surplusHours > 0 && <span className="text-green-600">保留時數: {r.surplusHours} hr</span>}
+                                    <div className="mt-2 md:mt-0">
+                                        <span className={`px-3 py-1 rounded text-sm font-bold border ${r.status === RedemptionStatus.DISBURSED ? 'bg-green-50 border-green-200 text-green-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                                            {r.status === RedemptionStatus.DISBURSED ? '已完成' : '進行中'}
+                                        </span>
                                     </div>
                                 </div>
                                 
-                                <div className="flex items-center gap-2 text-xs">
-                                    <div className={`flex flex-col items-center ${[RedemptionStatus.SUBMITTED, RedemptionStatus.L1_PASS, RedemptionStatus.L2_PASS, RedemptionStatus.L3_SUBMITTED].includes(r.status) ? 'text-blue-600 font-bold' : 'text-gray-400'}`}>
-                                        <div className="w-2 h-2 rounded-full bg-current mb-1"></div>
-                                        <span>審核中</span>
-                                    </div>
-                                    <div className="w-8 h-0.5 bg-gray-200"></div>
-                                    <div className={`flex flex-col items-center ${[RedemptionStatus.APPROVED, RedemptionStatus.SCHOOL_PROCESSING, RedemptionStatus.SCHOOL_APPROVED].includes(r.status) ? 'text-blue-600 font-bold' : 'text-gray-400'}`}>
-                                        <div className="w-2 h-2 rounded-full bg-current mb-1"></div>
-                                        <span>學校作業</span>
-                                    </div>
-                                    <div className="w-8 h-0.5 bg-gray-200"></div>
-                                    <div className={`flex flex-col items-center ${r.status === RedemptionStatus.DISBURSED ? 'text-green-600 font-bold' : 'text-gray-400'}`}>
-                                        <div className="w-2 h-2 rounded-full bg-current mb-1"></div>
-                                        <span>已撥款</span>
-                                    </div>
+                                {/* Stepper */}
+                                <div className="pt-2 pb-2">
+                                    <WorkflowStepper status={r.status} />
                                 </div>
 
-                                <button className="text-gray-400 hover:text-gray-600"><ICONS.ChevronRight /></button>
+                                {r.status.includes('RETURNED') || r.status.includes('REJECTED') ? (
+                                    <div className="mt-4 bg-red-50 border border-red-200 p-3 rounded text-sm text-red-700">
+                                        <strong>退回原因：</strong> {r.layer2Check?.remarks || r.signOff?.remarks || '資料不符'}
+                                        <button className="ml-4 underline font-bold">前往修改</button>
+                                    </div>
+                                ) : null}
                             </div>
                         ))}
                     </div>
@@ -192,36 +224,45 @@ export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUse
             {/* Confirm Modal */}
             {showConfirmModal && selectedConfig && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fade-in-up">
                         <div className="p-4 border-b border-gray-200 bg-gray-50"><h3 className="font-bold text-gray-800">確認兌換申請</h3></div>
                         <div className="p-6 space-y-4">
-                            <p>您即將申請兌換 <strong>{selectedConfig.name}</strong>。</p>
+                            <p className="text-sm">您即將申請兌換 <strong>{selectedConfig.name}</strong>。</p>
                             
-                            <div className="bg-gray-50 p-3 rounded text-sm">
-                                <div className="flex justify-between mb-1"><span>所需時數:</span> <b>{selectedConfig.serviceHoursRequired}</b></div>
-                                <div className="flex justify-between text-green-600"><span>目前可用:</span> <b>{currentActivityHours}</b></div>
+                            <div className="bg-gray-50 p-3 rounded text-sm space-y-1">
+                                <div className="flex justify-between"><span>所需時數:</span> <b>{selectedConfig.serviceHoursRequired} hr</b></div>
+                                <div className="flex justify-between text-green-600"><span>目前可用:</span> <b>{currentActivityHours} hr</b></div>
                             </div>
 
                             {surplusAmount > 0 && (
-                                <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
-                                    <p className="font-bold text-yellow-800 mb-2">🎉 發現超額時數！</p>
-                                    <p className="text-sm text-yellow-700 mb-3">扣除本次需求後，尚餘 {surplusAmount} 小時。</p>
+                                <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                                    <p className="font-bold text-yellow-800 text-xs mb-2">🎉 發現超額時數！</p>
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" checked={keepSurplus} onChange={e => setKeepSurplus(e.target.checked)} className="w-4 h-4 text-isu-red focus:ring-isu-red rounded"/>
-                                        <span className="text-sm font-bold text-gray-700">保留 {surplusAmount} 小時供未來使用 (期限一年)</span>
+                                        <span className="text-xs font-bold text-gray-700">保留 {surplusAmount} 小時供未來使用 (期限一年)</span>
                                     </label>
                                 </div>
                             )}
 
-                            <div className="text-xs text-gray-500 space-y-1 pt-4 border-t border-gray-100">
-                                <p>• 預計核銷時間：14-21 個工作天</p>
-                                <p>• 承辦人：陳專員 (分機 1234, staff@isu.edu.tw)</p>
-                                <p>• 請確保您的銀行帳戶資料正確，以免撥款失敗。</p>
+                            {/* Document Upload UI */}
+                            <div className="border-t border-dashed border-gray-300 pt-3">
+                                <label className="block text-xs font-bold text-gray-600 mb-2">上傳相關證明文件 (選填)</label>
+                                <div className="flex items-center gap-2">
+                                    <label className="cursor-pointer bg-white border border-gray-300 px-3 py-1.5 rounded text-xs hover:bg-gray-50 flex items-center gap-2">
+                                        <ICONS.Upload size={14} /> 選擇檔案
+                                        <input type="file" className="hidden" onChange={handleFileChange} />
+                                    </label>
+                                    <span className="text-xs text-gray-400 truncate max-w-[150px]">{uploadedFile ? uploadedFile.name : '未選擇檔案'}</span>
+                                </div>
+                            </div>
+
+                            <div className="text-[10px] text-gray-400 pt-2">
+                                送出後系統將自動通知相關人員進行審核。
                             </div>
                         </div>
                         <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
-                            <button onClick={() => setShowConfirmModal(false)} className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-200 text-sm">取消</button>
-                            <button onClick={handleSubmit} className="px-4 py-2 bg-isu-red text-white rounded hover:bg-red-800 text-sm font-bold">我已閱讀並確認兌換</button>
+                            <button onClick={() => { setShowConfirmModal(false); setUploadedFile(null); }} className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-200 text-sm">取消</button>
+                            <button onClick={handleSubmit} className="px-4 py-2 bg-isu-red text-white rounded hover:bg-red-800 text-sm font-bold shadow-md">確認送出申請</button>
                         </div>
                     </div>
                 </div>

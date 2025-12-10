@@ -1,4 +1,5 @@
 
+
 import { 
   Student, StudentStatus, HighRiskStatus, ConfigItem, CounselingLog, ScholarshipRecord, ActivityRecord, Event,
   User, RoleDefinition, ModuleId, ScholarshipConfig, ScholarshipStatus, RedemptionRecord, RedemptionStatus, SurplusHour, Announcement
@@ -7,7 +8,7 @@ import {
   Users, LayoutDashboard, FileText, Settings, Heart, Database, 
   GraduationCap, AlertTriangle, Eye, EyeOff, Search, Plus, Filter,
   ChevronRight, Home, Phone, MapPin, Download, Save, X, Edit2, Check,
-  ArrowRightLeft, UserCheck, UserMinus, Calendar, ShieldAlert, Lock, Printer, LogIn, Key, Menu, Clock, CheckCircle, ClipboardList, Briefcase, FileCheck, Send, DollarSign, Upload, Image, CreditCard, Archive, Bell, Megaphone, Camera
+  ArrowRightLeft, UserCheck, UserMinus, Calendar, ShieldAlert, Lock, Printer, LogIn, Key, Menu, Clock, CheckCircle, ClipboardList, Briefcase, FileCheck, Send, DollarSign, Upload, Image, CreditCard, Archive, Bell, Megaphone, Camera, PieChart
 } from 'lucide-react';
 
 export const ICONS = {
@@ -43,6 +44,7 @@ export const ICONS = {
   UserMinus: UserMinus,
   Calendar: Calendar,
   Audit: ShieldAlert,
+  ShieldAlert: ShieldAlert,
   Security: Lock,
   Print: Printer,
   Login: LogIn,
@@ -62,8 +64,48 @@ export const ICONS = {
   Archive: Archive,
   Bell: Bell,
   Megaphone: Megaphone,
-  Camera: Camera
+  Camera: Camera,
+  PieChart: PieChart
 };
+
+// --- COUNSELING TEMPLATES ---
+export const COUNSELING_TEMPLATES = [
+    { 
+        label: '獎助學金諮詢', 
+        icon: 'Money',
+        method: 'FACE', 
+        categories: ['FINANCIAL'], 
+        content: '學生來辦公室詢問本學期獎助學金申請資格、期限與應備文件。已詳細說明相關規定並提供申請表連結。' 
+    },
+    { 
+        label: '選課/學業詢問', 
+        icon: 'GraduationCap',
+        method: 'FACE', 
+        categories: ['ACADEMIC'], 
+        content: '學生詢問關於選課規定與畢業門檻之問題。已協助檢視修課狀況並給予建議。' 
+    },
+    { 
+        label: '生活關懷(一般)', 
+        icon: 'Heart',
+        method: 'LINE', 
+        categories: ['LIFE'], 
+        content: '透過通訊軟體關心近期生活狀況與適應情形。學生表示狀況良好，無特殊需求。' 
+    },
+    { 
+        label: '器材借用/歸還', 
+        icon: 'Archive',
+        method: 'FACE', 
+        categories: ['OTHER'], 
+        content: '學生至中心借用/歸還器材（如：筆電、圖書）。已確認器材狀況正常。' 
+    },
+    { 
+        label: '職涯發展諮詢', 
+        icon: 'Briefcase',
+        method: 'FACE', 
+        categories: ['CAREER'], 
+        content: '學生詢問關於未來實習與就業方向。已提供職涯中心資訊與近期徵才活動訊息。' 
+    }
+];
 
 // --- DEFAULT ROLES ---
 
@@ -360,4 +402,3 @@ export const MOCK_ANNOUNCEMENTS: Announcement[] = [
     { id: 'ann_1', title: '112-2 獎助學金申請開跑', content: '請同學留意申請期限至 12/31 截止，逾期不候。', date: '2023-12-01', target: 'ALL', priority: 'URGENT', author: '陳專員' },
     { id: 'ann_2', title: '系統維護通知', content: '本週六凌晨 02:00-04:00 進行系統維護，暫停服務。', date: '2023-12-05', target: 'ALL', priority: 'NORMAL', author: '系統管理員' }
 ];
-

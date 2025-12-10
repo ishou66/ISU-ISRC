@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Login } from './components/Login';
@@ -12,14 +14,14 @@ import { AuditLogManager } from './components/AuditLogManager';
 import { RoleManager } from './components/RoleManager';
 import { UserManager } from './components/UserManager';
 import { CounselingManager } from './components/CounselingManager';
-import { StudentRedemption } from './components/StudentRedemption';
+import { StudentPortal } from './components/StudentPortal'; // Updated
 import { RedemptionManager } from './components/RedemptionManager';
 
 // Context Providers
 import { PermissionProvider, usePermissionContext } from './contexts/PermissionContext';
 import { StudentProvider, useStudents } from './contexts/StudentContext'; 
-import { ScholarshipProvider, useScholarships } from './contexts/ScholarshipContext';
-import { ActivityProvider, useActivities } from './contexts/ActivityContext';
+import { ScholarshipProvider } from './contexts/ScholarshipContext';
+import { ActivityProvider } from './contexts/ActivityContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SystemProvider, useSystem } from './contexts/SystemContext';
@@ -27,18 +29,15 @@ import { RedemptionProvider } from './contexts/RedemptionContext';
 
 import { Student } from './types';
 import { StorageService } from './services/StorageService';
+import { ICONS } from './constants';
 
-// --- Internal App Logic Component ---
 const AppContent: React.FC = () => {
   // 1. User & System Management
   const { currentUser, switchUser, users, roles } = useAuth();
   const { resetSystem, configs } = useSystem();
-  const { logAction } = usePermissionContext();
-
-  // 2. Data consumption via Hooks (No local state management in App.tsx)
-  const { students, updateStudent, addCounselingLog, counselingLogs } = useStudents();
-  const { scholarships } = useScholarships();
-  const { activities, events } = useActivities();
+  
+  // 2. Data consumption via Hooks
+  const { students } = useStudents();
   
   // 3. UI State
   const [currentView, setCurrentView] = useState('DASHBOARD');
@@ -54,26 +53,21 @@ const AppContent: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'DASHBOARD':
-        // No data props passed; Dashboard consumes Contexts directly
         return <Dashboard onNavigate={handleNavigate} />;
         
       case 'STUDENTS':
-        // StudentList consumes Contexts directly
         return (
           <StudentList 
             configs={configs} 
             onSelectStudent={(s) => { setSelectedStudent(s); setCurrentView('DETAIL'); }}
-            onRevealSensitiveData={() => {}} // Handled inside StudentList via hooks
+            onRevealSensitiveData={() => {}} 
             initialParams={navParams}
           />
         );
         
       case 'DETAIL':
         if (!selectedStudent) return <div>Error: No student selected</div>;
-        // Re-fetch latest student data from context to ensure updates are reflected
         const freshStudent = students.find(s => s.id === selectedStudent.id) || selectedStudent;
-        
-        // StudentDetail now consumes data from Contexts directly
         return (
           <StudentDetail 
             student={freshStudent} 
@@ -82,10 +76,10 @@ const AppContent: React.FC = () => {
         );
         
       case 'COUNSELING_MANAGER':
-        return <CounselingManager />; // Uses Contexts
+        return <CounselingManager />;
         
       case 'SETTINGS':
-        return <SystemConfig />; // Uses Contexts
+        return <SystemConfig />;
         
       case 'USER_MANAGEMENT':
         return (
@@ -96,18 +90,17 @@ const AppContent: React.FC = () => {
         );
         
       case 'AUDIT_LOGS':
-        return <AuditLogManager />; // Uses Contexts
+        return <AuditLogManager />;
         
       case 'SCHOLARSHIP':
-        // ScholarshipManager consumes Contexts, configs passed for labeling helpers if needed
         return <ScholarshipManager configs={configs} initialParams={navParams} />;
         
       case 'ACTIVITY':
-        return <ActivityManager />; // Uses Contexts
-
+        return <ActivityManager />;
+        
       case 'STUDENT_PORTAL':
-        return <StudentRedemption currentUser={currentUser} />;
-
+        return <StudentPortal currentUser={currentUser} />;
+        
       case 'REDEMPTION_MANAGER':
         return <RedemptionManager />;
         
@@ -117,7 +110,7 @@ const AppContent: React.FC = () => {
   };
 
   if (!currentUser) {
-      return <Login />; // Uses AuthContext
+      return <Login />;
   }
 
   return (
@@ -135,7 +128,6 @@ const AppContent: React.FC = () => {
   );
 };
 
-// --- Main Root Component ---
 export default function App() {
   useEffect(() => {
       StorageService.updateMetadata();

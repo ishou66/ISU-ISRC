@@ -1,9 +1,12 @@
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ICONS } from '../constants';
-import { HighRiskStatus, ScholarshipStatus, PriorityLevel, ScholarshipRecord, Student, Announcement, RedemptionStatus } from '../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { HighRiskStatus, ScholarshipStatus, PriorityLevel, ScholarshipRecord, Student, Announcement, RedemptionStatus, CounselingLog } from '../types';
+import { 
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, 
+  LineChart, Line, PieChart, Pie, Cell, Legend 
+} from 'recharts';
 import { useStudents } from '../contexts/StudentContext';
 import { useScholarships } from '../contexts/ScholarshipContext';
 import { useSystem } from '../contexts/SystemContext';
@@ -13,10 +16,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { getPriority, STATUS_LABELS } from '../utils/stateMachine';
 import { useToast } from '../contexts/ToastContext';
 import { useCountdown } from '../hooks/useCountdown';
+import { ResizableHeader } from './ui/ResizableHeader';
 
 interface DashboardProps {
     onNavigate: (view: string, params?: any) => void;
 }
+
+// --- CONSTANTS ---
+const CHART_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 // --- SHARED COMPONENTS ---
 
@@ -115,7 +122,7 @@ const StudentDashboard: React.FC<{
     currentUser: any,
     students: Student[],
     scholarships: ScholarshipRecord[],
-    activities: any[], // Simple type for brevity
+    activities: any[],
     onNavigate: (view: string) => void,
     announcements: Announcement[]
 }> = ({ currentUser, students, scholarships, activities, onNavigate, announcements }) => {
@@ -126,7 +133,7 @@ const StudentDashboard: React.FC<{
 
     // Calculated Stats
     const totalAmount = myScholarships.filter(s => s.status === 'DISBURSED').reduce((acc, curr) => acc + curr.amount, 0);
-    const totalHours = myActivities.filter(a => a.status === 'CONFIRMED').reduce((acc, curr) => acc + curr.hours, 0);
+    const totalHours = myActivities.filter(a => a.status === 'CONFIRMED' || a.status === 'COMPLETED').reduce((acc, curr) => acc + curr.hours, 0);
 
     // Filter "Action Required" items
     const actionItems = [
@@ -244,245 +251,265 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { activities } = useActivities();
   const { currentUser } = useAuth();
   
-  // Use "Assistant" role ID for student view logic check
   const isStudent = currentUser?.roleId === 'role_assistant' || currentUser?.account.startsWith('student');
+
+  // --- DATA PROCESSING FOR ADMIN DASHBOARD ---
+
+  // 1. KPI Data
+  const criticalStudents = students.filter(s => s.highRisk === HighRiskStatus.CRITICAL).length;
+  const pendingScholarships = scholarships.filter(s => s.status === ScholarshipStatus.SUBMITTED).length;
+  const pendingRedemptions = redemptions.filter(r => r.status === RedemptionStatus.SUBMITTED).length;
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const monthlyLogs = counselingLogs.filter(l => {
+      const d = new Date(l.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+  
+  // 2. Chart Data: Counseling Trends (Last 6 Months)
+  const lineChartData = useMemo(() => {
+      const data = [];
+      for (let i = 5; i >= 0; i--) {
+          const d = new Date();
+          d.setMonth(d.getMonth() - i);
+          const monthKey = d.toLocaleString('default', { month: 'short' });
+          const count = counselingLogs.filter(l => {
+              const logDate = new Date(l.date);
+              return logDate.getMonth() === d.getMonth() && logDate.getFullYear() === d.getFullYear();
+          }).length;
+          data.push({ name: monthKey, count });
+      }
+      return data;
+  }, [counselingLogs]);
+
+  // 3. Chart Data: Case Distribution (Status)
+  const pieChartData = useMemo(() => {
+      let pending = 0;
+      let approved = 0;
+      let rejected = 0;
+      let disbursed = 0;
+
+      [...scholarships, ...redemptions].forEach(item => {
+          if (item.status.includes('SUBMITTED') || item.status.includes('PENDING')) pending++;
+          else if (item.status.includes('APPROVED')) approved++;
+          else if (item.status.includes('REJECTED') || item.status.includes('FAIL')) rejected++;
+          else if (item.status === 'DISBURSED') disbursed++;
+      });
+
+      return [
+          { name: '待審核', value: pending },
+          { name: '已簽核', value: approved },
+          { name: '已撥款', value: disbursed },
+          { name: '已退回', value: rejected }
+      ].filter(d => d.value > 0);
+  }, [scholarships, redemptions]);
+
+  // 4. Alert Logic: Students not seen > 30 days
+  const neglectedStudents = useMemo(() => {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const lastSeenMap = new Map<string, string>();
+      counselingLogs.forEach(log => {
+          const current = lastSeenMap.get(log.studentId);
+          if (!current || new Date(log.date) > new Date(current)) {
+              lastSeenMap.set(log.studentId, log.date);
+          }
+      });
+
+      return students
+          .filter(s => s.careStatus === 'OPEN') // Only open cases
+          .map(s => ({
+              ...s,
+              lastSeen: lastSeenMap.get(s.id)
+          }))
+          .filter(s => !s.lastSeen || new Date(s.lastSeen) < thirtyDaysAgo)
+          .sort((a, b) => (a.lastSeen || '0').localeCompare(b.lastSeen || '0'));
+  }, [students, counselingLogs]);
+
 
   if (isStudent) {
       return <StudentDashboard currentUser={currentUser} students={students} scholarships={scholarships} activities={activities} onNavigate={onNavigate} announcements={announcements} />;
   }
 
-  // --- ADMIN VIEW LOGIC ---
-
-  const [viewMode, setViewMode] = useState<'OVERVIEW' | 'TASKS'>('OVERVIEW');
-  
-  // KPI Calculations
-  const criticalStudents = students.filter(s => s.highRisk === HighRiskStatus.CRITICAL).length;
-  const pendingScholarships = scholarships.filter(s => 
-    s.status === ScholarshipStatus.SUBMITTED || 
-    s.status === ScholarshipStatus.RESUBMITTED
-  ).length;
-  const pendingRedemptions = redemptions.filter(r => r.status === RedemptionStatus.SUBMITTED).length;
-  
-  const currentMonth = new Date().getMonth();
-  const monthlyLogs = counselingLogs.filter(l => new Date(l.date).getMonth() === currentMonth);
-  const monthlyNewCases = students.filter(s => new Date().getMonth() === currentMonth && s.careStatus === 'OPEN').length; // Mock logic
-
-  // Chart Data
-  const deptConfig = configs.filter(c => c.category === 'DEPT' && c.isActive);
-  const chartData = deptConfig.map(dept => {
-      const count = students.filter(s => s.departmentCode === dept.code).length;
-      return { name: dept.label.replace('學系',''), students: count };
-  }).filter(d => d.students > 0).sort((a,b) => b.students - a.students).slice(0, 10);
-
-  // Task Buckets
-  const categorizedTasks = React.useMemo(() => {
-      const buckets: Record<PriorityLevel, ScholarshipRecord[]> = { P0: [], P1: [], P2: [], P3: [] };
-      scholarships.forEach(s => {
-          if ([ScholarshipStatus.DISBURSED, ScholarshipStatus.CANCELLED, ScholarshipStatus.RETURNED].includes(s.status)) return;
-          const p = getPriority(s);
-          buckets[p].push(s);
-      });
-      return buckets;
-  }, [scholarships]);
-
   return (
     <div className="space-y-6 animate-fade-in pb-10">
-      {/* Admin Header */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
           <div>
               <h1 className="text-2xl font-bold text-neutral-text tracking-tight">管理中心儀表板</h1>
-              <p className="text-neutral-gray mt-1 font-medium text-sm">
+              <p className="text-neutral-gray mt-1 text-sm">
                   今日概況：
-                  <span className="text-danger font-bold mx-1">{criticalStudents}</span> 高關懷需追蹤，
-                  <span className="text-primary font-bold mx-1">{pendingRedemptions}</span> 筆兌換待審。
+                  <span className="text-danger font-bold mx-1">{criticalStudents}</span> 位高關懷學生，
+                  <span className="text-primary font-bold mx-1">{pendingScholarships + pendingRedemptions}</span> 件待辦申請。
               </p>
           </div>
-          <div className="bg-white p-1 rounded border border-neutral-border shadow-sm flex no-print">
-             <button onClick={() => setViewMode('OVERVIEW')} className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 ${viewMode === 'OVERVIEW' ? 'bg-primary-50 text-primary' : 'text-neutral-gray hover:bg-neutral-bg'}`}>
-                <ICONS.Dashboard size={16}/> 營運概覽
-             </button>
-             <button onClick={() => setViewMode('TASKS')} className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 ${viewMode === 'TASKS' ? 'bg-primary-50 text-primary' : 'text-neutral-gray hover:bg-neutral-bg'}`}>
-                <ICONS.Review size={16}/> 待辦清單
-                {(categorizedTasks.P0.length + categorizedTasks.P1.length) > 0 && <span className="w-2 h-2 rounded-full bg-danger"></span>}
-             </button>
+          <div className="text-xs text-gray-400 no-print">
+              資料更新: {new Date().toLocaleTimeString()}
           </div>
       </div>
 
-      {viewMode === 'OVERVIEW' && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Left Column: KPI Modules */}
-              <div className="lg:col-span-3 space-y-6">
-                  
-                  {/* Quick Actions Row */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <button onClick={() => onNavigate('STUDENTS')} className="bg-white p-4 rounded-lg border border-neutral-border shadow-sm hover:shadow-md transition-all text-left group">
-                          <div className="bg-primary-50 w-10 h-10 rounded-lg flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform"><ICONS.Plus size={20}/></div>
-                          <h4 className="font-bold text-gray-800">新增個案</h4>
-                          <p className="text-xs text-gray-500">建立學生資料</p>
-                      </button>
-                      <button onClick={() => onNavigate('COUNSELING_MANAGER')} className="bg-white p-4 rounded-lg border border-neutral-border shadow-sm hover:shadow-md transition-all text-left group">
-                          <div className="bg-green-50 w-10 h-10 rounded-lg flex items-center justify-center text-green-600 mb-3 group-hover:scale-110 transition-transform"><ICONS.Heart size={20}/></div>
-                          <h4 className="font-bold text-gray-800">輔導紀錄</h4>
-                          <p className="text-xs text-gray-500">填寫晤談日誌</p>
-                      </button>
-                      <button onClick={() => onNavigate('SCHOLARSHIP')} className="bg-white p-4 rounded-lg border border-neutral-border shadow-sm hover:shadow-md transition-all text-left group">
-                          <div className="bg-blue-50 w-10 h-10 rounded-lg flex items-center justify-center text-blue-600 mb-3 group-hover:scale-110 transition-transform"><ICONS.Review size={20}/></div>
-                          <h4 className="font-bold text-gray-800">獎助審核</h4>
-                          <p className="text-xs text-gray-500">{pendingScholarships} 件待處理</p>
-                      </button>
-                      <button onClick={() => onNavigate('REDEMPTION_MANAGER')} className="bg-white p-4 rounded-lg border border-neutral-border shadow-sm hover:shadow-md transition-all text-left group">
-                          <div className="bg-purple-50 w-10 h-10 rounded-lg flex items-center justify-center text-purple-600 mb-3 group-hover:scale-110 transition-transform"><ICONS.Money size={20}/></div>
-                          <h4 className="font-bold text-gray-800">兌換核銷</h4>
-                          <p className="text-xs text-gray-500">{pendingRedemptions} 件申請中</p>
-                      </button>
-                  </div>
-
-                  {/* KPI Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {/* Counseling Stats */}
-                      <div className="card p-5 border-t-4 border-t-green-500">
-                          <h3 className="font-bold text-gray-700 flex justify-between items-center mb-4">
-                              輔導關懷
-                              <ICONS.Heart className="text-gray-300" size={18}/>
-                          </h3>
-                          <div className="space-y-4">
-                              <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-500">本月新增</span>
-                                  <span className="font-bold text-xl">{monthlyNewCases}</span>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-500">本月晤談</span>
-                                  <span className="font-bold text-xl">{monthlyLogs.length}</span>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-500">高關懷案</span>
-                                  <span className="font-bold text-xl text-danger">{criticalStudents}</span>
-                              </div>
-                          </div>
-                      </div>
-
-                      {/* Financial Stats */}
-                      <div className="card p-5 border-t-4 border-t-blue-500">
-                          <h3 className="font-bold text-gray-700 flex justify-between items-center mb-4">
-                              獎助成效
-                              <ICONS.Financial className="text-gray-300" size={18}/>
-                          </h3>
-                          <div className="space-y-4">
-                              <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-500">兌換申請</span>
-                                  <span className="font-bold text-xl">{redemptions.length}</span>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-500">已撥款</span>
-                                  <span className="font-bold text-xl text-success">{redemptions.filter(r => r.status === 'DISBURSED').length}</span>
-                              </div>
-                              <div className="w-full bg-gray-100 rounded-full h-2 mt-2">
-                                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '65%' }}></div>
-                              </div>
-                              <p className="text-[10px] text-gray-400 text-right">年度預算執行率 65%</p>
-                          </div>
-                      </div>
-
-                      {/* Activity Stats */}
-                      <div className="card p-5 border-t-4 border-t-purple-500">
-                          <h3 className="font-bold text-gray-700 flex justify-between items-center mb-4">
-                              活動參與
-                              <ICONS.Activity className="text-gray-300" size={18}/>
-                          </h3>
-                          <div className="space-y-4">
-                               <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-500">近期活動</span>
-                                  <span className="font-bold text-xl">3</span>
-                              </div>
-                               <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-500">總簽到數</span>
-                                  <span className="font-bold text-xl">{activities.filter(a => a.status === 'CONFIRMED').length}</span>
-                              </div>
-                              <button className="w-full text-xs border border-purple-200 text-purple-600 py-1 rounded hover:bg-purple-50">檢視報名狀況</button>
-                          </div>
-                      </div>
-                  </div>
-
-                  {/* Chart */}
-                  <div className="card p-6 h-80 flex flex-col">
-                        <h4 className="font-bold text-gray-800 mb-4">系所學生分佈 Top 10</h4>
-                        <div className="flex-1">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} margin={{top: 5, right: 10, left: -20, bottom: 0}} barSize={32}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                    <XAxis dataKey="name" tick={{fontSize: 10}} interval={0} />
-                                    <YAxis tick={{fontSize: 10}} allowDecimals={false} axisLine={false} tickLine={false} />
-                                    <Tooltip cursor={{fill: '#f9f9f9'}} />
-                                    <Bar dataKey="students" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                  </div>
+      {/* 1. KPI Cards Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="card p-4 border-l-4 border-l-blue-500 flex items-start justify-between">
+              <div>
+                  <p className="text-xs text-gray-500 font-bold uppercase">本月輔導人次</p>
+                  <p className="text-2xl font-bold text-gray-800 mt-1">{monthlyLogs.length}</p>
+                  <p className="text-[10px] text-green-600 font-bold mt-1 flex items-center gap-1">
+                      <ICONS.CheckCircle size={10}/> 較上月持平
+                  </p>
               </div>
+              <div className="p-2 bg-blue-50 rounded text-blue-600"><ICONS.Heart size={20}/></div>
+          </div>
+          
+          <div className="card p-4 border-l-4 border-l-yellow-500 flex items-start justify-between">
+              <div>
+                  <p className="text-xs text-gray-500 font-bold uppercase">待審核案件</p>
+                  <p className="text-2xl font-bold text-gray-800 mt-1">{pendingScholarships + pendingRedemptions}</p>
+                  <p className="text-[10px] text-orange-600 font-bold mt-1">需優先處理</p>
+              </div>
+              <div className="p-2 bg-yellow-50 rounded text-yellow-600"><ICONS.Review size={20}/></div>
+          </div>
 
-              {/* Right Column: Announcements & Tasks */}
-              <div className="lg:col-span-1 space-y-6">
-                  <div className="h-96">
-                      <AnnouncementWidget announcements={announcements} role="ADMIN" onAdd={addAnnouncement} onDelete={deleteAnnouncement} currentUser={currentUser} />
-                  </div>
-                  
-                  {/* Urgent Tasks Mini-List */}
-                  <div className="card p-4">
-                      <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                          <ICONS.AlertTriangle size={16} className="text-danger"/> 需關注事項
-                      </h4>
-                      <div className="space-y-2">
-                          {categorizedTasks.P0.slice(0, 3).map(task => (
-                              <div key={task.id} className="text-xs p-2 bg-red-50 border border-red-100 rounded text-red-700">
-                                  <span className="font-bold">即將逾期:</span> {task.name}
-                              </div>
-                          ))}
-                          {pendingRedemptions > 0 && (
-                              <div className="text-xs p-2 bg-yellow-50 border border-yellow-100 rounded text-yellow-700 cursor-pointer hover:bg-yellow-100" onClick={() => onNavigate('REDEMPTION_MANAGER')}>
-                                  <span className="font-bold">{pendingRedemptions} 筆</span> 兌換申請待第一層檢核
-                              </div>
-                          )}
-                          {categorizedTasks.P0.length === 0 && pendingRedemptions === 0 && (
-                              <div className="text-center text-gray-400 text-xs py-4">目前無緊急事項</div>
-                          )}
-                      </div>
-                  </div>
+          <div className="card p-4 border-l-4 border-l-green-500 flex items-start justify-between">
+              <div>
+                  <p className="text-xs text-gray-500 font-bold uppercase">年度撥款總額</p>
+                  <p className="text-2xl font-bold text-gray-800 mt-1">${redemptions.filter(r => r.status === 'DISBURSED').reduce((acc,c)=>acc+c.amount,0).toLocaleString()}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">執行率 65%</p>
+              </div>
+              <div className="p-2 bg-green-50 rounded text-green-600"><ICONS.Money size={20}/></div>
+          </div>
+
+          <div className="card p-4 border-l-4 border-l-red-500 flex items-start justify-between">
+              <div>
+                  <p className="text-xs text-gray-500 font-bold uppercase">高關懷學生</p>
+                  <p className="text-2xl font-bold text-danger mt-1">{criticalStudents}</p>
+                  <p className="text-[10px] text-red-400 mt-1 font-bold">{neglectedStudents.length} 人久未追蹤</p>
+              </div>
+              <div className="p-2 bg-red-50 rounded text-red-600"><ICONS.AlertTriangle size={20}/></div>
+          </div>
+      </div>
+
+      {/* 2. Quick Actions Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <button onClick={() => onNavigate('COUNSELING_MANAGER')} className="bg-white border border-gray-200 p-3 rounded-lg hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center gap-2 text-sm font-bold text-gray-700 transition-all shadow-sm">
+              <ICONS.Plus size={16} className="text-blue-500"/> 新增輔導紀錄
+          </button>
+          <button onClick={() => onNavigate('STUDENTS')} className="bg-white border border-gray-200 p-3 rounded-lg hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center gap-2 text-sm font-bold text-gray-700 transition-all shadow-sm">
+              <ICONS.Users size={16} className="text-green-500"/> 學生查詢
+          </button>
+          <button onClick={() => onNavigate('SCHOLARSHIP')} className="bg-white border border-gray-200 p-3 rounded-lg hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center gap-2 text-sm font-bold text-gray-700 transition-all shadow-sm">
+              <ICONS.Review size={16} className="text-yellow-500"/> 獎助審核
+          </button>
+          <button onClick={() => onNavigate('ACTIVITY')} className="bg-white border border-gray-200 p-3 rounded-lg hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center gap-2 text-sm font-bold text-gray-700 transition-all shadow-sm">
+              <ICONS.Activity size={16} className="text-purple-500"/> 建立活動
+          </button>
+          <button onClick={() => onNavigate('REDEMPTION_MANAGER')} className="bg-white border border-gray-200 p-3 rounded-lg hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center gap-2 text-sm font-bold text-gray-700 transition-all shadow-sm">
+              <ICONS.Money size={16} className="text-red-500"/> 核銷作業
+          </button>
+      </div>
+
+      {/* 3. Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Line Chart */}
+          <div className="card p-5 lg:col-span-2 flex flex-col h-80">
+              <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <ICONS.Activity size={18} className="text-blue-500"/> 
+                  輔導關懷趨勢 (近6個月)
+              </h3>
+              <div className="flex-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={lineChartData}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0"/>
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12}} />
+                          <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12}} allowDecimals={false} />
+                          <Tooltip />
+                          <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
+                      </LineChart>
+                  </ResponsiveContainer>
               </div>
           </div>
-      )}
 
-      {/* Re-use Task Card View from original dashboard for Task Mode */}
-      {viewMode === 'TASKS' && (
-           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
-               {/* Logic identical to original component, rendered here */}
-               {[
-                  { id: 'P0', label: 'P0 Critical', color: 'text-danger', desc: 'Expired or < 24h', list: categorizedTasks.P0 },
-                  { id: 'P1', label: 'P1 Urgent', color: 'text-primary', desc: '1-3 Days Left', list: categorizedTasks.P1 },
-                  { id: 'P2', label: 'P2 Normal', color: 'text-yellow-600', desc: '3-7 Days Left', list: categorizedTasks.P2 },
-                  { id: 'P3', label: 'P3 Low', color: 'text-neutral-gray', desc: '> 7 Days Left', list: categorizedTasks.P3 },
-              ].map(col => (
-                  <div key={col.id} className="flex flex-col gap-3">
-                      <div className={`flex justify-between items-center pb-2 border-b-2 border-neutral-border`}>
-                          <div>
-                              <h3 className={`font-bold ${col.color}`}>{col.label}</h3>
-                              <p className="text-[10px] text-neutral-gray uppercase font-medium">{col.desc}</p>
-                          </div>
-                          <span className={`bg-neutral-bg text-neutral-text border border-neutral-border text-xs font-bold px-2 py-1 rounded-full`}>{col.list.length}</span>
-                      </div>
-                      <div className="flex flex-col gap-3 min-h-[200px]">
-                          {col.list.length === 0 && <div className="border-2 border-dashed border-neutral-border rounded-lg p-6 text-center text-neutral-gray text-sm font-medium">No Tasks</div>}
-                          {col.list.map(task => (
-                              <div key={task.id} className="card p-3 border-l-4 border-l-gray-300 hover:shadow-md cursor-pointer" onClick={() => onNavigate('SCHOLARSHIP')}>
-                                  <div className="flex justify-between mb-1"><span className="text-xs font-bold text-gray-700">{students.find(s=>s.id===task.studentId)?.name}</span><span className="text-[10px] text-gray-500">{STATUS_LABELS[task.status]}</span></div>
-                                  <div className="text-xs text-gray-600 truncate">{task.name}</div>
-                                  {task.statusDeadline && <div className="mt-2 text-[10px] text-red-500 font-bold text-right">Due: {new Date(task.statusDeadline).toLocaleDateString()}</div>}
-                              </div>
+          {/* Pie Chart */}
+          <div className="card p-5 flex flex-col h-80">
+              <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <ICONS.PieChart size={18} className="text-orange-500"/> 
+                  案件狀態分佈
+              </h3>
+              <div className="flex-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                          <Pie
+                              data={pieChartData}
+                              innerRadius={60}
+                              outerRadius={80}
+                              paddingAngle={5}
+                              dataKey="value"
+                          >
+                              {pieChartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                              ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                      </PieChart>
+                  </ResponsiveContainer>
+              </div>
+          </div>
+      </div>
+
+      {/* 4. Alerts & Announcements */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Neglected Students Alert */}
+          <div className="card lg:col-span-2 flex flex-col">
+              <div className="p-4 border-b border-gray-200 bg-red-50 flex justify-between items-center">
+                  <h3 className="font-bold text-red-800 flex items-center gap-2">
+                      <ICONS.AlertTriangle size={18}/> 
+                      需關注名單 (超過30天未關懷)
+                  </h3>
+                  <span className="bg-white text-red-600 px-2 py-0.5 rounded text-xs font-bold border border-red-200">{neglectedStudents.length} 人</span>
+              </div>
+              <div className="flex-1 overflow-auto max-h-80">
+                  <table className="w-full text-sm text-left">
+                      <thead className="bg-gray-50 text-gray-700 sticky top-0">
+                          <tr>
+                              <ResizableHeader className="p-3 w-32">學生</ResizableHeader>
+                              <ResizableHeader className="p-3 w-32">最後晤談</ResizableHeader>
+                              <ResizableHeader className="p-3">系級</ResizableHeader>
+                              <ResizableHeader className="p-3 text-right">操作</ResizableHeader>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          {neglectedStudents.map(s => (
+                              <tr key={s.id} className="border-b hover:bg-red-50/30">
+                                  <td className="p-3">
+                                      <div className="font-bold text-gray-800">{s.name}</div>
+                                      <div className="text-xs text-gray-500">{s.studentId}</div>
+                                  </td>
+                                  <td className="p-3 text-red-600 font-medium">
+                                      {s.lastSeen ? s.lastSeen : '尚無紀錄'}
+                                  </td>
+                                  <td className="p-3 text-gray-600">{s.departmentCode}</td>
+                                  <td className="p-3 text-right">
+                                      <button onClick={() => onNavigate('COUNSELING_MANAGER', { studentId: s.id })} className="text-xs border border-blue-200 text-blue-600 px-2 py-1 rounded hover:bg-blue-50">
+                                          新增紀錄
+                                      </button>
+                                  </td>
+                              </tr>
                           ))}
-                      </div>
-                  </div>
-              ))}
-           </div>
-      )}
+                          {neglectedStudents.length === 0 && (
+                              <tr><td colSpan={4} className="p-6 text-center text-gray-400">目前無滯留個案，做得好！</td></tr>
+                          )}
+                      </tbody>
+                  </table>
+              </div>
+          </div>
+
+          {/* Announcements */}
+          <div className="h-96">
+              <AnnouncementWidget announcements={announcements} role="ADMIN" onAdd={addAnnouncement} onDelete={deleteAnnouncement} currentUser={currentUser} />
+          </div>
+      </div>
     </div>
   );
 };

@@ -1,11 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Student, ConfigItem, HighRiskStatus, StatusRecord, FamilyMember, Sibling } from '../types';
 import { ICONS } from '../constants';
 import { useStudents } from '../contexts/StudentContext';
 import { useSystem } from '../contexts/SystemContext';
+import { useScholarships } from '../contexts/ScholarshipContext';
+import { useActivities } from '../contexts/ActivityContext';
 import { usePermissionContext } from '../contexts/PermissionContext';
 import { studentSchema } from '../lib/schemas';
 import { useToast } from '../contexts/ToastContext';
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
 
 // --- Helper Constants ---
 const PERSONAL_FACTORS = [
@@ -30,6 +35,32 @@ const getLabel = (code: string | undefined, type: string, configs: ConfigItem[])
     return configs.find(c => c.category === type && c.code === code)?.label || code;
 };
 
+// --- Timeline Item ---
+const TimelineItem: React.FC<{ date: string, type: 'COUNSEL' | 'SCHOLARSHIP' | 'ACTIVITY', title: string, subtitle?: string, isLast?: boolean }> = ({ date, type, title, subtitle, isLast }) => {
+    let colorClass = 'bg-gray-200 text-gray-500';
+    let icon = <ICONS.Activity size={14}/>;
+
+    if (type === 'COUNSEL') { colorClass = 'bg-blue-100 text-blue-600'; icon = <ICONS.Heart size={14}/>; }
+    if (type === 'SCHOLARSHIP') { colorClass = 'bg-green-100 text-green-600'; icon = <ICONS.Money size={14}/>; }
+    if (type === 'ACTIVITY') { colorClass = 'bg-purple-100 text-purple-600'; icon = <ICONS.GraduationCap size={14}/>; }
+
+    return (
+        <div className="flex gap-4">
+            <div className="flex flex-col items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${colorClass} shrink-0`}>
+                    {icon}
+                </div>
+                {!isLast && <div className="w-0.5 bg-gray-200 h-full mt-1"></div>}
+            </div>
+            <div className="pb-8">
+                <div className="text-xs text-gray-400 font-mono mb-0.5">{date}</div>
+                <h4 className="font-bold text-gray-800 text-sm">{title}</h4>
+                {subtitle && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{subtitle}</p>}
+            </div>
+        </div>
+    );
+};
+
 // --- Main Component ---
 
 interface StudentDetailProps {
@@ -38,13 +69,15 @@ interface StudentDetailProps {
 }
 
 export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack }) => {
-  const { updateStudent } = useStudents();
+  const { updateStudent, counselingLogs } = useStudents();
+  const { scholarships } = useScholarships();
+  const { activities, events } = useActivities();
   const { configs } = useSystem();
   const { currentUser, logAction } = usePermissionContext();
   const { notify } = useToast();
 
   // --- Local State ---
-  const [activeTab, setActiveTab] = useState<'IDENTITY' | 'CONTACT' | 'FAMILY' | 'BANK' | 'MONEY' | 'COUNSEL' | 'ACTIVITY'>('IDENTITY');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'IDENTITY' | 'CONTACT' | 'FAMILY' | 'BANK' | 'MONEY' | 'COUNSEL' | 'ACTIVITY'>('DASHBOARD');
   const [isEditing, setIsEditing] = useState(false); // Controls View/Edit Mode
   const [formData, setFormData] = useState<Student>(student);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -66,6 +99,39 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
   useEffect(() => { 
       setFormData(student); 
       setErrors({});
+  }, [student]);
+
+  // --- Derived Data for Dashboard ---
+  const timelineData = useMemo(() => {
+      const logs = counselingLogs.filter(l => l.studentId === student.id).map(l => ({ 
+          date: l.date, type: 'COUNSEL' as const, title: '輔導紀錄', subtitle: l.content 
+      }));
+      const schols = scholarships.filter(s => s.studentId === student.id).map(s => ({
+          date: s.statusUpdatedAt.split('T')[0], type: 'SCHOLARSHIP' as const, title: `獎助申請：${s.name}`, subtitle: `狀態更新為：${s.status}`
+      }));
+      const acts = activities.filter(a => a.studentId === student.id).map(a => {
+          const evt = events.find(e => e.id === a.eventId);
+          return {
+              date: a.registrationDate?.split('T')[0] || 'Unknown', type: 'ACTIVITY' as const, title: `活動參與：${evt?.name}`, subtitle: `時數：${a.hours} hr`
+          };
+      });
+
+      return [...logs, ...schols, ...acts].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+  }, [counselingLogs, scholarships, activities, events, student.id]);
+
+  const radarData = useMemo(() => {
+      // Mock Risk Scores logic (In real app, calculate from counseling logs or assessments)
+      // Base score 100, minus penalty for risk factors
+      const isHighRisk = student.highRisk !== HighRiskStatus.NONE;
+      const base = isHighRisk ? 60 : 90; 
+      
+      return [
+          { subject: '學業表現', A: student.grade === '1' ? base - 10 : base, fullMark: 100 },
+          { subject: '經濟狀況', A: student.familyData.economicStatus === '小康' || student.familyData.economicStatus === '富裕' ? 95 : 60, fullMark: 100 },
+          { subject: '身心健康', A: isHighRisk ? 50 : 85, fullMark: 100 },
+          { subject: '社交適應', A: base + (Math.random() * 20 - 10), fullMark: 100 },
+          { subject: '生活穩定', A: student.housingType === 'DORM' ? 90 : 70, fullMark: 100 },
+      ];
   }, [student]);
 
   // --- Handlers ---
@@ -339,7 +405,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
            
            {/* Navigation Tabs (Hidden on Print) */}
            <div className="flex mt-6 overflow-x-auto gap-1 no-print">
-                {[{ id: 'IDENTITY', label: '學籍資料', icon: ICONS.UserCheck }, { id: 'CONTACT', label: '通訊聯絡', icon: ICONS.Phone }, { id: 'FAMILY', label: '家庭經濟', icon: ICONS.Home }, { id: 'BANK', label: '學生帳戶', icon: ICONS.Bank }, { id: 'MONEY', label: '獎助學金', icon: ICONS.Money }, { id: 'COUNSEL', label: '輔導紀錄', icon: ICONS.Counseling }, { id: 'ACTIVITY', label: '活動紀錄', icon: ICONS.Activity }].map(t => (
+                {[{ id: 'DASHBOARD', label: '總覽', icon: ICONS.Dashboard }, { id: 'IDENTITY', label: '學籍資料', icon: ICONS.UserCheck }, { id: 'CONTACT', label: '通訊聯絡', icon: ICONS.Phone }, { id: 'FAMILY', label: '家庭經濟', icon: ICONS.Home }, { id: 'BANK', label: '學生帳戶', icon: ICONS.Bank }, { id: 'MONEY', label: '獎助學金', icon: ICONS.Money }, { id: 'COUNSEL', label: '輔導紀錄', icon: ICONS.Counseling }, { id: 'ACTIVITY', label: '活動紀錄', icon: ICONS.Activity }].map(t => (
                     <button key={t.id} onClick={() => setActiveTab(t.id as any)} 
                         className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === t.id ? 'border-primary text-primary bg-primary-50/20' : 'border-transparent text-neutral-gray hover:text-neutral-text hover:bg-neutral-bg'}`}>
                         <t.icon size={16} /> {t.label}
@@ -349,6 +415,48 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
       </div>
 
       <div className="p-4 md:p-6 overflow-auto max-w-7xl mx-auto w-full print:p-0 print:w-full print:overflow-visible">
+           {/* === DASHBOARD TAB (360 View) === */}
+           {activeTab === 'DASHBOARD' && (
+               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+                   {/* Left Col: Risk Radar */}
+                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:col-span-1">
+                       <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><ICONS.AlertTriangle className="text-primary"/> 風險評估雷達 (Mock)</h3>
+                       <div className="h-64">
+                           <ResponsiveContainer width="100%" height="100%">
+                               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                                   <PolarGrid />
+                                   <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10 }} />
+                                   <PolarRadiusAxis angle={30} domain={[0, 100]} />
+                                   <Radar name="評估分數" dataKey="A" stroke="#d96a1a" fill="#d96a1a" fillOpacity={0.4} />
+                                   <Legend />
+                               </RadarChart>
+                           </ResponsiveContainer>
+                       </div>
+                       <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-gray-500">
+                           <p>此圖表依據學生輔導紀錄與系統資料自動生成，僅供輔導參考。</p>
+                       </div>
+                   </div>
+
+                   {/* Right Col: Timeline */}
+                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:col-span-2">
+                       <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><ICONS.Clock className="text-primary"/> 整合動態 (最新10筆)</h3>
+                       <div className="space-y-0">
+                           {timelineData.map((item, i) => (
+                               <TimelineItem 
+                                   key={i} 
+                                   date={item.date} 
+                                   type={item.type} 
+                                   title={item.title} 
+                                   subtitle={item.subtitle} 
+                                   isLast={i === timelineData.length - 1} 
+                               />
+                           ))}
+                           {timelineData.length === 0 && <div className="text-center text-gray-400 py-10">尚無任何紀錄</div>}
+                       </div>
+                   </div>
+               </div>
+           )}
+
            {/* === IDENTITY TAB === */}
            {(activeTab === 'IDENTITY' || window.matchMedia('print').matches) && (
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:block print:space-y-6">
@@ -360,6 +468,11 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                            基本學籍資料
                        </h3>
                        <div className="space-y-3 flex-1">
+                            <RenderField 
+                               label="身分證字號" 
+                               value={formData.nationalId} 
+                               renderInput={() => <input type="text" className="w-full border rounded px-2 py-1 text-sm" value={formData.nationalId || ''} onChange={e => handleFieldChange('nationalId', e.target.value)} />} 
+                           />
                             <RenderField 
                                label="入學管道" 
                                value={getLabel(formData.admissionChannel, 'ADMISSION_CHANNEL', configs)}

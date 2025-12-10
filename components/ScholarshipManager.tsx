@@ -1,21 +1,20 @@
 
-import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { ScholarshipRecord, Student, ConfigItem, AuditRecord, ScholarshipStatus, RedemptionRecord, RedemptionStatus, GrantCategory, ScholarshipConfig } from '../types';
+import React, { useState, useMemo } from 'react';
+import { ScholarshipRecord, ConfigItem, ScholarshipStatus, RedemptionStatus } from '../types';
 import { ICONS } from '../constants';
 import { useScholarships } from '../contexts/ScholarshipContext';
 import { useRedemptions } from '../contexts/RedemptionContext';
-import { useActivities } from '../contexts/ActivityContext';
 import { useStudents } from '../contexts/StudentContext';
 import { useToast } from '../contexts/ToastContext';
 import { usePermissionContext } from '../contexts/PermissionContext';
-import { useCountdown } from '../hooks/useCountdown';
 import { ResizableHeader } from './ui/ResizableHeader';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // --- Shared Components ---
 
 const StatusBadge = ({ status }: { status: string }) => {
     let color = 'bg-gray-100 text-gray-600';
-    if (status.includes('APPROVED')) color = 'bg-green-100 text-green-700';
+    if (status.includes('APPROVED') || status.includes('PASS')) color = 'bg-green-100 text-green-700';
     if (status.includes('REJECTED') || status.includes('FAIL')) color = 'bg-red-100 text-red-700';
     if (status === 'SUBMITTED' || status === 'PENDING') color = 'bg-blue-100 text-blue-700';
     if (status === 'DISBURSED') color = 'bg-green-600 text-white';
@@ -29,48 +28,104 @@ interface ScholarshipManagerProps {
   initialParams?: any;
 }
 
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
 export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs, initialParams }) => {
   // Contexts
-  const { scholarships } = useScholarships(); // Removed setScholarshipConfigs
-  const { redemptions, verifyLayer1, verifyLayer2, submitLayer3, signOff, updateSchoolStatus, redemptions: allRedemptions } = useRedemptions();
+  const { scholarships } = useScholarships();
+  const { redemptions, verifyLayer1, verifyLayer2, batchVerify, submitLayer3, signOff, updateSchoolStatus, redemptions: allRedemptions } = useRedemptions();
   const { students } = useStudents();
-  const { activities } = useActivities();
   const { currentUser } = usePermissionContext();
   const { notify } = useToast();
 
   // State
-  const [activeTab, setActiveTab] = useState<'REVIEW' | 'DISBURSEMENT'>('REVIEW');
-  const [reviewFilter, setReviewFilter] = useState<'ALL' | 'SCHOLARSHIP' | 'AID'>('ALL');
+  const [activeTab, setActiveTab] = useState<'REVIEW' | 'DISBURSEMENT' | 'ANALYTICS'>('REVIEW');
+  const [reviewFilter, setReviewFilter] = useState<'ALL' | 'L1' | 'L2'>('ALL');
   
+  // Batch Selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   // Helper
   const getStudentName = (id: string) => students.find(s => s.id === id)?.name || id;
 
-  // --- Sub-Component: Review Tab (Unified) ---
+  // --- Sub-Component: Review Tab (Unified with Batch) ---
   const ReviewTab = () => {
-      // Logic: Merge Redemptions (for Aid) with Scholarships (for Direct Grants)
       const filteredList = allRedemptions.filter(r => {
-          const isSubmitted = [RedemptionStatus.SUBMITTED, RedemptionStatus.L1_PASS, RedemptionStatus.L2_PASS].includes(r.status);
-          return isSubmitted;
+          if (reviewFilter === 'L1') return r.status === RedemptionStatus.SUBMITTED;
+          if (reviewFilter === 'L2') return r.status === RedemptionStatus.L1_PASS;
+          return [RedemptionStatus.SUBMITTED, RedemptionStatus.L1_PASS, RedemptionStatus.L2_PASS].includes(r.status);
       });
+
+      const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+          if (e.target.checked) setSelectedIds(new Set(filteredList.map(r => r.id)));
+          else setSelectedIds(new Set());
+      };
+
+      const handleSelectRow = (id: string) => {
+          const newSet = new Set(selectedIds);
+          if (newSet.has(id)) newSet.delete(id);
+          else newSet.add(id);
+          setSelectedIds(newSet);
+      };
+
+      const handleBatchApprove = () => {
+          if (selectedIds.size === 0) return;
+          if (confirm(`確定要批次通過選取的 ${selectedIds.size} 筆申請嗎？`)) {
+              // Determine stage based on filter or check items (simplified: assume filter is set)
+              const stage = reviewFilter === 'L1' ? 'L1' : reviewFilter === 'L2' ? 'L2' : null;
+              
+              if (!stage) {
+                  // If 'ALL' is selected, we need to handle mixed or prevent it.
+                  // For simplicity, let's only allow batch when a specific stage is filtered.
+                  notify('請先切換至「初審」或「複審」分頁以執行批次操作', 'alert');
+                  return;
+              }
+
+              batchVerify(Array.from(selectedIds), stage, 'PASS', currentUser?.name || 'Admin');
+              setSelectedIds(new Set());
+          }
+      };
 
       return (
           <div className="space-y-4">
-              <div className="flex justify-between items-center bg-blue-50 p-4 rounded-lg border border-blue-100">
+              <div className="flex flex-wrap justify-between items-center bg-blue-50 p-4 rounded-lg border border-blue-100 gap-4">
                   <div className="flex items-center gap-2">
                       <ICONS.Filter className="text-blue-600"/>
-                      <span className="font-bold text-blue-800">待審核案件</span>
-                      <span className="bg-white text-blue-600 px-2 rounded-full text-xs font-bold border border-blue-200">{filteredList.length}</span>
+                      <span className="font-bold text-blue-800">待審核案件 ({filteredList.length})</span>
                   </div>
-                  <div className="flex gap-2 text-sm">
-                      <button className={`px-3 py-1 rounded ${reviewFilter === 'ALL' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600'}`} onClick={() => setReviewFilter('ALL')}>全部</button>
-                      <button className={`px-3 py-1 rounded ${reviewFilter === 'AID' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600'}`} onClick={() => setReviewFilter('AID')}>助學金 (需時數)</button>
-                      <button className={`px-3 py-1 rounded ${reviewFilter === 'SCHOLARSHIP' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600'}`} onClick={() => setReviewFilter('SCHOLARSHIP')}>獎學金 (直接)</button>
+                  
+                  <div className="flex items-center gap-2">
+                      <div className="flex bg-white rounded-md border border-blue-200 overflow-hidden text-sm">
+                          <button className={`px-3 py-1.5 ${reviewFilter === 'ALL' ? 'bg-blue-100 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`} onClick={() => {setReviewFilter('ALL'); setSelectedIds(new Set());}}>全部</button>
+                          <button className={`px-3 py-1.5 ${reviewFilter === 'L1' ? 'bg-blue-100 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`} onClick={() => {setReviewFilter('L1'); setSelectedIds(new Set());}}>初審 (重複性)</button>
+                          <button className={`px-3 py-1.5 ${reviewFilter === 'L2' ? 'bg-blue-100 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-50'}`} onClick={() => {setReviewFilter('L2'); setSelectedIds(new Set());}}>複審 (時數)</button>
+                      </div>
+                      
+                      {reviewFilter !== 'ALL' && selectedIds.size > 0 && (
+                          <button onClick={handleBatchApprove} className="btn-primary px-3 py-1.5 rounded text-sm flex items-center gap-1 shadow-sm animate-fade-in">
+                              <ICONS.CheckCircle size={14}/> 批次通過 ({selectedIds.size})
+                          </button>
+                      )}
                   </div>
               </div>
 
+              {reviewFilter !== 'ALL' && (
+                  <div className="flex items-center gap-2 px-2 text-sm text-gray-500 mb-2">
+                      <input type="checkbox" onChange={handleSelectAll} checked={filteredList.length > 0 && selectedIds.size === filteredList.length} /> 全選本頁
+                  </div>
+              )}
+
               <div className="grid grid-cols-1 gap-4">
                   {filteredList.map(r => (
-                      <div key={r.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col md:flex-row gap-4 items-start md:items-center">
+                      <div key={r.id} className={`bg-white border rounded-lg p-4 shadow-sm flex flex-col md:flex-row gap-4 items-start md:items-center transition-colors ${selectedIds.has(r.id) ? 'border-primary bg-primary-50/20' : 'border-gray-200'}`}>
+                          
+                          {/* Checkbox for Batch */}
+                          {reviewFilter !== 'ALL' && (
+                              <div className="flex items-center h-full">
+                                  <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => handleSelectRow(r.id)} className="w-4 h-4 text-primary focus:ring-primary rounded" />
+                              </div>
+                          )}
+
                           <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
                                   <StatusBadge status={r.status} />
@@ -166,6 +221,84 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs,
       );
   };
 
+  // --- Sub-Component: Analytics Tab (New) ---
+  const AnalyticsTab = () => {
+      // Data Processing
+      const totalDisbursed = allRedemptions.filter(r => r.status === RedemptionStatus.DISBURSED).reduce((sum, r) => sum + r.amount, 0);
+      const totalPending = allRedemptions.filter(r => r.status.includes('SUBMITTED') || r.status.includes('PASS')).length;
+      
+      const pieData = useMemo(() => {
+          const counts: Record<string, number> = {};
+          allRedemptions.forEach(r => { counts[r.scholarshipName] = (counts[r.scholarshipName] || 0) + 1; });
+          return Object.entries(counts).map(([name, value]) => ({ name, value }));
+      }, [allRedemptions]);
+
+      const barData = useMemo(() => {
+          const counts: Record<string, number> = { 'SUBMITTED': 0, 'APPROVED': 0, 'DISBURSED': 0, 'RETURNED': 0 };
+          allRedemptions.forEach(r => {
+              if (r.status.includes('SUBMITTED') || r.status.includes('PASS')) counts['SUBMITTED']++;
+              else if (r.status.includes('APPROVED')) counts['APPROVED']++;
+              else if (r.status === 'DISBURSED') counts['DISBURSED']++;
+              else if (r.status.includes('FAIL') || r.status.includes('REJECTED') || r.status.includes('RETURNED')) counts['RETURNED']++;
+          });
+          return Object.entries(counts).map(([name, value]) => ({ name, value }));
+      }, [allRedemptions]);
+
+      return (
+          <div className="space-y-6">
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <p className="text-gray-500 text-xs font-bold uppercase">本學期核撥總金額</p>
+                      <p className="text-2xl font-bold text-green-600 mt-2">${totalDisbursed.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <p className="text-gray-500 text-xs font-bold uppercase">總申請件數</p>
+                      <p className="text-2xl font-bold text-blue-600 mt-2">{allRedemptions.length} <span className="text-sm text-gray-400 font-normal">件</span></p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <p className="text-gray-500 text-xs font-bold uppercase">待審核積壓</p>
+                      <p className="text-2xl font-bold text-orange-500 mt-2">{totalPending} <span className="text-sm text-gray-400 font-normal">件</span></p>
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Pie Chart */}
+                  <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                      <h3 className="font-bold text-gray-700 mb-4 text-center">獎助項目申請分佈</h3>
+                      <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} fill="#8884d8" dataKey="value" label>
+                                      {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                  </Pie>
+                                  <Tooltip />
+                                  <Legend />
+                              </PieChart>
+                          </ResponsiveContainer>
+                      </div>
+                  </div>
+
+                  {/* Bar Chart */}
+                  <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                      <h3 className="font-bold text-gray-700 mb-4 text-center">案件狀態統計</h3>
+                      <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={barData}>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                  <XAxis dataKey="name" tick={{fontSize: 12}} />
+                                  <YAxis allowDecimals={false} />
+                                  <Tooltip />
+                                  <Bar dataKey="value" fill="#d96a1a" radius={[4, 4, 0, 0]} name="件數" />
+                              </BarChart>
+                          </ResponsiveContainer>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      );
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-neutral-border h-full flex flex-col">
       <div className="p-4 border-b border-neutral-border bg-neutral-bg flex justify-between items-center">
@@ -175,7 +308,8 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs,
            <div className="flex gap-2">
                 {[
                     { id: 'REVIEW', label: '1. 申請審核作業', icon: ICONS.Review },
-                    { id: 'DISBURSEMENT', label: '2. 核銷與撥款', icon: ICONS.Money }
+                    { id: 'DISBURSEMENT', label: '2. 核銷與撥款', icon: ICONS.Money },
+                    { id: 'ANALYTICS', label: '3. 統計報表', icon: ICONS.PieChart }
                 ].map(tab => (
                     <button 
                         key={tab.id} 
@@ -191,6 +325,7 @@ export const ScholarshipManager: React.FC<ScholarshipManagerProps> = ({ configs,
       <div className="flex-1 overflow-auto p-6">
           {activeTab === 'REVIEW' && <ReviewTab />}
           {activeTab === 'DISBURSEMENT' && <DisbursementTab />}
+          {activeTab === 'ANALYTICS' && <AnalyticsTab />}
       </div>
     </div>
   );

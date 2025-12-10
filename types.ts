@@ -1,5 +1,8 @@
 
 
+
+
+
 export enum ModuleId {
   DASHBOARD = 'DASHBOARD',
   STUDENTS = 'STUDENTS',
@@ -166,6 +169,7 @@ export interface FamilyData {
 export interface Student {
   id: string; // UUID
   studentId: string; // Unique Display ID (Regex: 11288123A)
+  nationalId?: string; // 身分證字號 (New)
   name: string;
   indigenousName?: string;
   gender: '男' | '女' | '其他';
@@ -252,6 +256,20 @@ export interface CounselingLog {
   needsTracking: boolean;
   trackingDetail?: string;
   attachments?: string[];
+}
+
+export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+
+export interface CounselingBooking {
+    id: string;
+    studentId: string;
+    requestDate: string; // YYYY-MM-DD
+    requestTimeSlot: string; // e.g. "10:00-11:00"
+    category: string; // COUNSEL_CATEGORY
+    reason: string;
+    status: BookingStatus;
+    adminResponse?: string;
+    createdAt: string;
 }
 
 export type GrantCategory = 'SCHOLARSHIP' | 'FINANCIAL_AID';
@@ -348,14 +366,32 @@ export interface Event {
     location: string;
     description?: string;
     defaultHours: number; // For Sign-In Only
+    capacity?: number; // New: 人數限制
     
     // New Fields for Integration
     registrationDeadline?: string;
+    confirmationDeadline?: string; // New: 錄取確認截止
     checkInType: 'SIGN_IN_ONLY' | 'SIGN_IN_OUT';
     applicableGrantCategories: GrantCategory[]; // e.g. ['FINANCIAL_AID']
 }
 
-export type ActivityStatus = 'REGISTERED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'COMPLETED' | 'ABSENT' | 'CANCELLED' | 'PENDING' | 'CONFIRMED';
+export type ActivityStatus = 
+    | 'REGISTERED'       // 已報名 (排隊中/未錄取)
+    | 'WAITLIST'         // 備取
+    | 'ADMITTED'         // 正取 (待確認)
+    | 'CONFIRMED'        // 已確認參加 (可簽到)
+    | 'CHECKED_IN'       // 已簽到
+    | 'CHECKED_OUT'      // 已簽退 (待填問卷)
+    | 'PENDING_FEEDBACK' // 待填問卷 (若需要)
+    | 'COMPLETED'        // 已完課 (時數核發)
+    | 'ABSENT'           // 缺席
+    | 'CANCELLED';       // 取消
+
+export interface FeedbackData {
+    rating: number; // 1-5
+    comment: string;
+    submittedAt: string;
+}
 
 export interface ActivityRecord {
   id: string;
@@ -367,8 +403,12 @@ export interface ActivityRecord {
   
   // Timestamps
   registrationDate?: string;
+  admissionDate?: string; // 錄取時間
+  confirmationDate?: string; // 確認參加時間
   signInTime?: string;
   signOutTime?: string;
+  
+  feedback?: FeedbackData; // New
 }
 
 export interface ConfigItem {
@@ -410,6 +450,14 @@ export type LogAction =
 
 export type LogStatus = 'SUCCESS' | 'WARNING' | 'FAILURE';
 
+export type LogRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface LogChanges {
+    field: string;
+    oldValue: any;
+    newValue: any;
+}
+
 export interface SystemLog {
   id: string;
   timestamp: string;
@@ -420,7 +468,12 @@ export interface SystemLog {
   target: string; 
   details?: string;
   status: LogStatus;
-  ip: string; 
+  ip: string;
+  
+  // Enhanced Fields
+  userAgent?: string;
+  riskLevel: LogRiskLevel;
+  changes?: LogChanges[]; 
 }
 
 export interface CRUDResult<T> {

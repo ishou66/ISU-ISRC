@@ -2,14 +2,14 @@
 import React, { useState, useMemo } from 'react';
 import { ConfigItem, ScholarshipConfig } from '../types';
 import { ICONS } from '../constants';
-import { useSystem } from '../contexts/SystemContext';
+import { useSystem, SystemSettingsData } from '../contexts/SystemContext';
 import { useScholarships } from '../contexts/ScholarshipContext';
 import { useAuth } from '../contexts/AuthContext';
-import { RoleManager } from './RoleManager';
 import { ResizableHeader } from './ui/ResizableHeader';
+import { useToast } from '../contexts/ToastContext';
 
 // --- Types ---
-type ConfigCategory = 'BUSINESS' | 'INTERFACE' | 'PROCESS';
+type ConfigCategory = 'BASIC' | 'BUSINESS' | 'INTERFACE' | 'PROCESS' | 'MAINTENANCE';
 
 interface ModuleDefinition {
     id: string;
@@ -23,7 +23,7 @@ interface ModuleDefinition {
     }[];
 }
 
-// --- Configuration for INTERFACE Settings ---
+// --- Configuration for INTERFACE Settings (Dropdowns) ---
 const CONFIG_MODULES: ModuleDefinition[] = [
     {
         id: 'STUDENT',
@@ -70,12 +70,13 @@ const COLORS = [
 ];
 
 export const SystemConfig: React.FC = () => {
-  const { configs, setConfigs, workflowSteps, setWorkflowSteps } = useSystem();
+  const { configs, setConfigs, workflowSteps, setWorkflowSteps, systemSettings, updateSystemSetting } = useSystem();
   const { scholarshipConfigs, setScholarshipConfigs } = useScholarships();
   const { roles } = useAuth();
+  const { notify } = useToast();
   
   // Navigation State
-  const [activeCategory, setActiveCategory] = useState<ConfigCategory>('BUSINESS');
+  const [activeCategory, setActiveCategory] = useState<ConfigCategory>('BASIC');
   
   // Interface Settings State
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
@@ -86,9 +87,6 @@ export const SystemConfig: React.FC = () => {
   // Business Logic State (Scholarship)
   const [isScholarshipModalOpen, setIsScholarshipModalOpen] = useState(false);
   const [editingScholarship, setEditingScholarship] = useState<Partial<ScholarshipConfig>>({});
-
-  // Process Logic State
-  const [activeProcessTab, setActiveProcessTab] = useState<'WORKFLOW' | 'ROLES'>('ROLES');
 
   // Derived State for Interface Settings
   const activeModule = CONFIG_MODULES[activeModuleIndex];
@@ -128,6 +126,7 @@ export const SystemConfig: React.FC = () => {
     }
     setIsConfigModalOpen(false);
     setEditingConfigItem(null);
+    notify('選項設定已儲存');
   };
 
   // --- Handlers: Scholarship Settings ---
@@ -149,6 +148,14 @@ export const SystemConfig: React.FC = () => {
       
       setScholarshipConfigs(updatedConfigs);
       setIsScholarshipModalOpen(false);
+      notify('獎助學金規則已更新');
+  };
+
+  // --- Handlers: System Settings KV Update ---
+  const handleSettingUpdate = (key: keyof SystemSettingsData, value: any) => {
+      updateSystemSetting(key, value);
+      // Debounce or explicit save button needed for UI, but here updates context immediately
+      // StorageService save effect handles persistence
   };
 
   // --- Render Helpers ---
@@ -158,23 +165,100 @@ export const SystemConfig: React.FC = () => {
               <h2 className="font-bold text-gray-800 flex items-center gap-2"><ICONS.Settings size={20}/> 參數設定</h2>
           </div>
           <div className="flex-1 overflow-y-auto">
+              <button onClick={() => setActiveCategory('BASIC')} className={`w-full text-left px-5 py-3 border-b border-gray-100 font-bold flex items-center gap-2 ${activeCategory === 'BASIC' ? 'bg-blue-50 text-blue-800 border-r-4 border-r-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}>
+                  <ICONS.Settings size={18}/> (A) 系統與通知
+              </button>
               <button onClick={() => setActiveCategory('BUSINESS')} className={`w-full text-left px-5 py-3 border-b border-gray-100 font-bold flex items-center gap-2 ${activeCategory === 'BUSINESS' ? 'bg-blue-50 text-blue-800 border-r-4 border-r-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}>
-                  <ICONS.Briefcase size={18}/> (A) 業務邏輯設定
+                  <ICONS.Briefcase size={18}/> (B) 業務邏輯設定
               </button>
               <button onClick={() => setActiveCategory('INTERFACE')} className={`w-full text-left px-5 py-3 border-b border-gray-100 font-bold flex items-center gap-2 ${activeCategory === 'INTERFACE' ? 'bg-blue-50 text-blue-800 border-r-4 border-r-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}>
-                  <ICONS.Menu size={18}/> (B) 介面與選項
+                  <ICONS.Menu size={18}/> (C) 介面與選項
               </button>
               <button onClick={() => setActiveCategory('PROCESS')} className={`w-full text-left px-5 py-3 border-b border-gray-100 font-bold flex items-center gap-2 ${activeCategory === 'PROCESS' ? 'bg-blue-50 text-blue-800 border-r-4 border-r-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}>
-                  <ICONS.Security size={18}/> (C) 流程與權限
+                  <ICONS.Security size={18}/> (D) 流程設定
+              </button>
+              <button onClick={() => setActiveCategory('MAINTENANCE')} className={`w-full text-left px-5 py-3 border-b border-gray-100 font-bold flex items-center gap-2 ${activeCategory === 'MAINTENANCE' ? 'bg-blue-50 text-blue-800 border-r-4 border-r-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}>
+                  <ICONS.Archive size={18}/> (E) 維護與政策
               </button>
           </div>
       </div>
   );
 
-  // --- CONTENT: A. Business Logic ---
+  // --- CONTENT: A. Basic & Notification ---
+  const renderBasic = () => (
+      <div className="p-6 space-y-8 max-w-4xl">
+          {/* System Info */}
+          <div className="card p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b">系統基本資訊</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                      <label className="block text-sm font-bold text-gray-600 mb-1">系統名稱</label>
+                      <input className="w-full border rounded p-2" value={systemSettings.systemName} onChange={e => handleSettingUpdate('systemName', e.target.value)} />
+                  </div>
+                  <div>
+                      <label className="block text-sm font-bold text-gray-600 mb-1">學校名稱</label>
+                      <input className="w-full border rounded p-2" value={systemSettings.schoolName} onChange={e => handleSettingUpdate('schoolName', e.target.value)} />
+                  </div>
+                  <div className="col-span-2">
+                      <label className="block text-sm font-bold text-gray-600 mb-1">聯絡資訊 (Footer)</label>
+                      <input className="w-full border rounded p-2" value={systemSettings.contactInfo} onChange={e => handleSettingUpdate('contactInfo', e.target.value)} />
+                  </div>
+              </div>
+          </div>
+
+          {/* Notification */}
+          <div className="card p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b">通知設定 (Email & SMS)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                      <label className="block text-sm font-bold text-gray-600 mb-1">SMTP 主機 (Host)</label>
+                      <input className="w-full border rounded p-2" value={systemSettings.smtpHost} onChange={e => handleSettingUpdate('smtpHost', e.target.value)} />
+                  </div>
+                  <div>
+                      <label className="block text-sm font-bold text-gray-600 mb-1">SMTP 連接埠 (Port)</label>
+                      <input className="w-full border rounded p-2" value={systemSettings.smtpPort} onChange={e => handleSettingUpdate('smtpPort', e.target.value)} />
+                  </div>
+                  <div className="col-span-2">
+                      <label className="block text-sm font-bold text-gray-600 mb-1">簡訊 API Key</label>
+                      <input className="w-full border rounded p-2 font-mono" type="password" value={systemSettings.smsApiKey} onChange={e => handleSettingUpdate('smsApiKey', e.target.value)} />
+                  </div>
+              </div>
+              <div className="mt-4 bg-yellow-50 p-3 rounded text-xs text-yellow-700">
+                  注意：此為模擬設定，實際發信需後端整合。
+              </div>
+          </div>
+      </div>
+  );
+
+  // --- CONTENT: B. Business Logic ---
   const renderBusinessLogic = () => (
       <div className="p-6 space-y-8">
-          {/* Section 1: Scholarship Rules */}
+          {/* Section 1: Semester & Risk */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="card p-6">
+                  <h3 className="font-bold text-gray-800 mb-4">全域學期設定</h3>
+                  <div className="flex items-center gap-4">
+                      <label className="font-bold text-sm">當前學期</label>
+                      <input className="border rounded p-2 w-32 text-center font-bold text-primary" value={systemSettings.currentSemester} onChange={e => handleSettingUpdate('currentSemester', e.target.value)} />
+                  </div>
+              </div>
+              
+              <div className="card p-6">
+                  <h3 className="font-bold text-gray-800 mb-4">風險評估參數 (久未關懷天數)</h3>
+                  <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                          <label className="text-sm text-yellow-600 font-bold">需關注 (Watch)</label>
+                          <div className="flex items-center gap-2"><input type="number" className="border rounded p-1 w-20 text-right" value={systemSettings.riskThresholdWatch} onChange={e => handleSettingUpdate('riskThresholdWatch', Number(e.target.value))} /> 天</div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                          <label className="text-sm text-red-600 font-bold">高風險 (Critical)</label>
+                          <div className="flex items-center gap-2"><input type="number" className="border rounded p-1 w-20 text-right" value={systemSettings.riskThresholdCritical} onChange={e => handleSettingUpdate('riskThresholdCritical', Number(e.target.value))} /> 天</div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          {/* Section 2: Scholarship Rules */}
           <div>
               <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-bold text-gray-800 border-l-4 border-isu-red pl-3">獎助學金規則設定</h3>
@@ -210,18 +294,6 @@ export const SystemConfig: React.FC = () => {
               </div>
           </div>
 
-          {/* Section 2: Activity Rules (Simple Mock) */}
-          <div>
-              <h3 className="text-xl font-bold text-gray-800 border-l-4 border-isu-red pl-3 mb-4">活動規則設定 (全域預設)</h3>
-              <div className="bg-white border border-gray-200 rounded-lg p-6 max-w-lg">
-                  <div className="flex items-center justify-between">
-                      <label className="font-bold text-gray-700">預設服務時數 (簽到)</label>
-                      <input type="number" className="border rounded p-2 w-20 text-center" defaultValue={2} />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">此設定將作為新建立活動時的預設值，個別活動仍可調整。</p>
-              </div>
-          </div>
-
           {/* Modal: Scholarship Edit */}
           {isScholarshipModalOpen && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -246,7 +318,7 @@ export const SystemConfig: React.FC = () => {
       </div>
   );
 
-  // --- CONTENT: B. Interface Settings ---
+  // --- CONTENT: C. Interface Settings ---
   const renderInterfaceSettings = () => (
       <div className="flex h-full">
           {/* Sub Sidebar */}
@@ -316,63 +388,70 @@ export const SystemConfig: React.FC = () => {
       </div>
   );
 
-  // --- CONTENT: C. Process Settings ---
+  // --- CONTENT: D. Process Settings (Workflow) ---
   const renderProcessSettings = () => (
-      <div className="flex h-full flex-col">
-          <div className="bg-gray-50 border-b border-gray-200 px-6 py-2 flex gap-4">
-              <button onClick={() => setActiveProcessTab('ROLES')} className={`py-2 border-b-2 font-bold ${activeProcessTab === 'ROLES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>角色權限管理</button>
-              <button onClick={() => setActiveProcessTab('WORKFLOW')} className={`py-2 border-b-2 font-bold ${activeProcessTab === 'WORKFLOW' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>簽核流程設定</button>
-          </div>
-          <div className="flex-1 overflow-hidden p-6">
-              {activeProcessTab === 'ROLES' && <RoleManager />}
-              
-              {activeProcessTab === 'WORKFLOW' && (
-                  <div className="max-w-4xl mx-auto space-y-8">
-                      <div className="bg-blue-50 p-4 rounded border border-blue-200 text-blue-800 text-sm">
-                          請定義「獎助學金兌換核銷」各階段的負責角色。系統將依此設定控制審核按鈕的權限。
-                      </div>
-                      <div className="relative">
-                          {workflowSteps.map((step, idx) => (
-                              <div key={step.id} className="flex items-center gap-4 mb-8 last:mb-0 relative z-10">
-                                  {/* Step Circle */}
-                                  <div className="w-10 h-10 rounded-full bg-white border-2 border-primary flex items-center justify-center font-bold text-primary shadow-sm shrink-0">
-                                      {idx + 1}
-                                  </div>
-                                  {/* Step Content */}
-                                  <div className="flex-1 bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex justify-between items-center">
-                                      <div>
-                                          <h4 className="font-bold text-gray-800">{step.stepName}</h4>
-                                          <p className="text-xs text-gray-500 mt-1">關聯狀態: {step.relatedStatus}</p>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                          <span className="text-xs font-bold text-gray-500">授權角色:</span>
-                                          <div className="flex gap-1">
-                                              {roles.map(r => (
-                                                  <label key={r.id} className={`cursor-pointer px-2 py-1 rounded text-xs border ${step.authorizedRoleIds.includes(r.id) ? 'bg-primary-50 border-primary text-primary font-bold' : 'bg-white border-gray-200 text-gray-400'}`}>
-                                                      <input 
-                                                          type="checkbox" 
-                                                          className="hidden" 
-                                                          checked={step.authorizedRoleIds.includes(r.id)}
-                                                          onChange={(e) => {
-                                                              const newRoles = e.target.checked 
-                                                                  ? [...step.authorizedRoleIds, r.id]
-                                                                  : step.authorizedRoleIds.filter(id => id !== r.id);
-                                                              setWorkflowSteps(prev => prev.map(s => s.id === step.id ? { ...s, authorizedRoleIds: newRoles } : s));
-                                                          }}
-                                                      />
-                                                      {r.name}
-                                                  </label>
-                                              ))}
-                                          </div>
-                                      </div>
+      <div className="flex h-full flex-col p-6">
+          <h3 className="text-xl font-bold text-gray-800 border-l-4 border-isu-red pl-3 mb-6">簽核流程設定</h3>
+          
+          <div className="max-w-4xl mx-auto space-y-8 w-full">
+              <div className="bg-blue-50 p-4 rounded border border-blue-200 text-blue-800 text-sm">
+                  請定義「獎助學金兌換核銷」各階段的負責角色。系統將依此設定控制審核按鈕的權限。
+              </div>
+              <div className="relative">
+                  {workflowSteps.map((step, idx) => (
+                      <div key={step.id} className="flex items-center gap-4 mb-8 last:mb-0 relative z-10">
+                          {/* Step Circle */}
+                          <div className="w-10 h-10 rounded-full bg-white border-2 border-primary flex items-center justify-center font-bold text-primary shadow-sm shrink-0">
+                              {idx + 1}
+                          </div>
+                          {/* Step Content */}
+                          <div className="flex-1 bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex justify-between items-center">
+                              <div>
+                                  <h4 className="font-bold text-gray-800">{step.stepName}</h4>
+                                  <p className="text-xs text-gray-500 mt-1">關聯狀態: {step.relatedStatus}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-gray-500">授權角色:</span>
+                                  <div className="flex gap-1">
+                                      {roles.map(r => (
+                                          <label key={r.id} className={`cursor-pointer px-2 py-1 rounded text-xs border ${step.authorizedRoleIds.includes(r.id) ? 'bg-primary-50 border-primary text-primary font-bold' : 'bg-white border-gray-200 text-gray-400'}`}>
+                                              <input 
+                                                  type="checkbox" 
+                                                  className="hidden" 
+                                                  checked={step.authorizedRoleIds.includes(r.id)}
+                                                  onChange={(e) => {
+                                                      const newRoles = e.target.checked 
+                                                          ? [...step.authorizedRoleIds, r.id]
+                                                          : step.authorizedRoleIds.filter(id => id !== r.id);
+                                                      setWorkflowSteps(prev => prev.map(s => s.id === step.id ? { ...s, authorizedRoleIds: newRoles } : s));
+                                                  }}
+                                              />
+                                              {r.name}
+                                          </label>
+                                      ))}
                                   </div>
                               </div>
-                          ))}
-                          {/* Connector Line */}
-                          <div className="absolute top-5 bottom-5 left-5 w-0.5 bg-gray-200 -z-0"></div>
+                          </div>
                       </div>
-                  </div>
-              )}
+                  ))}
+                  {/* Connector Line */}
+                  <div className="absolute top-5 bottom-5 left-5 w-0.5 bg-gray-200 -z-0"></div>
+              </div>
+          </div>
+      </div>
+  );
+
+  // --- CONTENT: E. Maintenance ---
+  const renderMaintenance = () => (
+      <div className="p-6 space-y-8 max-w-4xl">
+          <div className="card p-6 border-red-200">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b">資料保留政策</h3>
+              <div className="flex items-center gap-4 mb-4">
+                  <label className="font-bold text-sm">資安日誌保留天數</label>
+                  <input className="border rounded p-2 w-32 text-center" type="number" value={systemSettings.logRetentionDays} onChange={e => handleSettingUpdate('logRetentionDays', Number(e.target.value))} />
+                  <span className="text-xs text-gray-500">天 (超過將自動封存/刪除)</span>
+              </div>
+              <button onClick={() => notify('已執行舊資料清除作業')} className="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm hover:bg-gray-50">立即清除過期日誌</button>
           </div>
       </div>
   );
@@ -380,10 +459,12 @@ export const SystemConfig: React.FC = () => {
   return (
     <div className="flex h-full bg-gray-50 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       {renderSidebar()}
-      <div className="flex-1 flex flex-col min-w-0 bg-white">
+      <div className="flex-1 flex flex-col min-w-0 bg-white overflow-auto">
+          {activeCategory === 'BASIC' && renderBasic()}
           {activeCategory === 'BUSINESS' && renderBusinessLogic()}
           {activeCategory === 'INTERFACE' && renderInterfaceSettings()}
           {activeCategory === 'PROCESS' && renderProcessSettings()}
+          {activeCategory === 'MAINTENANCE' && renderMaintenance()}
       </div>
     </div>
   );

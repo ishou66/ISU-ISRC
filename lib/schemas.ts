@@ -1,4 +1,5 @@
 
+
 import { z } from 'zod';
 import { HighRiskStatus, StudentStatus } from '../types';
 
@@ -6,6 +7,7 @@ import { HighRiskStatus, StudentStatus } from '../types';
 // Year (3) + Dept (2) + Seat (3) + Division (1)
 const STUDENT_ID_REGEX = /^\d{3}\d{2}\d{3}[A-Z]$/;
 const PHONE_REGEX = /^09\d{8}$|^0\d{1,2}-\d{6,8}$/;
+const TAIWAN_ID_REGEX = /^[A-Z][12]\d{8}$/;
 
 // Reusable nested schemas
 const familyMemberSchema = z.object({
@@ -24,6 +26,11 @@ export const studentSchema = z.object({
   studentId: z.string()
     .min(1, { message: '請填寫學號' })
     .regex(STUDENT_ID_REGEX, { message: '學號格式錯誤 (例: 11288123A)' }),
+
+  nationalId: z.string()
+    .regex(TAIWAN_ID_REGEX, { message: '身分證字號格式錯誤' })
+    .optional()
+    .or(z.literal('')),
   
   name: z.string()
     .min(2, { message: '姓名至少需 2 個字' }),
@@ -50,8 +57,8 @@ export const studentSchema = z.object({
   
   // Emails
   emails: z.object({
-      personal: z.string().email().optional().or(z.literal('')),
-      school: z.string().email().optional().or(z.literal(''))
+      personal: z.string().email({ message: 'Email 格式錯誤' }).optional().or(z.literal('')),
+      school: z.string().email({ message: 'Email 格式錯誤' }).optional().or(z.literal(''))
   }).optional(),
   
   phone: z.string()

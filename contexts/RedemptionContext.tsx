@@ -1,5 +1,4 @@
 
-
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { RedemptionRecord, SurplusHour, RedemptionStatus, Student } from '../types';
 import { StorageService } from '../services/StorageService';
@@ -22,12 +21,14 @@ type RedemptionAction =
     | { type: 'SUBMIT_REDEMPTION'; payload: RedemptionRecord }
     | { type: 'ADD_SURPLUS'; payload: SurplusHour }
     | { type: 'UPDATE_REDEMPTION'; payload: RedemptionRecord }
+    | { type: 'BATCH_UPDATE_REDEMPTIONS'; payload: RedemptionRecord[] } // New
     | { type: 'EXPIRE_SURPLUS'; payload: string[] };
 
 interface RedemptionContextType extends RedemptionState {
     submitRedemption: (record: RedemptionRecord, surplus?: number) => void;
     verifyLayer1: (id: string, result: 'PASS' | 'ALREADY_REDEEMED', user: string) => void;
     verifyLayer2: (id: string, result: 'PASS' | 'REJECTED', user: string, remarks?: string) => void;
+    batchVerify: (ids: string[], stage: 'L1' | 'L2', result: 'PASS', user: string) => void; // New
     submitLayer3: (id: string, info: any, user: string) => void;
     signOff: (id: string, result: 'APPROVED' | 'RETURNED', user: string, remarks?: string) => void;
     updateSchoolStatus: (id: string, info: any) => void;
@@ -50,6 +51,9 @@ const redemptionReducer = (state: RedemptionState, action: RedemptionAction): Re
             return { ...state, surplusHours: [...state.surplusHours, action.payload] };
         case 'UPDATE_REDEMPTION':
             return { ...state, redemptions: state.redemptions.map(r => r.id === action.payload.id ? action.payload : r) };
+        case 'BATCH_UPDATE_REDEMPTIONS':
+            const updatesMap = new Map(action.payload.map(r => [r.id, r]));
+            return { ...state, redemptions: state.redemptions.map(r => updatesMap.has(r.id) ? updatesMap.get(r.id)! : r) };
         case 'EXPIRE_SURPLUS':
             return { ...state, surplusHours: state.surplusHours.map(s => action.payload.includes(s.id) ? { ...s, status: 'EXPIRED' } : s) };
         default:
@@ -130,7 +134,7 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
         
         logAction('CREATE', `Redemption: ${record.scholarshipName}`, 'SUCCESS');
-        notify('申請已送出！');
+        notify('申請已送出！系統已發送 Email 通知承辦人員。');
     };
 
     const verifyLayer1 = (id: string, result: 'PASS' | 'ALREADY_REDEEMED', user: string) => {
@@ -152,7 +156,7 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
         };
         dispatch({ type: 'UPDATE_REDEMPTION', payload: updated });
-        notify(result === 'PASS' ? '第一層檢查通過' : '已標記為重複申請', result === 'PASS' ? 'success' : 'alert');
+        notify(result === 'PASS' ? '初審通過' : '已標記為重複申請', result === 'PASS' ? 'success' : 'alert');
     };
 
     const verifyLayer2 = (id: string, result: 'PASS' | 'REJECTED', user: string, remarks?: string) => {
@@ -175,7 +179,45 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
         };
         dispatch({ type: 'UPDATE_REDEMPTION', payload: updated });
-        notify(result === 'PASS' ? '第二層檢查通過' : '已退回申請', result === 'PASS' ? 'success' : 'alert');
+        notify(result === 'PASS' ? '複審通過' : '已退回申請', result === 'PASS' ? 'success' : 'alert');
+    };
+
+    // --- BATCH OPERATION ---
+    const batchVerify = (ids: string[], stage: 'L1' | 'L2', result: 'PASS', user: string) => {
+        const updates: RedemptionRecord[] = [];
+        let successCount = 0;
+
+        ids.forEach(id => {
+            const target = state.redemptions.find(r => r.id === id);
+            if (!target) return;
+
+            // Security Check per item
+            if (stage === 'L1' && target.status !== RedemptionStatus.SUBMITTED) return;
+            if (stage === 'L2' && target.status !== RedemptionStatus.L1_PASS) return;
+
+            if (stage === 'L1') {
+                updates.push({
+                    ...target,
+                    status: RedemptionStatus.L1_PASS,
+                    layer1Check: { checkedBy: user, date: new Date().toISOString(), result: 'PASS' }
+                });
+            } else if (stage === 'L2') {
+                updates.push({
+                    ...target,
+                    status: RedemptionStatus.L2_PASS,
+                    layer2Check: { checkedBy: user, date: new Date().toISOString(), result: 'PASS' }
+                });
+            }
+            successCount++;
+        });
+
+        if (updates.length > 0) {
+            dispatch({ type: 'BATCH_UPDATE_REDEMPTIONS', payload: updates });
+            logAction('UPDATE', `Batch Verify ${stage}: ${successCount} items`, 'SUCCESS');
+            notify(`批次審核成功：共 ${successCount} 筆通過`);
+        } else {
+            notify('沒有符合條件的案件可執行批次操作', 'alert');
+        }
     };
 
     const submitLayer3 = (id: string, info: any, user: string) => {
@@ -249,7 +291,7 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
         };
         dispatch({ type: 'UPDATE_REDEMPTION', payload: updated });
-        notify('學校系統狀態已更新');
+        notify(newStatus === RedemptionStatus.DISBURSED ? '撥款作業完成，已發送簡訊通知學生' : '學校系統狀態已更新');
     };
 
     return (
@@ -258,6 +300,7 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             submitRedemption,
             verifyLayer1,
             verifyLayer2,
+            batchVerify,
             submitLayer3,
             signOff,
             updateSchoolStatus,
