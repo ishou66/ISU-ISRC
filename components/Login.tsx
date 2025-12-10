@@ -402,21 +402,6 @@ export const Login: React.FC = () => {
                     {userType === 'STUDENT' ? '登入學生專區' : '登入管理系統'}
                 </button>
             </form>
-
-            {/* Test Helper */}
-            {userType === 'STUDENT' && (
-                <div className="mt-6 pt-4 border-t border-dashed border-gray-200 text-center">
-                    <p className="text-xs text-gray-400 mb-2">測試帳號提示 (首登驗證用)</p>
-                    <div className="flex gap-2 justify-center flex-wrap">
-                        <button onClick={() => {setAccount('isu11200123a'); setPassword('isu11200123a');}} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-gray-600 transition-colors">
-                            王小明 (首登)
-                        </button>
-                        <button onClick={() => {setAccount('isu11200456b'); setPassword('isu11200456b');}} className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-gray-600 transition-colors">
-                            李小花 (首登)
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
       </div>
       

@@ -375,29 +375,49 @@ export const ActivityManager: React.FC = () => {
                           const record = activities.find(a => a.eventId === event.id && a.studentId === myStudent.id);
                           const isRegistered = record && record.status !== 'CANCELLED';
                           const count = activities.filter(a => a.eventId === event.id && a.status !== 'CANCELLED').length;
-                          const isFull = count >= (event.capacity || 50);
+                          const capacity = event.capacity || 50;
+                          const isFull = count >= capacity;
+                          const capacityPct = Math.min(100, (count / capacity) * 100);
 
                           return (
-                              <div key={event.id} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
-                                  <div className="flex justify-between items-start">
-                                      <div>
-                                          <h3 className="font-bold text-gray-800">{event.name}</h3>
-                                          <p className="text-xs text-gray-500 mt-1">{event.date} | {event.location}</p>
+                              <div key={event.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between gap-4 group hover:border-primary/30 transition-all">
+                                  <div className="flex gap-4">
+                                      {/* Date Badge */}
+                                      <div className="w-16 h-16 bg-gray-100 rounded-xl flex flex-col items-center justify-center text-gray-600 font-bold shrink-0 border border-gray-200 group-hover:bg-primary-50 group-hover:text-primary group-hover:border-primary/20 transition-colors">
+                                          <span className="text-xs uppercase">{new Date(event.date).toLocaleString('default', { month: 'short' })}</span>
+                                          <span className="text-xl">{new Date(event.date).getDate()}</span>
                                       </div>
+                                      
+                                      <div className="flex-1 w-full">
+                                          <h3 className="font-bold text-lg text-gray-800 line-clamp-1">{event.name}</h3>
+                                          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2"><ICONS.MapPin size={14}/> {event.location}</p>
+                                          
+                                          {/* Capacity Progress Bar */}
+                                          <div className="mt-3 w-full max-w-xs">
+                                              <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                                                  <span>已報名: {count} / {capacity}</span>
+                                                  <span className="font-bold text-primary">時數: {event.defaultHours} hr</span>
+                                              </div>
+                                              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                                  <div className={`h-full rounded-full ${isFull ? 'bg-red-500' : 'bg-primary'}`} style={{ width: `${capacityPct}%` }}></div>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </div>
+
+                                  <div className="flex items-center">
                                       {isRegistered ? (
-                                          getStatusBadge(record!.status)
+                                          <span className="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold w-full text-center md:w-auto flex items-center justify-center gap-2">
+                                              <ICONS.CheckCircle size={16}/> {getStatusBadge(record!.status)}
+                                          </span>
                                       ) : (
                                           <button 
                                             onClick={() => registerForEvent(myStudent.id, event.id)} 
-                                            className={`text-xs px-3 py-1.5 rounded text-white font-bold ${isFull ? 'bg-orange-400' : 'bg-primary'}`}
+                                            className={`px-6 py-2 rounded-lg text-sm font-bold shadow-md transition-all w-full md:w-auto text-white ${isFull ? 'bg-orange-400 hover:bg-orange-500' : 'bg-primary hover:bg-primary-hover'}`}
                                           >
                                               {isFull ? '候補報名' : '立即報名'}
                                           </button>
                                       )}
-                                  </div>
-                                  <div className="mt-3 text-xs text-gray-600 bg-gray-50 p-2 rounded flex justify-between">
-                                      <span>名額: {count} / {event.capacity}</span>
-                                      <span className="text-primary font-bold">時數: {event.defaultHours} hr</span>
                                   </div>
                               </div>
                           );

@@ -19,7 +19,7 @@ const BottomNav = ({ activeTab, onChange }: { activeTab: string, onChange: (tab:
         { id: 'ACTIVITY', label: '活動', icon: ICONS.Activity },
         { id: 'FINANCIAL', label: '獎助', icon: ICONS.Money },
         { id: 'CARE', label: '預約', icon: ICONS.Heart },
-        { id: 'HELP', label: '提問', icon: ICONS.Message }, // New Tab
+        { id: 'HELP', label: '提問', icon: ICONS.Message },
     ];
 
     return (
@@ -44,12 +44,12 @@ const DesktopNav = ({ activeTab, onChange }: { activeTab: string, onChange: (tab
         { id: 'ACTIVITY', label: '活動參與', icon: ICONS.Activity },
         { id: 'FINANCIAL', label: '獎助學金', icon: ICONS.Money },
         { id: 'CARE', label: '輔導關懷', icon: ICONS.Heart },
-        { id: 'HELP', label: '線上提問', icon: ICONS.Message }, // New Tab
+        { id: 'HELP', label: '線上提問', icon: ICONS.Message },
         { id: 'PROFILE', label: '個人資料', icon: ICONS.Users },
     ];
 
     return (
-        <div className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 h-full p-6 gap-2">
+        <div className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 h-full p-6 gap-2 shrink-0">
             <div className="mb-8">
                 <div className="flex items-center gap-3 text-primary font-bold text-xl">
                     <div className="w-10 h-10 bg-gradient-to-br from-primary to-orange-600 text-white rounded-lg flex items-center justify-center shadow-lg">I</div>
@@ -253,7 +253,7 @@ const TicketDetail = ({ ticket, onBack, onReply, replies }: any) => (
 
 export const StudentPortal: React.FC<{ currentUser: any }> = ({ currentUser }) => {
     const { students, updateStudent, counselingLogs, bookings, addBooking } = useStudents();
-    const { announcements, configs } = useSystem();
+    const { announcements, configs, resources } = useSystem();
     const { activities, events, registerForEvent, cancelRegistration, checkIn, checkOut, getStudentTotalHours } = useActivities();
     const { redemptions, submitRedemption, surplusHours, calculateSurplus } = useRedemptions();
     const { scholarshipConfigs } = useScholarships();
@@ -333,6 +333,10 @@ export const StudentPortal: React.FC<{ currentUser: any }> = ({ currentUser }) =
         setIsAsking(false);
     };
 
+    const handleDownload = (resource: any) => {
+        alert('檔案下載中... (模擬)');
+    };
+
     // --- Renderers ---
     const renderContent = () => {
         switch (activeTab) {
@@ -351,56 +355,85 @@ export const StudentPortal: React.FC<{ currentUser: any }> = ({ currentUser }) =
                             </div>
                         </div>
 
-                        {/* Service Grid (Dashboard) */}
-                        <h2 className="font-bold text-gray-800 text-lg">快速服務</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <ServiceCard 
-                                title="活動報名" 
-                                desc="查看近期活動與簽到" 
-                                icon={ICONS.Activity} 
-                                colorClass="from-purple-500 to-indigo-600" 
-                                onClick={() => setActiveTab('ACTIVITY')}
-                                badge={events.filter(e => new Date(e.date) >= new Date()).length > 0 ? 'New' : undefined}
-                            />
-                            <ServiceCard 
-                                title="獎助學金" 
-                                desc="時數兌換與申請查詢" 
-                                icon={ICONS.Money} 
-                                colorClass="from-green-500 to-emerald-600" 
-                                onClick={() => setActiveTab('FINANCIAL')}
-                            />
-                            <ServiceCard 
-                                title="線上提問" 
-                                desc="有問題直接問中心" 
-                                icon={ICONS.Message} 
-                                colorClass="from-orange-400 to-orange-600" 
-                                onClick={() => setActiveTab('HELP')}
-                            />
-                            <ServiceCard 
-                                title="預約輔導" 
-                                desc="課業或生活諮詢" 
-                                icon={ICONS.Heart} 
-                                colorClass="from-pink-500 to-rose-600" 
-                                onClick={() => { setActiveTab('CARE'); setShowBookingForm(true); }}
-                            />
-                        </div>
-
-                        {/* Recent Announcements */}
-                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-bold text-gray-800 flex items-center gap-2"><ICONS.Megaphone className="text-primary"/> 最新公告</h3>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Left Col: Services */}
+                            <div className="lg:col-span-2 space-y-6">
+                                <h2 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                                    <ICONS.Menu className="text-primary"/> 快速服務
+                                </h2>
+                                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4">
+                                    <ServiceCard 
+                                        title="活動報名" 
+                                        desc="查看近期活動與簽到" 
+                                        icon={ICONS.Activity} 
+                                        colorClass="from-purple-500 to-indigo-600" 
+                                        onClick={() => setActiveTab('ACTIVITY')}
+                                        badge={events.filter(e => new Date(e.date) >= new Date()).length > 0 ? 'New' : undefined}
+                                    />
+                                    <ServiceCard 
+                                        title="獎助學金" 
+                                        desc="時數兌換與申請查詢" 
+                                        icon={ICONS.Money} 
+                                        colorClass="from-green-500 to-emerald-600" 
+                                        onClick={() => setActiveTab('FINANCIAL')}
+                                    />
+                                    <ServiceCard 
+                                        title="線上提問" 
+                                        desc="有問題直接問中心" 
+                                        icon={ICONS.Message} 
+                                        colorClass="from-orange-400 to-orange-600" 
+                                        onClick={() => setActiveTab('HELP')}
+                                    />
+                                    <ServiceCard 
+                                        title="預約輔導" 
+                                        desc="課業或生活諮詢" 
+                                        icon={ICONS.Heart} 
+                                        colorClass="from-pink-500 to-rose-600" 
+                                        onClick={() => { setActiveTab('CARE'); setShowBookingForm(true); }}
+                                    />
+                                </div>
                             </div>
-                            <div className="space-y-4">
-                                {announcements.filter(a => a.target !== 'ADMIN').slice(0, 3).map(ann => (
-                                    <div key={ann.id} className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-                                        <div className="flex justify-between mb-1">
-                                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${ann.priority === 'URGENT' ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-600'}`}>{ann.priority === 'URGENT' ? '緊急' : '一般'}</span>
-                                            <span className="text-xs text-gray-400">{ann.date}</span>
-                                        </div>
-                                        <h4 className="font-bold text-gray-800 text-sm mb-1">{ann.title}</h4>
-                                        <p className="text-xs text-gray-500 line-clamp-1">{ann.content}</p>
+
+                            {/* Right Col: Info Hub */}
+                            <div className="space-y-6">
+                                {/* Announcements */}
+                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                                        <h3 className="font-bold text-gray-800 flex items-center gap-2"><ICONS.Megaphone className="text-primary" size={18}/> 最新公告</h3>
                                     </div>
-                                ))}
+                                    <div className="space-y-4 flex-1 overflow-y-auto max-h-[300px]">
+                                        {announcements.filter(a => a.target !== 'ADMIN').map(ann => (
+                                            <div key={ann.id} className="pb-3 border-b border-gray-50 last:border-0 last:pb-0">
+                                                <div className="flex justify-between mb-1">
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${ann.priority === 'URGENT' ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-600'}`}>{ann.priority === 'URGENT' ? '緊急' : '一般'}</span>
+                                                    <span className="text-xs text-gray-400">{ann.date}</span>
+                                                </div>
+                                                <h4 className="font-bold text-gray-800 text-sm mb-1 line-clamp-1 cursor-pointer hover:text-primary transition-colors" onClick={() => alert(ann.content)}>{ann.title}</h4>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Download Center */}
+                                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                    <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                                        <h3 className="font-bold text-gray-800 flex items-center gap-2"><ICONS.Download className="text-green-600" size={18}/> 下載專區</h3>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {resources.map(res => (
+                                            <button key={res.id} onClick={() => handleDownload(res)} className="w-full flex items-center p-2 hover:bg-gray-50 rounded-lg transition-colors group text-left">
+                                                <div className="w-8 h-8 rounded bg-gray-100 text-gray-500 flex items-center justify-center mr-3 font-bold text-xs uppercase group-hover:bg-primary-50 group-hover:text-primary">
+                                                    {res.fileType}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-sm font-medium text-gray-700 line-clamp-1 group-hover:text-primary">{res.title}</div>
+                                                    <div className="text-[10px] text-gray-400">{res.updatedAt}</div>
+                                                </div>
+                                                <ICONS.Download size={14} className="text-gray-300 group-hover:text-primary"/>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -423,18 +456,24 @@ export const StudentPortal: React.FC<{ currentUser: any }> = ({ currentUser }) =
                                 const record = activities.find(a => a.eventId === event.id && a.studentId === student.id);
                                 const isRegistered = record && record.status !== 'CANCELLED';
                                 return (
-                                    <div key={event.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between gap-4">
-                                        <div>
-                                            <h4 className="font-bold text-lg text-gray-800">{event.name}</h4>
-                                            <p className="text-sm text-gray-500 mt-1 flex items-center gap-2"><ICONS.Calendar size={14}/> {event.date} <ICONS.MapPin size={14} className="ml-2"/> {event.location}</p>
-                                            <div className="flex gap-2 mt-2">
-                                                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">名額: {event.capacity}</span>
-                                                <span className="text-xs bg-primary-50 text-primary px-2 py-1 rounded font-bold">時數: {event.defaultHours} hr</span>
+                                    <div key={event.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between gap-4 group hover:border-primary/30 transition-all">
+                                        <div className="flex gap-4">
+                                            <div className="w-16 h-16 bg-gray-100 rounded-xl flex flex-col items-center justify-center text-gray-600 font-bold shrink-0 border border-gray-200 group-hover:bg-primary-50 group-hover:text-primary group-hover:border-primary/20">
+                                                <span className="text-xs uppercase">{new Date(event.date).toLocaleString('default', { month: 'short' })}</span>
+                                                <span className="text-xl">{new Date(event.date).getDate()}</span>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-lg text-gray-800 line-clamp-1">{event.name}</h4>
+                                                <p className="text-sm text-gray-500 mt-1 flex items-center gap-2"><ICONS.MapPin size={14}/> {event.location}</p>
+                                                <div className="flex gap-2 mt-2">
+                                                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">名額: {event.capacity}</span>
+                                                    <span className="text-xs bg-primary-50 text-primary px-2 py-1 rounded font-bold">時數: {event.defaultHours} hr</span>
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="flex items-center">
                                             {isRegistered ? 
-                                                <span className="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold w-full text-center md:w-auto">已報名</span> :
+                                                <span className="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold w-full text-center md:w-auto flex items-center justify-center gap-2"><ICONS.CheckCircle size={16}/> 已報名</span> :
                                                 <button onClick={() => registerForEvent(student.id, event.id)} className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-bold hover:shadow-md transition-all w-full md:w-auto">立即報名</button>
                                             }
                                         </div>

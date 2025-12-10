@@ -58,6 +58,15 @@ export interface Announcement {
   author: string;
 }
 
+export interface SystemResource {
+    id: string;
+    title: string;
+    category: string; // e.g. '表單下載', '法規辦法'
+    fileType: 'PDF' | 'DOC' | 'XLS' | 'OTHER';
+    url: string;
+    updatedAt: string;
+}
+
 export enum HighRiskStatus {
   NONE = '一般',
   WATCH = '需關注',
@@ -94,8 +103,8 @@ export interface StatusRecord {
   newStatus: string;
 
   // 原因 (單選)
-  mainReason: string; // e.g., "志趣不合", "經濟因素"
-  subReason?: string; // e.g., "轉學至公立學校" (for Drop)
+  mainReason: string; // e.g. "志趣不合", "經濟因素"
+  subReason?: string; // e.g. "轉學至公立學校" (for Drop)
   
   // 訪談紀錄
   interview?: {

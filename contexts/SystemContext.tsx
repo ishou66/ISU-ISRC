@@ -1,8 +1,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { ConfigItem, SystemLog, LogAction, LogStatus, Announcement, WorkflowStep, RedemptionStatus } from '../types';
+import { ConfigItem, SystemLog, LogAction, LogStatus, Announcement, WorkflowStep, RedemptionStatus, SystemResource } from '../types';
 import { StorageService } from '../services/StorageService';
-import { SYSTEM_CONFIGS, MOCK_ANNOUNCEMENTS } from '../constants';
+import { SYSTEM_CONFIGS, MOCK_ANNOUNCEMENTS, MOCK_RESOURCES } from '../constants';
 import { useToast } from './ToastContext';
 
 // --- Global Key-Value Settings ---
@@ -41,7 +41,8 @@ interface SystemContextType {
   systemLogs: SystemLog[];
   announcements: Announcement[];
   workflowSteps: WorkflowStep[];
-  systemSettings: SystemSettingsData; // New
+  systemSettings: SystemSettingsData; 
+  resources: SystemResource[]; // New
   
   setConfigs: React.Dispatch<React.SetStateAction<ConfigItem[]>>; 
   setWorkflowSteps: React.Dispatch<React.SetStateAction<WorkflowStep[]>>;
@@ -49,7 +50,7 @@ interface SystemContextType {
   resetSystem: () => void;
   addAnnouncement: (announcement: Announcement) => void;
   deleteAnnouncement: (id: string) => void;
-  updateSystemSetting: (key: keyof SystemSettingsData, value: any) => void; // New
+  updateSystemSetting: (key: keyof SystemSettingsData, value: any) => void; 
 }
 
 const SystemContext = createContext<SystemContextType | undefined>(undefined);
@@ -68,7 +69,8 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>(() => StorageService.load(KEYS.SYSTEM_LOGS, []));
   const [announcements, setAnnouncements] = useState<Announcement[]>(() => StorageService.load(KEYS.ANNOUNCEMENTS, MOCK_ANNOUNCEMENTS));
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>(DEFAULT_WORKFLOW); 
-  const [systemSettings, setSystemSettings] = useState<SystemSettingsData>(() => StorageService.load('ISU_SYS_SETTINGS', DEFAULT_SETTINGS)); // New
+  const [systemSettings, setSystemSettings] = useState<SystemSettingsData>(() => StorageService.load('ISU_SYS_SETTINGS', DEFAULT_SETTINGS)); 
+  const [resources, setResources] = useState<SystemResource[]>(() => StorageService.load('ISU_RESOURCES', MOCK_RESOURCES));
   
   const { notify } = useToast();
 
@@ -84,10 +86,13 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     StorageService.save(KEYS.ANNOUNCEMENTS, announcements);
   }, [announcements]);
 
-  // Save Settings
   useEffect(() => {
       StorageService.save('ISU_SYS_SETTINGS', systemSettings);
   }, [systemSettings]);
+
+  useEffect(() => {
+      StorageService.save('ISU_RESOURCES', resources);
+  }, [resources]);
 
   const addLog = (log: SystemLog) => {
     setSystemLogs(prev => [log, ...prev]);
@@ -114,7 +119,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   return (
     <SystemContext.Provider value={{ 
-        configs, systemLogs, announcements, workflowSteps, systemSettings,
+        configs, systemLogs, announcements, workflowSteps, systemSettings, resources,
         setConfigs, setWorkflowSteps, addLog, resetSystem, 
         addAnnouncement, deleteAnnouncement, updateSystemSetting 
     }}>

@@ -2,14 +2,14 @@
 import { 
   Student, StudentStatus, HighRiskStatus, ConfigItem, CounselingLog, ScholarshipRecord, ActivityRecord, Event,
   User, RoleDefinition, ModuleId, ScholarshipConfig, ScholarshipStatus, RedemptionRecord, RedemptionStatus, SurplusHour, Announcement,
-  Ticket, TicketStatus, TicketCategory
+  Ticket, TicketStatus, TicketCategory, SystemResource
 } from './types';
 import { 
   Users, LayoutDashboard, FileText, Settings, Heart, Database, 
   GraduationCap, AlertTriangle, Eye, EyeOff, Search, Plus, Filter,
   ChevronRight, Home, Phone, MapPin, Download, Save, X, Edit2, Check,
   ArrowRightLeft, UserCheck, UserMinus, Calendar, ShieldAlert, Lock, Printer, LogIn, Key, Menu, Clock, CheckCircle, ClipboardList, Briefcase, FileCheck, Send, DollarSign, Upload, Image, CreditCard, Archive, Bell, Megaphone, Camera, PieChart,
-  MessageCircle, HelpCircle, Inbox, UserPlus, CornerUpLeft
+  MessageCircle, HelpCircle, Inbox, UserPlus, CornerUpLeft, File
 } from 'lucide-react';
 
 export const ICONS = {
@@ -532,4 +532,11 @@ export const MOCK_TICKETS: Ticket[] = [
         createdAt: '2023-12-12T09:30:00',
         updatedAt: '2023-12-12T09:30:00',
     }
+];
+
+export const MOCK_RESOURCES: SystemResource[] = [
+    { id: 'res_1', title: '112學年度獎助學金申請表', category: '表單下載', fileType: 'PDF', url: '#', updatedAt: '2023-12-01' },
+    { id: 'res_2', title: '服務學習時數紀錄表', category: '表單下載', fileType: 'DOC', url: '#', updatedAt: '2023-09-15' },
+    { id: 'res_3', title: '原住民族學生獎助學金實施要點', category: '法規辦法', fileType: 'PDF', url: '#', updatedAt: '2023-08-01' },
+    { id: 'res_4', title: '請假單', category: '表單下載', fileType: 'DOC', url: '#', updatedAt: '2023-09-01' },
 ];

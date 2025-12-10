@@ -12,12 +12,12 @@ interface LayoutProps {
   currentUser: User;
   allUsers: User[];
   roles: RoleDefinition[];
-  onSwitchUser: (userId: string) => void;
+  // onSwitchUser removed
   onResetSystem: () => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
-    children, currentView, onNavigate, currentUser, allUsers, roles, onSwitchUser, onResetSystem 
+    children, currentView, onNavigate, currentUser, allUsers, roles, onResetSystem 
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const currentRole = roles.find(r => r.id === currentUser.roleId);
@@ -144,27 +144,8 @@ export const Layout: React.FC<LayoutProps> = ({
           )}
         </nav>
 
-        {/* User Switcher / Footer */}
+        {/* Footer (Backup & Reset Only) */}
         <div className="p-4 border-t border-gray-700 bg-black/20">
-            <div className="mb-4">
-                <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                        <ICONS.Transfer size={14} />
-                    </div>
-                    <select 
-                        value={currentUser.id} 
-                        onChange={(e) => onSwitchUser(e.target.value)}
-                        className="w-full bg-neutral-dark text-gray-300 text-xs pl-9 pr-3 py-2.5 rounded border border-gray-600 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer hover:bg-black/30 transition-colors"
-                    >
-                        {allUsers.map(u => (
-                            <option key={u.id} value={u.id}>
-                                {u.name} - {roles.find(r => r.id === u.roleId)?.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-            
             <div className="grid grid-cols-2 gap-2 mb-2">
                 <button onClick={handleBackup} className="text-[10px] text-gray-400 hover:text-white border border-gray-600 hover:bg-gray-700 rounded py-2 flex flex-col items-center justify-center transition-colors">
                     <ICONS.Download size={14} className="mb-1"/> 備份資料

@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Login } from './components/Login';
@@ -33,7 +30,7 @@ import { ICONS } from './constants';
 
 const AppContent: React.FC = () => {
   // 1. User & System Management
-  const { currentUser, switchUser, users, roles } = useAuth();
+  const { currentUser, users, roles } = useAuth();
   const { resetSystem, configs } = useSystem();
   
   // 2. Data consumption via Hooks
@@ -120,7 +117,6 @@ const AppContent: React.FC = () => {
       currentUser={currentUser}
       allUsers={users}
       roles={roles}
-      onSwitchUser={switchUser}
       onResetSystem={resetSystem}
     >
         {renderContent()}

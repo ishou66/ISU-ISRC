@@ -32,7 +32,7 @@ import { StorageService } from './services/StorageService';
 
 const AppContent: React.FC = () => {
   // 1. User & System Management
-  const { currentUser, switchUser, users, roles } = useAuth();
+  const { currentUser, users, roles } = useAuth();
   const { resetSystem, configs } = useSystem();
   
   // 2. Data consumption via Hooks
@@ -100,7 +100,7 @@ const AppContent: React.FC = () => {
       case 'REDEMPTION_MANAGER':
         return <RedemptionManager />;
 
-      case 'TICKET_MANAGER': // New Route
+      case 'TICKET_MANAGER':
         return <TicketManager />;
         
       default:
@@ -127,7 +127,6 @@ const AppContent: React.FC = () => {
       currentUser={currentUser}
       allUsers={users}
       roles={roles}
-      onSwitchUser={switchUser}
       onResetSystem={resetSystem}
     >
         {renderContent()}
