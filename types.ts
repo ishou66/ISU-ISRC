@@ -1,3 +1,4 @@
+
 export enum ModuleId {
   DASHBOARD = 'DASHBOARD',
   STUDENTS = 'STUDENTS',
@@ -164,14 +165,14 @@ export interface FamilyData {
 export interface Student {
   id: string; // UUID
   studentId: string; // Unique Display ID (Regex: 11288123A)
-  nationalId?: string; // 身分證字號 (New)
+  nationalId?: string; // 身分證字號 (New for Verification)
   name: string;
   indigenousName?: string;
   gender: '男' | '女' | '其他';
   maritalStatus?: '未婚' | '已婚' | '其他';
   
-  // Account Fields (New)
-  username?: string; // usually 'isu' + studentId
+  // Account Fields (Critical Update)
+  username?: string; // usually 'isu' + studentId (lowercase)
   passwordHash?: string; 
   isActive?: boolean;
   isFirstLogin?: boolean; // For forced password change logic

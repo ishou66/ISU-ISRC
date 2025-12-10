@@ -121,7 +121,7 @@ export const Login: React.FC = () => {
           id: student.id,
           account: student.studentId,
           name: student.name,
-          roleId: 'role_assistant', // Map to student role
+          roleId: 'role_student', // Explicitly assign restricted student role
           unit: student.departmentCode,
           email: student.emails?.school,
           isActive: true,

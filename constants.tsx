@@ -1,5 +1,4 @@
 
-
 import { 
   Student, StudentStatus, HighRiskStatus, ConfigItem, CounselingLog, ScholarshipRecord, ActivityRecord, Event,
   User, RoleDefinition, ModuleId, ScholarshipConfig, ScholarshipStatus, RedemptionRecord, RedemptionStatus, SurplusHour, Announcement
@@ -164,6 +163,24 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
          [ModuleId.AUDIT_LOGS]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
          [ModuleId.REDEMPTION]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
      }
+  },
+  {
+    id: 'role_student',
+    name: '一般學生',
+    description: '僅限存取學生專屬入口 (Student Portal)，無後台權限。',
+    isSystemDefault: true,
+    permissions: {
+      [ModuleId.DASHBOARD]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+      [ModuleId.STUDENTS]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+      [ModuleId.COUNSELING]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+      [ModuleId.COUNSELING_MANAGER]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+      [ModuleId.SCHOLARSHIP]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+      [ModuleId.ACTIVITY]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+      [ModuleId.SYSTEM_SETTINGS]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+      [ModuleId.USER_MANAGEMENT]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+      [ModuleId.AUDIT_LOGS]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+      [ModuleId.REDEMPTION]: { view: false, add: false, edit: false, delete: false, export: false, viewSensitive: false },
+    }
   }
 ];
 
@@ -212,10 +229,10 @@ export const MOCK_STUDENTS: Student[] = [
   {
     id: 'std_1',
     studentId: '11200123A',
-    nationalId: 'A123456789', // Added Mock National ID
+    nationalId: 'A123456789', // Added Mock National ID for verification
     username: 'isu11200123a', // Default username
     passwordHash: 'isu11200123a', // Default password
-    isFirstLogin: true,
+    isFirstLogin: true, // Force reset flow
     isActive: true,
     name: '王小明',
     gender: '男',
@@ -244,10 +261,10 @@ export const MOCK_STUDENTS: Student[] = [
   {
     id: 'std_2',
     studentId: '11200456B',
-    nationalId: 'B234567890', // Added Mock National ID
+    nationalId: 'B234567890', // Added Mock National ID for verification
     username: 'isu11200456b',
     passwordHash: 'isu11200456b',
-    isFirstLogin: true,
+    isFirstLogin: true, // Force reset flow
     isActive: true,
     name: '李小花',
     gender: '女',

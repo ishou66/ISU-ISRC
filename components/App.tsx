@@ -42,15 +42,6 @@ const AppContent: React.FC = () => {
   const [navParams, setNavParams] = useState<any>(null); 
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
-  // Auto-route to Student Portal if user is student
-  useEffect(() => {
-      if (currentUser?.roleId === 'role_assistant' || currentUser?.account.match(/^\d{9}[A-Z]$/)) {
-          setCurrentView('STUDENT_PORTAL');
-      } else if (currentView === 'STUDENT_PORTAL') {
-          setCurrentView('DASHBOARD');
-      }
-  }, [currentUser]);
-
   const handleNavigate = (view: string, params?: any) => {
       setCurrentView(view);
       setNavParams(params || null); 
@@ -105,9 +96,6 @@ const AppContent: React.FC = () => {
       case 'ACTIVITY':
         return <ActivityManager />;
         
-      case 'STUDENT_PORTAL':
-        return <StudentPortal currentUser={currentUser} />;
-        
       case 'REDEMPTION_MANAGER':
         return <RedemptionManager />;
         
@@ -120,11 +108,14 @@ const AppContent: React.FC = () => {
       return <Login />;
   }
 
-  // If student, render portal directly without standard layout
-  if (currentView === 'STUDENT_PORTAL') {
-      return renderContent();
+  // --- Strict Security Check for Students ---
+  // If user role is 'role_student', FORCE render StudentPortal.
+  // Do NOT render Layout or any Admin components.
+  if (currentUser.roleId === 'role_student') {
+      return <StudentPortal currentUser={currentUser} />;
   }
 
+  // For Admin/Staff/Assistants, render full layout
   return (
     <Layout 
       currentView={currentView} 
