@@ -5,6 +5,7 @@ import { ICONS } from '../constants';
 import { usePermission } from '../hooks/usePermission';
 import { useStudents } from '../contexts/StudentContext';
 import { useSystem } from '../contexts/SystemContext';
+import { ResizableHeader } from './ui/ResizableHeader';
 
 const getLabel = (code: string | undefined, type: string, configs: ConfigItem[]) => {
     return configs.find(c => c.category === type && c.code === code)?.label || code;
@@ -222,7 +223,16 @@ export const CounselingManager: React.FC = () => {
         </div>
         <div className={`flex-1 overflow-auto p-4 print:p-0 print:overflow-visible ${printingLog ? 'print:hidden' : ''}`}>
              <table className="w-full text-sm text-left border-collapse">
-                <thead className="bg-gray-100 text-gray-700 sticky top-0 print:static"><tr><th className="px-4 py-2 print:border print:border-black">日期</th><th className="px-4 py-2 print:border print:border-black">學生</th><th className="px-4 py-2 print:border print:border-black">輔導員</th><th className="px-4 py-2 print:border print:border-black">方式</th><th className="px-4 py-2 print:border print:border-black">類別</th><th className="px-4 py-2 text-right no-print">操作</th></tr></thead>
+                <thead className="bg-gray-100 text-gray-700 sticky top-0 print:static">
+                    <tr>
+                        <ResizableHeader className="px-4 py-2 print:border print:border-black w-32">日期</ResizableHeader>
+                        <ResizableHeader className="px-4 py-2 print:border print:border-black">學生</ResizableHeader>
+                        <ResizableHeader className="px-4 py-2 print:border print:border-black">輔導員</ResizableHeader>
+                        <ResizableHeader className="px-4 py-2 print:border print:border-black">方式</ResizableHeader>
+                        <ResizableHeader className="px-4 py-2 print:border print:border-black">類別</ResizableHeader>
+                        <ResizableHeader className="px-4 py-2 text-right no-print w-20">操作</ResizableHeader>
+                    </tr>
+                </thead>
                 <tbody>
                     {currentLogs.map(log => {
                         const st = students.find(s => s.id === log.studentId);

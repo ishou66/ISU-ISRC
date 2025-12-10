@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { LogStatus } from '../types';
 import { ICONS } from '../constants';
 import { useSystem } from '../contexts/SystemContext';
+import { ResizableHeader } from './ui/ResizableHeader';
 
 export const AuditLogManager: React.FC = () => {
   const { systemLogs } = useSystem();
@@ -37,7 +38,16 @@ export const AuditLogManager: React.FC = () => {
       </div>
       <div className="flex-1 overflow-auto">
         <table className="w-full text-sm text-left">
-            <thead className="bg-gray-100 text-gray-700 sticky top-0"><tr><th className="px-4 py-2 w-32">時間戳記</th><th className="px-4 py-2 w-24">IP</th><th className="px-4 py-2 w-32">操作者 (角色)</th><th className="px-4 py-2 w-32">動作類型</th><th className="px-4 py-2">目標物件 / 詳情</th><th className="px-4 py-2 w-24">狀態</th></tr></thead>
+            <thead className="bg-gray-100 text-gray-700 sticky top-0">
+                <tr>
+                    <ResizableHeader className="px-4 py-2 w-48">時間戳記</ResizableHeader>
+                    <ResizableHeader className="px-4 py-2 w-32">IP</ResizableHeader>
+                    <ResizableHeader className="px-4 py-2 w-40">操作者 (角色)</ResizableHeader>
+                    <ResizableHeader className="px-4 py-2 w-32">動作類型</ResizableHeader>
+                    <ResizableHeader className="px-4 py-2">目標物件 / 詳情</ResizableHeader>
+                    <ResizableHeader className="px-4 py-2 w-24">狀態</ResizableHeader>
+                </tr>
+            </thead>
             <tbody className="font-mono text-xs">
                 {filteredLogs.map(log => (
                     <tr key={log.id} className={`border-b hover:bg-gray-50 ${log.status !== 'SUCCESS' ? 'bg-red-50 hover:bg-red-100' : ''}`}>

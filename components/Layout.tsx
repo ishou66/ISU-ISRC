@@ -1,3 +1,5 @@
+
+
 import React, { useState, useRef } from 'react';
 import { ICONS } from '../constants';
 import { User, RoleDefinition, ModuleId } from '../types';
@@ -129,10 +131,9 @@ export const Layout: React.FC<LayoutProps> = ({
              <>
               <div className="px-6 pb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Main Menu</div>
               <NavItem view="DASHBOARD" moduleId={ModuleId.DASHBOARD} label="儀表板概覽" icon={ICONS.Dashboard} />
-              <NavItem view="REDEMPTION_MANAGER" moduleId={ModuleId.REDEMPTION} label="兌換核銷中心" icon={ICONS.Review} /> 
+              <NavItem view="SCHOLARSHIP" moduleId={ModuleId.SCHOLARSHIP} label="獎助學金管理" icon={ICONS.Financial} />
               <NavItem view="STUDENTS" moduleId={ModuleId.STUDENTS} label="學生資料管理" icon={ICONS.Students} />
               <NavItem view="COUNSELING_MANAGER" moduleId={ModuleId.COUNSELING_MANAGER} label="輔導關懷紀錄" icon={ICONS.CounselingManager} />
-              <NavItem view="SCHOLARSHIP" moduleId={ModuleId.SCHOLARSHIP} label="獎助學金管理" icon={ICONS.Financial} />
               <NavItem view="ACTIVITY" moduleId={ModuleId.ACTIVITY} label="活動參與紀錄" icon={ICONS.Activity} />
              </>
           )}

@@ -14,7 +14,6 @@ import { RoleManager } from './components/RoleManager';
 import { UserManager } from './components/UserManager';
 import { CounselingManager } from './components/CounselingManager';
 import { StudentRedemption } from './components/StudentRedemption'; // New
-import { RedemptionManager } from './components/RedemptionManager'; // New
 
 // Context Providers
 import { PermissionProvider, usePermissionContext } from './contexts/PermissionContext';
@@ -97,12 +96,8 @@ const AppContent: React.FC = () => {
       case 'ACTIVITY':
         return <ActivityManager />;
         
-      // --- NEW VIEWS ---
       case 'STUDENT_PORTAL':
         return <StudentRedemption currentUser={currentUser} />;
-        
-      case 'REDEMPTION_MANAGER':
-        return <RedemptionManager />;
         
       default:
         return <div>Not Found</div>;

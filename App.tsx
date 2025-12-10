@@ -12,6 +12,8 @@ import { AuditLogManager } from './components/AuditLogManager';
 import { RoleManager } from './components/RoleManager';
 import { UserManager } from './components/UserManager';
 import { CounselingManager } from './components/CounselingManager';
+import { StudentRedemption } from './components/StudentRedemption';
+import { RedemptionManager } from './components/RedemptionManager';
 
 // Context Providers
 import { PermissionProvider, usePermissionContext } from './contexts/PermissionContext';
@@ -21,6 +23,7 @@ import { ActivityProvider, useActivities } from './contexts/ActivityContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SystemProvider, useSystem } from './contexts/SystemContext';
+import { RedemptionProvider } from './contexts/RedemptionContext';
 
 import { Student } from './types';
 import { StorageService } from './services/StorageService';
@@ -101,6 +104,12 @@ const AppContent: React.FC = () => {
         
       case 'ACTIVITY':
         return <ActivityManager />; // Uses Contexts
+
+      case 'STUDENT_PORTAL':
+        return <StudentRedemption currentUser={currentUser} />;
+
+      case 'REDEMPTION_MANAGER':
+        return <RedemptionManager />;
         
       default:
         return <div>Not Found</div>;
@@ -140,7 +149,9 @@ export default function App() {
                     <StudentProvider>
                         <ScholarshipProvider>
                             <ActivityProvider>
-                                <AppContent />
+                                <RedemptionProvider>
+                                    <AppContent />
+                                </RedemptionProvider>
                             </ActivityProvider>
                         </ScholarshipProvider>
                     </StudentProvider>

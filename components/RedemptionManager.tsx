@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 import { useRedemptions } from '../contexts/RedemptionContext';
 import { useStudents } from '../contexts/StudentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { RedemptionStatus, RedemptionRecord } from '../types';
+import { ResizableHeader } from './ui/ResizableHeader';
 
 export const RedemptionManager: React.FC = () => {
     const { redemptions, verifyLayer1, verifyLayer2, submitLayer3, signOff, updateSchoolStatus } = useRedemptions();
@@ -58,12 +60,12 @@ export const RedemptionManager: React.FC = () => {
         <table className="pro-table text-sm text-left">
             <thead>
                 <tr>
-                    <th className="p-3">狀態</th>
-                    <th className="p-3">學生</th>
-                    <th className="p-3">項目</th>
-                    <th className="p-3">申請日期</th>
+                    <ResizableHeader className="p-3 w-32">狀態</ResizableHeader>
+                    <ResizableHeader className="p-3">學生</ResizableHeader>
+                    <ResizableHeader className="p-3">項目</ResizableHeader>
+                    <ResizableHeader className="p-3 w-32">申請日期</ResizableHeader>
                     {columns}
-                    <th className="p-3 text-right">操作</th>
+                    <ResizableHeader className="p-3 text-right w-40">操作</ResizableHeader>
                 </tr>
             </thead>
             <tbody>
@@ -102,7 +104,7 @@ export const RedemptionManager: React.FC = () => {
                 {activeTab === 'L1' && (
                     <RenderTable 
                         list={l1List} 
-                        columns={<th className="p-3">檢核重點</th>}
+                        columns={<ResizableHeader className="p-3">檢核重點</ResizableHeader>}
                         actions={(r: RedemptionRecord) => (
                             <>
                                 <td className="p-3 text-danger font-medium text-xs">確認學校系統無重複領取</td>
@@ -118,7 +120,7 @@ export const RedemptionManager: React.FC = () => {
                 {activeTab === 'L2' && (
                     <RenderTable 
                         list={l2List} 
-                        columns={<><th className="p-3">時數明細 (完成/要求)</th><th className="p-3">超額使用</th></>}
+                        columns={<><ResizableHeader className="p-3">時數明細 (完成/要求)</ResizableHeader><ResizableHeader className="p-3">超額使用</ResizableHeader></>}
                         actions={(r: RedemptionRecord) => (
                             <>
                                 <td className="p-3">
@@ -144,7 +146,7 @@ export const RedemptionManager: React.FC = () => {
                 {activeTab === 'L3' && (
                     <RenderTable 
                         list={l3List} 
-                        columns={<th className="p-3">待填資料</th>}
+                        columns={<ResizableHeader className="p-3">待填資料</ResizableHeader>}
                         actions={(r: RedemptionRecord) => (
                             <>
                                 <td className="p-3 text-gray-500 text-xs">需輸入: 應付單號, 付款方式...</td>
@@ -161,7 +163,7 @@ export const RedemptionManager: React.FC = () => {
                 {activeTab === 'SIGN_OFF' && (
                     <RenderTable 
                         list={signOffList} 
-                        columns={<><th className="p-3">核銷資訊</th><th className="p-3">填報人</th></>}
+                        columns={<><ResizableHeader className="p-3">核銷資訊</ResizableHeader><ResizableHeader className="p-3">填報人</ResizableHeader></>}
                         actions={(r: RedemptionRecord) => (
                             <>
                                 <td className="p-3 text-xs">
@@ -181,7 +183,7 @@ export const RedemptionManager: React.FC = () => {
                 {activeTab === 'SCHOOL' && (
                     <RenderTable 
                         list={schoolList} 
-                        columns={<><th className="p-3">目前狀態</th><th className="p-3">單號/傳票</th></>}
+                        columns={<><ResizableHeader className="p-3">目前狀態</ResizableHeader><ResizableHeader className="p-3">單號/傳票</ResizableHeader></>}
                         actions={(r: RedemptionRecord) => (
                             <>
                                 <td className="p-3">

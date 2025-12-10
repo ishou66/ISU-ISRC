@@ -3,22 +3,22 @@
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 import { useRedemptions } from '../contexts/RedemptionContext';
-import { useStudents } from '../contexts/StudentContext'; // to get hours
-import { useScholarships } from '../contexts/ScholarshipContext'; // to get config
+import { useStudents } from '../contexts/StudentContext'; 
+import { useScholarships } from '../contexts/ScholarshipContext'; 
+import { useActivities } from '../contexts/ActivityContext'; // New import
 import { RedemptionStatus, RedemptionRecord, Student } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
 interface StudentRedemptionProps {
-    currentUser: any; // Ideally stricter type
+    currentUser: any; 
 }
 
 export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUser }) => {
     const { redemptions, submitRedemption, surplusHours, calculateSurplus } = useRedemptions();
     const { students } = useStudents();
     const { scholarshipConfigs } = useScholarships();
+    const { getStudentTotalHours } = useActivities(); // Use helper
     
-    // In a real student portal, current user is linked to a student record
-    // For this demo, we assume the user account matches a student ID or we pick the first one
     const student = students.find(s => s.studentId === currentUser.account) || students[0]; 
 
     const [activeTab, setActiveTab] = useState<'APPLY' | 'TRACK' | 'SURPLUS'>('APPLY');
@@ -26,14 +26,15 @@ export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUse
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [keepSurplus, setKeepSurplus] = useState(false);
 
-    // Mock Completed Hours Logic (In real app, fetch from ActivityContext)
-    const mockCompletedHours = 52; 
-
     const myRedemptions = redemptions.filter(r => r.studentId === student?.id);
     const mySurplus = surplusHours.filter(s => s.studentId === student?.id);
 
     const selectedConfig = scholarshipConfigs.find(c => c.id === selectedConfigId);
-    const surplusAmount = selectedConfig ? calculateSurplus(student?.id, selectedConfig.serviceHoursRequired, mockCompletedHours) : 0;
+    
+    // Calculate total eligible hours for the selected config's category
+    const currentActivityHours = selectedConfig && student ? getStudentTotalHours(student.id, selectedConfig.category) : 0;
+    
+    const surplusAmount = selectedConfig ? calculateSurplus(student?.id, selectedConfig.serviceHoursRequired, currentActivityHours) : 0;
 
     const handleSubmit = () => {
         if (!selectedConfig || !student) return;
@@ -44,7 +45,7 @@ export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUse
             scholarshipName: selectedConfig.name,
             amount: selectedConfig.amount,
             requiredHours: selectedConfig.serviceHoursRequired,
-            completedHours: mockCompletedHours,
+            completedHours: currentActivityHours,
             surplusHours: keepSurplus ? surplusAmount : 0,
             appliedDate: new Date().toISOString().split('T')[0],
             status: RedemptionStatus.SUBMITTED
@@ -87,7 +88,9 @@ export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUse
                 {activeTab === 'APPLY' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {scholarshipConfigs.filter(c => c.isActive).map(config => {
-                            const isEligible = mockCompletedHours >= config.serviceHoursRequired;
+                            const availableHours = getStudentTotalHours(student.id, config.category);
+                            const isEligible = availableHours >= config.serviceHoursRequired;
+                            
                             return (
                                 <div key={config.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow relative overflow-hidden">
                                     <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-2 py-1 rounded-bl-lg">{config.semester}</div>
@@ -96,9 +99,15 @@ export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUse
                                     
                                     <div className="space-y-2 text-sm text-gray-600 mb-6">
                                         <div className="flex justify-between"><span>應完成時數</span><span className="font-bold">{config.serviceHoursRequired} hr</span></div>
-                                        <div className="flex justify-between"><span>已完成時數</span><span className={`font-bold ${isEligible ? 'text-green-600' : 'text-red-500'}`}>{mockCompletedHours} hr</span></div>
+                                        <div className="flex justify-between">
+                                            <span className="flex items-center gap-1">
+                                                可用活動時數
+                                                <span className="text-[10px] bg-gray-100 rounded px-1 text-gray-500">系統自動統計</span>
+                                            </span>
+                                            <span className={`font-bold ${isEligible ? 'text-green-600' : 'text-red-500'}`}>{availableHours} hr</span>
+                                        </div>
                                         <div className="h-2 bg-gray-100 rounded-full mt-2 overflow-hidden">
-                                            <div className={`h-full ${isEligible ? 'bg-green-500' : 'bg-orange-400'}`} style={{ width: `${Math.min(100, (mockCompletedHours / config.serviceHoursRequired) * 100)}%` }}></div>
+                                            <div className={`h-full ${isEligible ? 'bg-green-500' : 'bg-orange-400'}`} style={{ width: `${Math.min(100, (availableHours / config.serviceHoursRequired) * 100)}%` }}></div>
                                         </div>
                                     </div>
 
@@ -132,7 +141,6 @@ export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUse
                                     </div>
                                 </div>
                                 
-                                {/* Status Timeline Visualization */}
                                 <div className="flex items-center gap-2 text-xs">
                                     <div className={`flex flex-col items-center ${[RedemptionStatus.SUBMITTED, RedemptionStatus.L1_PASS, RedemptionStatus.L2_PASS, RedemptionStatus.L3_SUBMITTED].includes(r.status) ? 'text-blue-600 font-bold' : 'text-gray-400'}`}>
                                         <div className="w-2 h-2 rounded-full bg-current mb-1"></div>
@@ -189,10 +197,15 @@ export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUse
                         <div className="p-6 space-y-4">
                             <p>您即將申請兌換 <strong>{selectedConfig.name}</strong>。</p>
                             
+                            <div className="bg-gray-50 p-3 rounded text-sm">
+                                <div className="flex justify-between mb-1"><span>所需時數:</span> <b>{selectedConfig.serviceHoursRequired}</b></div>
+                                <div className="flex justify-between text-green-600"><span>目前可用:</span> <b>{currentActivityHours}</b></div>
+                            </div>
+
                             {surplusAmount > 0 && (
                                 <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
                                     <p className="font-bold text-yellow-800 mb-2">🎉 發現超額時數！</p>
-                                    <p className="text-sm text-yellow-700 mb-3">您目前已完成 {mockCompletedHours} 小時，超過標準 {surplusAmount} 小時。</p>
+                                    <p className="text-sm text-yellow-700 mb-3">扣除本次需求後，尚餘 {surplusAmount} 小時。</p>
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" checked={keepSurplus} onChange={e => setKeepSurplus(e.target.checked)} className="w-4 h-4 text-isu-red focus:ring-isu-red rounded"/>
                                         <span className="text-sm font-bold text-gray-700">保留 {surplusAmount} 小時供未來使用 (期限一年)</span>

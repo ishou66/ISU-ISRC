@@ -74,7 +74,7 @@ export const RoleManager: React.FC = () => {
   return (
     <div className="flex h-full gap-6">
       {/* Role List */}
-      <div className="w-1/4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+      <div className="w-1/3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
             <h3 className="font-bold text-gray-700">角色列表</h3>
             <button onClick={handleCreateClick} className="text-isu-red hover:bg-red-50 p-1 rounded"><ICONS.Plus size={18} /></button>
@@ -89,7 +89,7 @@ export const RoleManager: React.FC = () => {
         </div>
       </div>
       {/* Permission Matrix */}
-      <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+      <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
         {selectedRole ? (
             <>
                 <div className="p-6 border-b border-gray-200 flex justify-between items-start">

@@ -10,7 +10,7 @@ export enum ModuleId {
   SYSTEM_SETTINGS = 'SYSTEM_SETTINGS',
   USER_MANAGEMENT = 'USER_MANAGEMENT',
   AUDIT_LOGS = 'AUDIT_LOGS',
-  REDEMPTION = 'REDEMPTION' // New
+  REDEMPTION = 'REDEMPTION' // Keeping ID for permission legacy, but UI is merged
 }
 
 export interface PermissionDetails {
@@ -47,6 +47,16 @@ export interface User {
 }
 
 // --- Business Domain Types ---
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  target: 'ALL' | 'ADMIN' | 'STUDENT';
+  priority: 'NORMAL' | 'URGENT';
+  author: string;
+}
 
 export enum HighRiskStatus {
   NONE = '一般',
@@ -244,10 +254,13 @@ export interface CounselingLog {
   attachments?: string[];
 }
 
+export type GrantCategory = 'SCHOLARSHIP' | 'FINANCIAL_AID';
+
 export interface ScholarshipConfig {
   id: string;
   semester: string;
   name: string;
+  category: GrantCategory; // New field
   amount: number;
   serviceHoursRequired: number;
   isActive: boolean;
@@ -334,8 +347,15 @@ export interface Event {
     date: string;
     location: string;
     description?: string;
-    defaultHours: number;
+    defaultHours: number; // For Sign-In Only
+    
+    // New Fields for Integration
+    registrationDeadline?: string;
+    checkInType: 'SIGN_IN_ONLY' | 'SIGN_IN_OUT';
+    applicableGrantCategories: GrantCategory[]; // e.g. ['FINANCIAL_AID']
 }
+
+export type ActivityStatus = 'REGISTERED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'COMPLETED' | 'ABSENT' | 'CANCELLED' | 'PENDING' | 'CONFIRMED';
 
 export interface ActivityRecord {
   id: string;
@@ -343,7 +363,12 @@ export interface ActivityRecord {
   eventId: string; 
   role: 'PARTICIPANT' | 'STAFF';
   hours: number;
-  status: 'PENDING' | 'CONFIRMED'; 
+  status: ActivityStatus;
+  
+  // Timestamps
+  registrationDate?: string;
+  signInTime?: string;
+  signOutTime?: string;
 }
 
 export interface ConfigItem {
@@ -485,4 +510,12 @@ export interface RedemptionRecord {
         transferMethod?: string;
         returnReason?: string;
     };
+}
+
+// --- NEW WORKFLOW CONFIG ---
+export interface WorkflowStep {
+    id: string;
+    stepName: string; // e.g. "初審 - 重複性檢核"
+    relatedStatus: RedemptionStatus; // e.g. "SUBMITTED" -> "L1_PASS" logic
+    authorizedRoleIds: string[]; // e.g. ['role_admin', 'role_staff']
 }

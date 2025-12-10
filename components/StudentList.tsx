@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student, StudentStatus, HighRiskStatus, ConfigItem, ModuleId } from '../types';
 import { ICONS } from '../constants';
@@ -5,6 +6,7 @@ import { usePermission } from '../hooks/usePermission';
 import { useStudents } from '../contexts/StudentContext';
 import { studentSchema } from '../lib/schemas';
 import { z } from 'zod';
+import { ResizableHeader } from './ui/ResizableHeader';
 
 interface StudentListProps {
   configs: ConfigItem[];
@@ -258,18 +260,18 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
 
       {/* Desktop Table (Hidden on Mobile) */}
       <div className="hidden md:block flex-1 overflow-auto">
-        <table className="w-full text-sm text-left pro-table">
+        <table className="w-full text-sm text-left pro-table border-collapse">
           <thead className="bg-neutral-bg text-neutral-text border-b border-neutral-border sticky top-0 z-10">
             <tr>
-              <th className="px-6 py-4 font-bold w-20">Status</th>
-              <th className="px-6 py-4 font-bold">學號</th>
-              <th className="px-6 py-4 font-bold">姓名</th>
-              <th className="px-6 py-4 font-bold w-16">性別</th>
-              <th className="px-6 py-4 font-bold">系級</th>
-              <th className="px-6 py-4 font-bold">族別</th>
-              <th className="px-6 py-4 font-bold">手機</th>
-              <th className="px-6 py-4 font-bold">關懷等級</th>
-              <th className="px-6 py-4 font-bold text-right"></th>
+              <ResizableHeader className="px-6 py-4 w-24">Status</ResizableHeader>
+              <ResizableHeader className="px-6 py-4">學號</ResizableHeader>
+              <ResizableHeader className="px-6 py-4">姓名</ResizableHeader>
+              <ResizableHeader className="px-6 py-4 w-20">性別</ResizableHeader>
+              <ResizableHeader className="px-6 py-4">系級</ResizableHeader>
+              <ResizableHeader className="px-6 py-4">族別</ResizableHeader>
+              <ResizableHeader className="px-6 py-4">手機</ResizableHeader>
+              <ResizableHeader className="px-6 py-4">關懷等級</ResizableHeader>
+              <ResizableHeader className="px-6 py-4 text-right w-16"></ResizableHeader>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-border">

@@ -6,6 +6,8 @@ import { StorageService } from '../services/StorageService';
 import { usePermissionContext } from './PermissionContext';
 import { useToast } from './ToastContext';
 import { MOCK_REDEMPTIONS, MOCK_SURPLUS_HOURS } from '../constants';
+import { useActivities } from './ActivityContext'; // Need activity data
+import { useSystem } from './SystemContext'; // NEW: To get workflow config
 
 const KEYS = StorageService.getKeys();
 
@@ -59,8 +61,9 @@ const RedemptionContext = createContext<RedemptionContextType | undefined>(undef
 
 export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(redemptionReducer, initialState);
-    const { logAction } = usePermissionContext();
+    const { logAction, currentUser } = usePermissionContext();
     const { notify } = useToast();
+    const { workflowSteps } = useSystem(); // Get dynamic config
 
     // Load Data
     useEffect(() => {
@@ -96,9 +99,17 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return () => clearInterval(timer);
     }, [state.surplusHours, state.isLoading]);
 
+    // Helper: Check if current user role is allowed for this step
+    const checkWorkflowPermission = (status: RedemptionStatus): boolean => {
+        if (!currentUser) return false;
+        // Find the step config for this status
+        const step = workflowSteps.find(s => s.relatedStatus === status);
+        if (!step) return true; // If no config found, default allow (or strict deny depending on policy, here lenient)
+        
+        return step.authorizedRoleIds.includes(currentUser.roleId);
+    };
+
     const calculateSurplus = (studentId: string, required: number, completed: number) => {
-        // Simple logic: Completed - Required
-        // In real app, might need to deduct used surplus
         return Math.max(0, completed - required);
     };
 
@@ -123,6 +134,11 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const verifyLayer1 = (id: string, result: 'PASS' | 'ALREADY_REDEEMED', user: string) => {
+        if (!checkWorkflowPermission(RedemptionStatus.SUBMITTED)) {
+            notify('權限不足：您無法執行此階段審核', 'alert');
+            return;
+        }
+
         const target = state.redemptions.find(r => r.id === id);
         if (!target) return;
         
@@ -140,6 +156,11 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const verifyLayer2 = (id: string, result: 'PASS' | 'REJECTED', user: string, remarks?: string) => {
+        if (!checkWorkflowPermission(RedemptionStatus.L1_PASS)) {
+            notify('權限不足：您無法執行此階段審核', 'alert');
+            return;
+        }
+
         const target = state.redemptions.find(r => r.id === id);
         if (!target) return;
 
@@ -158,12 +179,17 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const submitLayer3 = (id: string, info: any, user: string) => {
+        if (!checkWorkflowPermission(RedemptionStatus.L2_PASS)) {
+            notify('權限不足：您無法執行此階段填報', 'alert');
+            return;
+        }
+
         const target = state.redemptions.find(r => r.id === id);
         if (!target) return;
 
         const updated: RedemptionRecord = {
             ...target,
-            status: RedemptionStatus.L3_SUBMITTED, // Changed: Does NOT go to APPROVED
+            status: RedemptionStatus.L3_SUBMITTED, 
             layer3Info: {
                 submittedBy: user,
                 date: new Date().toISOString(),
@@ -175,6 +201,11 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const signOff = (id: string, result: 'APPROVED' | 'RETURNED', user: string, remarks?: string) => {
+        if (!checkWorkflowPermission(RedemptionStatus.L3_SUBMITTED)) {
+            notify('權限不足：您無法執行主管簽核', 'alert');
+            return;
+        }
+
         const target = state.redemptions.find(r => r.id === id);
         if (!target) return;
 
@@ -195,6 +226,12 @@ export const RedemptionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const updateSchoolStatus = (id: string, info: any) => {
+        // Usually restricted to admin or finance, let's assume allowed for now or check 'role_admin'
+        if (currentUser?.roleId !== 'role_admin') {
+             notify('權限不足：僅管理員可更新學校系統狀態', 'alert');
+             return;
+        }
+
         const target = state.redemptions.find(r => r.id === id);
         if (!target) return;
 

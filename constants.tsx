@@ -1,13 +1,13 @@
 
 import { 
   Student, StudentStatus, HighRiskStatus, ConfigItem, CounselingLog, ScholarshipRecord, ActivityRecord, Event,
-  User, RoleDefinition, ModuleId, ScholarshipConfig, ScholarshipStatus, RedemptionRecord, RedemptionStatus, SurplusHour
+  User, RoleDefinition, ModuleId, ScholarshipConfig, ScholarshipStatus, RedemptionRecord, RedemptionStatus, SurplusHour, Announcement
 } from './types';
 import { 
   Users, LayoutDashboard, FileText, Settings, Heart, Database, 
   GraduationCap, AlertTriangle, Eye, EyeOff, Search, Plus, Filter,
   ChevronRight, Home, Phone, MapPin, Download, Save, X, Edit2, Check,
-  ArrowRightLeft, UserCheck, UserMinus, Calendar, ShieldAlert, Lock, Printer, LogIn, Key, Menu, Clock, CheckCircle, ClipboardList, Briefcase, FileCheck, Send, DollarSign, Upload, Image, CreditCard, Archive
+  ArrowRightLeft, UserCheck, UserMinus, Calendar, ShieldAlert, Lock, Printer, LogIn, Key, Menu, Clock, CheckCircle, ClipboardList, Briefcase, FileCheck, Send, DollarSign, Upload, Image, CreditCard, Archive, Bell, Megaphone, Camera
 } from 'lucide-react';
 
 export const ICONS = {
@@ -31,6 +31,8 @@ export const ICONS = {
   Phone: Phone,
   MapPin: MapPin,
   File: FileText,
+  FileText: FileText,
+  Heart: Heart,
   Download: Download,
   Save: Save,
   Close: X,
@@ -49,6 +51,7 @@ export const ICONS = {
   Clock: Clock,
   CheckCircle: CheckCircle,
   Work: Briefcase,
+  Briefcase: Briefcase,
   Review: FileCheck,
   Send: Send,
   Money: DollarSign,
@@ -56,7 +59,10 @@ export const ICONS = {
   Image: Image,
   Bank: CreditCard,
   GraduationCap: GraduationCap,
-  Archive: Archive
+  Archive: Archive,
+  Bell: Bell,
+  Megaphone: Megaphone,
+  Camera: Camera
 };
 
 // --- DEFAULT ROLES ---
@@ -151,796 +157,207 @@ export const DEFAULT_USERS: User[] = [
     password: '123',
     isFirstLogin: false,
     name: '林工讀',
-    unit: '學務處',
+    unit: '原資中心',
     roleId: 'role_assistant',
-    email: 'assistant@isu.edu.tw',
+    email: 'student@isu.edu.tw',
     isActive: true,
-    avatarUrl: 'https://ui-avatars.com/api/?name=Assistant&background=facc15&color=000'
+    avatarUrl: 'https://ui-avatars.com/api/?name=Student&background=109967&color=fff'
   }
 ];
 
-// --- MOCK STUDENTS & DATA ---
+// --- SYSTEM CONFIGS ---
+
+export const SYSTEM_CONFIGS: ConfigItem[] = [
+  { id: '1', category: 'DEPT', code: 'CS', label: '資訊工程學系', isActive: true, order: 1, color: 'blue' },
+  { id: '2', category: 'DEPT', code: 'EE', label: '電機工程學系', isActive: true, order: 2, color: 'blue' },
+  { id: '3', category: 'DEPT', code: 'BM', label: '企業管理學系', isActive: true, order: 3, color: 'green' },
+  { id: '4', category: 'DEPT', code: 'NUR', label: '護理學系', isActive: true, order: 4, color: 'red' },
+  { id: '5', category: 'TRIBE', code: 'AMIS', label: '阿美族', isActive: true, order: 1 },
+  { id: '6', category: 'TRIBE', code: 'ATAYAL', label: '泰雅族', isActive: true, order: 2 },
+  { id: '7', category: 'TRIBE', code: 'PAIWAN', label: '排灣族', isActive: true, order: 3 },
+  { id: '8', category: 'TRIBE', code: 'BUNUN', label: '布農族', isActive: true, order: 4 },
+  { id: '9', category: 'COUNSEL_METHOD', code: 'FACE', label: '面談', isActive: true, order: 1 },
+  { id: '10', category: 'COUNSEL_METHOD', code: 'LINE', label: '通訊軟體', isActive: true, order: 2 },
+  { id: '11', category: 'COUNSEL_METHOD', code: 'PHONE', label: '電話', isActive: true, order: 3 },
+  { id: '12', category: 'COUNSEL_METHOD', code: 'OTHER', label: '其他', isActive: true, order: 99 },
+  { id: '13', category: 'COUNSEL_CATEGORY', code: 'ACADEMIC', label: '課業學習', isActive: true, order: 1 },
+  { id: '14', category: 'COUNSEL_CATEGORY', code: 'CAREER', label: '職涯發展', isActive: true, order: 2 },
+  { id: '15', category: 'COUNSEL_CATEGORY', code: 'LIFE', label: '生活適應', isActive: true, order: 3 },
+  { id: '16', category: 'COUNSEL_CATEGORY', code: 'EMOTION', label: '情緒困擾', isActive: true, order: 4 },
+  { id: '17', category: 'COUNSEL_CATEGORY', code: 'FINANCIAL', label: '經濟需求', isActive: true, order: 5 },
+  { id: '18', category: 'COUNSEL_CATEGORY', code: 'OTHER', label: '其他', isActive: true, order: 99 },
+  { id: '19', category: 'COUNSEL_RECOMMENDATION', code: 'KEEP_TRACK', label: '持續追蹤', isActive: true, order: 1 },
+  { id: '20', category: 'COUNSEL_RECOMMENDATION', code: 'REFERRAL', label: '轉介諮商', isActive: true, order: 2 },
+  { id: '21', category: 'COUNSEL_RECOMMENDATION', code: 'CLOSE_CASE', label: '結案', isActive: true, order: 3 },
+  { id: '22', category: 'ADMISSION_CHANNEL', code: 'STAR', label: '繁星推薦', isActive: true, order: 1 },
+  { id: '23', category: 'ADMISSION_CHANNEL', code: 'APPLICATION', label: '個人申請', isActive: true, order: 2 },
+  { id: '24', category: 'ADMISSION_CHANNEL', code: 'INDIGENOUS_EXAM', label: '原住民專班獨招', isActive: true, order: 3 },
+  { id: '25', category: 'INDIGENOUS_CITY', code: 'KHH', label: '高雄市', isActive: true, order: 1 },
+  { id: '26', category: 'INDIGENOUS_DISTRICT', code: 'MAOLIN', label: '茂林區', parentCode: 'KHH', isActive: true, order: 1 },
+  { id: '27', category: 'INDIGENOUS_DISTRICT', code: 'TAOYUAN', label: '桃源區', parentCode: 'KHH', isActive: true, order: 2 },
+  { id: '28', category: 'LANGUAGE_DIALECT', code: 'AMIS_N', label: '阿美語-北部', isActive: true, order: 1 },
+  { id: '29', category: 'LANGUAGE_LEVEL', code: 'BEGINNER', label: '初級', isActive: true, order: 1 },
+  { id: '30', category: 'LANGUAGE_LEVEL', code: 'INTERMEDIATE', label: '中級', isActive: true, order: 2 },
+  { id: '31', category: 'SUSPENSION_REASON', code: 'INTEREST', label: '志趣不合', isActive: true, order: 1 },
+  { id: '32', category: 'DROPOUT_REASON', code: 'WORK', label: '工作需求', isActive: true, order: 1 },
+];
 
 export const MOCK_SCHOLARSHIP_CONFIGS: ScholarshipConfig[] = [
-    { id: 'sc1', semester: '112-1', name: '原住民學生獎助學金', amount: 12000, serviceHoursRequired: 48, isActive: true },
-    { id: 'sc2', semester: '112-2', name: '原住民學生獎助學金', amount: 12000, serviceHoursRequired: 48, isActive: true },
-    { id: 'sc3', semester: '113-1', name: '原住民學生獎助學金', amount: 12000, serviceHoursRequired: 48, isActive: true },
+    { id: 'sc_1', semester: '112-1', name: '原住民族委員會獎助學金', category: 'SCHOLARSHIP', amount: 22000, serviceHoursRequired: 0, isActive: true },
+    { id: 'sc_2', semester: '112-1', name: '原住民族學生助學金 (一般)', category: 'FINANCIAL_AID', amount: 15000, serviceHoursRequired: 48, isActive: true },
+    { id: 'sc_3', semester: '112-1', name: '原住民族學生助學金 (低收)', category: 'FINANCIAL_AID', amount: 20000, serviceHoursRequired: 48, isActive: true },
+    { id: 'sc_4', semester: '112-2', name: '校內原民服務助學金', category: 'FINANCIAL_AID', amount: 5000, serviceHoursRequired: 20, isActive: true },
 ];
 
-export const MOCK_EVENTS: Event[] = [
-    { id: 'evt_1', name: '原住民族文化週開幕式', date: '2023-10-15', location: '活動中心前廣場', defaultHours: 2, description: '全校性原民文化推廣活動' },
-    { id: 'evt_2', name: '期初部落聚會', date: '2023-09-20', location: '原資中心', defaultHours: 3, description: '迎新與幹部介紹' },
-    { id: 'evt_3', name: '職涯講座：回鄉創業分享', date: '2023-11-05', location: '國際會議廳', defaultHours: 2, description: '邀請校友分享部落創業經驗' }
-];
-
-export const MOCK_STUDENTS: Student[] = [
-  // 1. 標準模範生: Panay (阿美族, 資訊工程, 成績優異, 家庭小康)
-  {
-    id: 's1',
-    studentId: '11288123A',
-    username: '11288123A',
-    passwordHash: '123',
-    isActive: true,
-    name: '巴奈',
-    indigenousName: 'Panay',
-    gender: '女',
-    maritalStatus: '未婚',
-    departmentCode: 'CSIE',
-    grade: '2',
-    enrollmentYear: '112',
-    admissionChannel: 'STAR',
-    status: StudentStatus.ACTIVE,
-    highRisk: HighRiskStatus.NONE,
-    careStatus: 'CLOSED',
-    tribeCode: '1', // 阿美
-    indigenousTownship: { city: 'HUA', district: 'JIAN' }, 
-    languageAbility: { dialect: 'AMI_N', level: '中級', certified: true },
-    phone: '0912345678',
-    emails: { personal: 'panay@gmail.com', school: '11288123A@isu.edu.tw' },
-    addressOfficial: '花蓮縣吉安鄉吉安路一段88號',
-    addressCurrent: '高雄市大樹區學城路一段1號',
-    housingType: 'DORM',
-    housingInfo: 'A棟305',
-    familyData: {
-        father: { relation: '父', name: '王大明', isAlive: true, occupation: '農', phone: '0911000111', education: '高中', companyTitle: '自耕農' },
-        mother: { relation: '母', name: '李美花', isAlive: true, occupation: '家管', phone: '0922000222', education: '國中' },
-        economicStatus: '小康'
+export const MOCK_SCHOLARSHIPS: ScholarshipRecord[] = [
+    {
+        id: 's1',
+        studentId: 'std_1',
+        configId: 'sc_2',
+        semester: '112-1',
+        name: '原住民族學生助學金 (一般)',
+        amount: 15000,
+        status: ScholarshipStatus.HOURS_REJECTED,
+        statusDeadline: new Date(new Date().getTime() + 24 * 60 * 60 * 1000).toISOString(), // 24h left (P0)
+        statusUpdatedAt: new Date().toISOString(),
+        rejectionCount: 1,
+        serviceHoursRequired: 48,
+        serviceHoursCompleted: 40,
+        manualHours: []
     },
-    siblings: [
-        { id: 'sib1', order: 1, title: '兄', name: '王大寶', birthYear: '88', schoolStatus: '就業中', note: '在新竹工作' }
-    ],
-    avatarUrl: 'https://ui-avatars.com/api/?name=Panay&background=random',
-    statusHistory: [],
-    bankInfo: {
-        bankCode: '700',
-        accountNumber: '0001234567890',
-        accountName: '巴奈',
-        isVerified: true
+    {
+        id: 's2',
+        studentId: 'std_2',
+        configId: 'sc_1',
+        semester: '112-1',
+        name: '原住民族委員會獎助學金',
+        amount: 22000,
+        status: ScholarshipStatus.DISBURSEMENT_PENDING,
+        statusDeadline: new Date(new Date().getTime() + 48 * 60 * 60 * 1000).toISOString(), // 48h left (P1)
+        statusUpdatedAt: new Date().toISOString(),
+        rejectionCount: 0,
+        serviceHoursRequired: 0,
+        serviceHoursCompleted: 0,
+        manualHours: []
+    },
+    {
+        id: 's3',
+        studentId: 'std_1',
+        configId: 'sc_4',
+        semester: '112-2',
+        name: '校內原民服務助學金',
+        amount: 5000,
+        status: ScholarshipStatus.SUBMITTED,
+        statusUpdatedAt: new Date().toISOString(),
+        rejectionCount: 0,
+        serviceHoursRequired: 20,
+        serviceHoursCompleted: 0,
+        manualHours: []
     }
-  },
-  // 2. 高關懷個案: Walis (泰雅族, 護理系, 單親低收, 課業預警)
-  {
-    id: 's2',
-    studentId: '11344001B',
-    username: '11344001B',
-    passwordHash: '123',
-    isActive: true,
-    name: '瓦歷斯',
-    indigenousName: 'Walis',
-    gender: '男',
-    maritalStatus: '未婚',
-    departmentCode: 'NUR',
-    grade: '1',
-    enrollmentYear: '113',
-    admissionChannel: 'INDIGENOUS_SPEC',
-    status: StudentStatus.ACTIVE,
-    highRisk: HighRiskStatus.CRITICAL, // 高關懷
-    careStatus: 'OPEN',
-    tribeCode: '2', // 泰雅
-    indigenousTownship: { city: 'NTO', district: 'REN_AI' }, 
-    languageAbility: { dialect: 'ATA_S', level: '初級', certified: false },
-    phone: '0988777666',
-    emails: { personal: 'walis@yahoo.com', school: '11344001B@isu.edu.tw' },
-    addressOfficial: '南投縣仁愛鄉中正路50號',
-    addressCurrent: '高雄市楠梓區楠梓新路123號',
-    housingType: 'RENTAL',
-    housingInfo: '123號3樓',
-    familyData: {
-        father: { relation: '父', name: '林志豪', isAlive: false }, // 歿
-        mother: { relation: '母', name: '張秀英', isAlive: true, occupation: '服務業', phone: '0933444555', education: '高中', companyTitle: '7-11店員' },
-        economicStatus: '低收',
-        proofDocumentUrl: 'doc_url_mock'
-    },
-    siblings: [
-        { id: 'sib1', order: 1, title: '弟', name: '林小弟', birthYear: '98', schoolStatus: '國中', note: '' }
-    ],
-    avatarUrl: 'https://ui-avatars.com/api/?name=Walis&background=ef4444&color=fff', // Red background
-    statusHistory: []
-  },
-  // 3. 休學中: Ibu (布農族, 社工系, 懷孕待產)
-  {
-    id: 's3',
-    studentId: '11166005A',
-    username: '11166005A',
-    passwordHash: '123',
-    isActive: false, 
-    name: '田雅婷',
-    indigenousName: 'Ibu',
-    gender: '女',
-    maritalStatus: '已婚',
-    departmentCode: 'SW',
-    grade: '3',
-    enrollmentYear: '111',
-    admissionChannel: 'EXAM',
-    status: StudentStatus.SUSPENDED, // 休學
-    highRisk: HighRiskStatus.NONE,
-    careStatus: 'CLOSED',
-    tribeCode: '4', // 布農
-    indigenousTownship: { city: 'TTT', district: 'HAIDUAN' }, 
-    languageAbility: { dialect: 'BUN_T', level: '高級', certified: true },
-    phone: '0955444333',
-    emails: { personal: 'ibu@gmail.com', school: '11166005A@isu.edu.tw' },
-    addressOfficial: '台東縣海端鄉海端村2鄰10號',
-    addressCurrent: '台東縣海端鄉海端村2鄰10號',
-    housingType: 'OTHER',
-    housingInfo: '返鄉待產',
-    familyData: {
-        father: { relation: '父', name: '田國榮', isAlive: true, phone: '0911...', occupation: '公', companyTitle: '鄉公所' },
-        mother: { relation: '母', name: '古麗君', isAlive: true, phone: '0922...', occupation: '教', companyTitle: '國小老師' },
-        economicStatus: '一般'
-    },
-    siblings: [],
-    avatarUrl: 'https://ui-avatars.com/api/?name=Ibu&background=random',
-    statusHistory: [
-        {
-            id: 'sh_1',
-            type: 'SUSPENSION',
-            date: '2024-02-01',
-            oldStatus: '在學',
-            newStatus: '休學',
-            docNumber: '112-2-S005',
-            mainReason: '育嬰',
-            subReason: '',
-            interview: {
-                date: '2024-01-20',
-                start: '14:00', end: '15:00', location: '諮商室', participants: '導師、系主任',
-                personalFactors: ['懷孕', '生產', '哺育三歲以下'],
-                externalFactors: [],
-                content: '學生表示因懷孕需返鄉待產，預計休學一年。已說明復學相關規定。'
-            },
-            editor: '陳專員'
-        }
-    ],
-    bankInfo: {
-        bankCode: '822',
-        accountNumber: '123456789',
-        accountName: '田雅婷',
-        isVerified: true
-    }
-  },
-  // 4. 退學案例: Teyra (排灣族, 企管系, 志趣不合, 轉學)
-  {
-    id: 's4',
-    studentId: '11233088C',
-    username: '11233088C',
-    passwordHash: '123',
-    isActive: false,
-    name: '林大山',
-    indigenousName: 'Teyra',
-    gender: '男',
-    maritalStatus: '未婚',
-    departmentCode: 'BA',
-    grade: '2',
-    enrollmentYear: '112',
-    admissionChannel: 'SPORT', // 運動績優
-    status: StudentStatus.DROPPED, // 退學
-    highRisk: HighRiskStatus.NONE,
-    careStatus: 'CLOSED',
-    tribeCode: '3', // 排灣
-    indigenousTownship: { city: 'PTH', district: 'MAJIA' },
-    languageAbility: { dialect: 'PAI_N', level: '初級', certified: false },
-    phone: '0977888999',
-    emails: { personal: 'teyra@hotmail.com', school: '11233088C@isu.edu.tw' },
-    addressOfficial: '屏東縣瑪家鄉...',
-    addressCurrent: '已搬離宿舍',
-    housingType: 'OTHER',
-    housingInfo: '-',
-    familyData: { economicStatus: '小康' },
-    siblings: [],
-    avatarUrl: 'https://ui-avatars.com/api/?name=Teyra&background=gray&color=fff',
-    statusHistory: [
-        {
-            id: 'sh_drop_1',
-            type: 'DROPOUT',
-            date: '2024-06-30',
-            oldStatus: '在學',
-            newStatus: '退學',
-            docNumber: '112-D-099',
-            mainReason: '志趣不合',
-            interview: {
-                date: '2024-06-15',
-                start: '10:00', end: '11:00', location: '系辦公室', participants: '導師',
-                personalFactors: ['志趣不合', '轉學至公立學校'],
-                externalFactors: [],
-                content: '學生表示錄取國立大學體育系，決定辦理退學轉學。'
-            },
-            editor: '陳專員'
-        }
-    ]
-  },
-  // 5. 畢業校友: Kalei (卑南族, 電機系, 已就業)
-  {
-    id: 's5',
-    studentId: '10922001A',
-    username: '10922001A',
-    passwordHash: '123',
-    isActive: true, // 校友帳號可能保留
-    name: '張志明',
-    indigenousName: 'Kalei',
-    gender: '男',
-    maritalStatus: '未婚',
-    departmentCode: 'EE',
-    grade: '4', // 畢業時年級
-    enrollmentYear: '109',
-    admissionChannel: 'EXAM',
-    status: StudentStatus.GRADUATED, // 畢業
-    highRisk: HighRiskStatus.NONE,
-    careStatus: 'CLOSED',
-    tribeCode: '5', // 卑南
-    indigenousTownship: { city: 'TTT', district: 'BEINAN' },
-    languageAbility: { dialect: 'PUM_N', level: '中高級', certified: true },
-    phone: '0911222333',
-    emails: { personal: 'kalei@gmail.com', school: '10922001A@isu.edu.tw' },
-    addressOfficial: '台東縣卑南鄉...',
-    addressCurrent: '新竹科學園區...',
-    housingType: 'OTHER',
-    housingInfo: '公司宿舍',
-    familyData: { economicStatus: '小康' },
-    siblings: [],
-    avatarUrl: 'https://ui-avatars.com/api/?name=Kalei&background=green&color=fff',
-    statusHistory: [
-        {
-            id: 'sh_grad_1',
-            type: 'GRADUATION',
-            date: '2024-06-15',
-            oldStatus: '在學',
-            newStatus: '畢業',
-            docNumber: '112-G-001',
-            mainReason: '修業期滿',
-            editor: '系統自動'
-        }
-    ]
-  },
-  // 6. 新生需關注: Yapas (魯凱族, 護理系, 經濟急難)
-  {
-    id: 's6',
-    studentId: '11344055C',
-    username: '11344055C',
-    passwordHash: '123',
-    isActive: true,
-    name: '陳小雲',
-    indigenousName: 'Yapas',
-    gender: '女',
-    maritalStatus: '未婚',
-    departmentCode: 'NUR',
-    grade: '1',
-    enrollmentYear: '113',
-    admissionChannel: 'INDIGENOUS_SPEC',
-    status: StudentStatus.ACTIVE,
-    highRisk: HighRiskStatus.WATCH, // 需關注
-    careStatus: 'OPEN',
-    tribeCode: '7', // 魯凱
-    indigenousTownship: { city: 'PTH', district: 'WUTAI' },
-    languageAbility: { dialect: 'NONE', level: '初級', certified: false },
-    phone: '0966777888',
-    emails: { personal: 'yapas@gmail.com', school: '11344055C@isu.edu.tw' },
-    addressOfficial: '屏東縣霧台鄉...',
-    addressCurrent: '學校宿舍B棟',
-    housingType: 'DORM',
-    housingInfo: 'B棟101',
-    familyData: {
-        father: { relation: '父', name: '陳天助', isAlive: true, occupation: '臨時工' },
-        mother: { relation: '母', name: '杜美珠', isAlive: false }, // 單親
-        economicStatus: '急難',
-        proofDocumentUrl: 'doc_url_mock'
-    },
-    siblings: [
-        { id: 'sib1', order: 1, title: '弟', name: '陳小弟', birthYear: '100', schoolStatus: '國小', note: '需照顧' }
-    ],
-    avatarUrl: 'https://ui-avatars.com/api/?name=Yapas&background=orange&color=fff',
-    statusHistory: []
-  }
 ];
 
 export const MOCK_COUNSELING_LOGS: CounselingLog[] = [
     {
         id: 'cl_1',
-        studentId: 's2',
-        date: '2024-03-15',
-        consultTime: '13:30',
+        studentId: 'std_1',
+        date: '2023-11-15',
+        consultTime: '10:00',
         counselorName: '陳專員',
         method: 'FACE',
         categories: ['ACADEMIC', 'LIFE'],
-        content: 'Walis 表示微積分課程跟不上，且打工時間過長影響作息。已建議其減少工讀時數，並報名系上的課業輔導班。',
-        recommendations: ['CONTINUE', 'REFERRAL'],
-        recommendationOtherDetail: '轉介系辦助教',
-        isHighRisk: true,
-        needsTracking: true,
-        trackingDetail: '下週確認其期中考準備狀況'
+        content: '學生表示近期微積分課程跟不上，考慮申請課業輔導。生活方面住宿舍與室友相處融洽。',
+        recommendations: ['KEEP_TRACK'],
+        isHighRisk: false,
+        needsTracking: true
     },
     {
         id: 'cl_2',
-        studentId: 's2',
-        date: '2024-03-22',
-        consultTime: '10:00',
+        studentId: 'std_2',
+        date: '2023-11-20',
+        consultTime: '14:00',
         counselorName: '陳專員',
         method: 'LINE',
-        categories: ['ACADEMIC'],
-        content: '詢問課輔班報名情形，學生表示已報名，下週開始上課。',
-        recommendations: ['CONTINUE'],
+        categories: ['FINANCIAL'],
+        content: '詢問獎助學金撥款進度，家中急需用錢。已安撫學生情緒並說明流程。',
+        recommendations: ['KEEP_TRACK'],
         isHighRisk: true,
         needsTracking: true,
-        trackingDetail: '持續觀察出席率'
-    },
-    {
-        id: 'cl_3',
-        studentId: 's4',
-        date: '2024-05-10',
-        consultTime: '15:00',
-        counselorName: '陳專員',
-        method: 'FACE',
-        categories: ['CAREER'],
-        content: '學生主動求助，表示對目前科系無興趣，想轉考體育系。給予轉學考相關資訊，並鼓勵與家人溝通。',
-        recommendations: ['CLOSE'],
-        isHighRisk: false,
-        needsTracking: false
-    }
-];
-
-export const MOCK_SCHOLARSHIPS: ScholarshipRecord[] = [
-    {
-        id: 'sch_1',
-        studentId: 's1',
-        semester: '112-1',
-        name: '原住民學生獎助學金',
-        amount: 12000,
-        serviceHoursRequired: 48,
-        serviceHoursCompleted: 50,
-        status: ScholarshipStatus.DISBURSED,
-        statusUpdatedAt: '2024-01-20',
-        rejectionCount: 0,
-        manualHours: [],
-        currentHandler: '已結案',
-        auditHistory: [
-            { date: '2023-09-15', action: 'CREATE', actor: 'System' },
-            { date: '2024-01-10', action: 'HOURS_APPROVED', actor: '陳專員', comment: '時數已達標' },
-            { date: '2024-01-20', action: 'DISBURSED', actor: '陳專員', comment: '已匯款' }
-        ]
-    },
-    {
-        id: 'sch_2',
-        studentId: 's2',
-        semester: '112-2',
-        name: '原住民學生獎助學金',
-        amount: 12000,
-        serviceHoursRequired: 48,
-        serviceHoursCompleted: 12,
-        status: ScholarshipStatus.HOURS_VERIFICATION,
-        statusUpdatedAt: '2024-03-01',
-        rejectionCount: 0,
-        manualHours: [],
-        auditHistory: [
-            { date: '2024-02-20', action: 'CREATE', actor: 'System' },
-            { date: '2024-03-01', action: 'SUBMITTED', actor: 'Walis' }
-        ]
-    },
-    // s6 的申請: 需補正
-    {
-        id: 'sch_3',
-        studentId: 's6',
-        semester: '113-1',
-        name: '急難救助金',
-        amount: 5000,
-        serviceHoursRequired: 0,
-        serviceHoursCompleted: 0,
-        status: ScholarshipStatus.HOURS_REJECTED,
-        statusUpdatedAt: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(), // 1 day ago
-        statusDeadline: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(), // 2 days left
-        rejectionCount: 1,
-        manualHours: [],
-        auditHistory: [
-            { date: '2024-09-01', action: 'SUBMITTED', actor: 'Yapas' },
-            { date: '2024-09-03', action: 'HOURS_REJECTED', actor: '陳專員', comment: '缺戶籍謄本影本，請補件。' }
-        ]
+        trackingDetail: '需每週追蹤經濟狀況'
     }
 ];
 
 export const MOCK_ACTIVITIES: ActivityRecord[] = [
-    { id: 'act_1', eventId: 'evt_1', studentId: 's1', role: 'PARTICIPANT', hours: 2, status: 'CONFIRMED' },
-    { id: 'act_2', eventId: 'evt_2', studentId: 's1', role: 'PARTICIPANT', hours: 3, status: 'CONFIRMED' },
-    { id: 'act_3', eventId: 'evt_1', studentId: 's2', role: 'PARTICIPANT', hours: 2, status: 'PENDING' },
-    { id: 'act_4', eventId: 'evt_2', studentId: 's6', role: 'PARTICIPANT', hours: 3, status: 'CONFIRMED' }
+    { id: 'a1', studentId: 'std_1', eventId: 'evt_1', role: 'PARTICIPANT', hours: 2, status: 'COMPLETED', signInTime: '2023-12-01T10:00:00', signOutTime: '2023-12-01T12:00:00' },
+    { id: 'a2', studentId: 'std_2', eventId: 'evt_1', role: 'PARTICIPANT', hours: 2, status: 'REGISTERED', registrationDate: '2023-11-25T10:00:00' }
 ];
 
-// --- REDEMPTIONS (RICH MOCK DATA) ---
+export const MOCK_EVENTS: Event[] = [
+    { 
+        id: 'evt_1', 
+        name: '原民文化週開幕式', 
+        date: '2023-12-01', 
+        location: '活動中心', 
+        description: '年度重要活動，邀請部落長老祈福。', 
+        defaultHours: 2, 
+        checkInType: 'SIGN_IN_ONLY', 
+        applicableGrantCategories: ['FINANCIAL_AID'] 
+    },
+    { 
+        id: 'evt_2', 
+        name: '部落參訪：茂林', 
+        date: '2023-12-15', 
+        location: '茂林區', 
+        description: '深入部落體驗文化。', 
+        defaultHours: 6, 
+        checkInType: 'SIGN_IN_OUT', 
+        applicableGrantCategories: ['FINANCIAL_AID', 'SCHOLARSHIP'] 
+    }
+];
+
 export const MOCK_REDEMPTIONS: RedemptionRecord[] = [
-    // 1. Pending Layer 1 Check (Submitted by Student s2)
     {
         id: 'red_1',
-        studentId: 's2',
-        scholarshipName: '原住民學生獎助學金',
-        amount: 12000,
-        requiredHours: 48,
-        completedHours: 52,
-        surplusHours: 4,
-        appliedDate: '2024-05-01',
-        status: RedemptionStatus.SUBMITTED
-    },
-    // 2. Pending Layer 2 Check (Passed L1, Student s3)
-    {
-        id: 'red_2',
-        studentId: 's3',
-        scholarshipName: '生活助學金',
-        amount: 6000,
-        requiredHours: 30,
-        completedHours: 30,
-        surplusHours: 0,
-        appliedDate: '2024-04-28',
-        status: RedemptionStatus.L1_PASS,
-        layer1Check: { checkedBy: '陳專員', date: '2024-04-29', result: 'PASS' }
-    },
-    // 3. Pending Layer 3 Info (Passed L2, Student s1)
-    {
-        id: 'red_3',
-        studentId: 's1',
-        scholarshipName: '原住民學生獎助學金',
-        amount: 12000,
-        requiredHours: 48,
-        completedHours: 60,
-        surplusHours: 12,
-        appliedDate: '2024-04-25',
-        status: RedemptionStatus.L2_PASS,
-        layer1Check: { checkedBy: '陳專員', date: '2024-04-26', result: 'PASS' },
-        layer2Check: { checkedBy: '陳專員', date: '2024-04-27', result: 'PASS', remarks: '活動時數充足' }
-    },
-    // 4. Pending Sign-off (Filled L3, Student s1)
-    {
-        id: 'red_4',
-        studentId: 's1',
-        scholarshipName: '急難救助金',
-        amount: 5000,
-        requiredHours: 0,
-        completedHours: 0,
-        surplusHours: 0,
-        appliedDate: '2024-04-20',
-        status: RedemptionStatus.L3_SUBMITTED,
-        layer1Check: { checkedBy: '陳專員', date: '2024-04-21', result: 'PASS' },
-        layer2Check: { checkedBy: '陳專員', date: '2024-04-21', result: 'PASS', remarks: '免時數' },
-        layer3Info: { submittedBy: '陳專員', date: '2024-04-22', paymentMethod: 'CASH', requisitionNumber: 'REQ-113005', requester: '陳專員' }
-    },
-    // 5. School Processing (Approved, Student s2)
-    {
-        id: 'red_5',
-        studentId: 's2',
-        scholarshipName: '上學期保留款',
-        amount: 2000,
-        requiredHours: 0,
-        completedHours: 0,
-        surplusHours: 0,
-        appliedDate: '2024-04-10',
-        status: RedemptionStatus.APPROVED,
-        signOff: { approverName: '王組長', date: '2024-04-12', result: 'APPROVED', remarks: '同意核銷' },
-        schoolSystemInfo: { status: 'ACCOUNTING_REVIEW' }
-    },
-    // 6. School Approved / Waiting Disbursement (Student s1)
-    {
-        id: 'red_6',
-        studentId: 's1',
-        scholarshipName: '原住民學生獎助學金 (112-1)',
-        amount: 12000,
+        studentId: 'std_1',
+        scholarshipName: '原住民族學生助學金 (一般)',
+        amount: 15000,
         requiredHours: 48,
         completedHours: 50,
         surplusHours: 2,
-        appliedDate: '2024-01-15',
-        status: RedemptionStatus.SCHOOL_APPROVED,
-        signOff: { approverName: '王組長', date: '2024-01-20', result: 'APPROVED' },
-        schoolSystemInfo: { status: 'APPROVED', voucherNumber: 'V-1129988', approvalDate: '2024-01-25' }
+        appliedDate: '2023-12-01',
+        status: RedemptionStatus.L1_PASS,
+        layer1Check: {
+            checkedBy: '陳專員',
+            date: '2023-12-02T10:00:00',
+            result: 'PASS'
+        }
     },
-    // 7. Disbursed (Completed, Student s3)
     {
-        id: 'red_7',
-        studentId: 's3',
-        scholarshipName: '急難救助金',
-        amount: 3000,
-        requiredHours: 0,
-        completedHours: 0,
+        id: 'red_2',
+        studentId: 'std_2',
+        scholarshipName: '原住民族學生助學金 (一般)',
+        amount: 15000,
+        requiredHours: 48,
+        completedHours: 20,
         surplusHours: 0,
-        appliedDate: '2023-11-10',
-        status: RedemptionStatus.DISBURSED,
-        signOff: { approverName: '王組長', date: '2023-11-12', result: 'APPROVED' },
-        schoolSystemInfo: { status: 'DISBURSED', voucherNumber: 'V-1125566', approvalDate: '2023-11-15', transferDate: '2023-11-18', transferMethod: 'TRANSFER' }
-    },
-    // 8. Returned (Rejected at L2, Student s2)
-    {
-        id: 'red_8',
-        studentId: 's2',
-        scholarshipName: '生活助學金',
-        amount: 6000,
-        requiredHours: 30,
-        completedHours: 10,
-        surplusHours: 0,
-        appliedDate: '2024-03-01',
-        status: RedemptionStatus.L2_REJECTED,
-        layer1Check: { checkedBy: '陳專員', date: '2024-03-02', result: 'PASS' },
-        layer2Check: { checkedBy: '陳專員', date: '2024-03-03', result: 'REJECTED', remarks: '時數嚴重不足，請補足後再送' }
-    },
-    // 9. L3 Check for new student s6
-    {
-        id: 'red_9',
-        studentId: 's6',
-        scholarshipName: '急難救助金',
-        amount: 5000,
-        requiredHours: 0,
-        completedHours: 0,
-        surplusHours: 0,
-        appliedDate: '2024-09-01',
-        status: RedemptionStatus.L2_PASS,
-        layer1Check: { checkedBy: '陳專員', date: '2024-09-02', result: 'PASS' },
-        layer2Check: { checkedBy: '陳專員', date: '2024-09-02', result: 'PASS', remarks: '免時數，符合急難條件' }
+        appliedDate: '2023-12-05',
+        status: RedemptionStatus.SUBMITTED
     }
 ];
 
 export const MOCK_SURPLUS_HOURS: SurplusHour[] = [
     {
         id: 'sur_1',
-        studentId: 's1',
-        scholarshipId: 'sch_1',
-        surplusHours: 4,
-        createdAt: '2023-06-01',
-        expiryDate: '2024-06-01',
-        status: 'ACTIVE'
-    },
-    {
-        id: 'sur_2',
-        studentId: 's1',
-        scholarshipId: 'red_6', // Linked to the historical redemption
+        studentId: 'std_1',
+        scholarshipId: 'red_1',
         surplusHours: 2,
-        createdAt: '2024-01-15',
-        expiryDate: '2025-01-15',
+        createdAt: '2023-12-01T10:00:00',
+        expiryDate: '2024-12-01T10:00:00',
         status: 'ACTIVE'
-    },
-    {
-        id: 'sur_3',
-        studentId: 's3',
-        scholarshipId: 'old_1',
-        surplusHours: 10,
-        createdAt: '2022-01-01',
-        expiryDate: '2023-01-01',
-        status: 'EXPIRED'
     }
 ];
 
-// --- SYSTEM CONFIGS (FULL REAL-WORLD DATA) ---
-export const SYSTEM_CONFIGS: ConfigItem[] = [
-  // --- 1. 族別 (Tribe) ---
-  { id: 't1', category: 'TRIBE', code: '1', label: '阿美族', isActive: true, order: 1, isSystemDefault: true, color: 'blue' },
-  { id: 't2', category: 'TRIBE', code: '2', label: '泰雅族', isActive: true, order: 2, isSystemDefault: true, color: 'blue' },
-  { id: 't3', category: 'TRIBE', code: '3', label: '排灣族', isActive: true, order: 3, isSystemDefault: true, color: 'blue' },
-  { id: 't4', category: 'TRIBE', code: '4', label: '布農族', isActive: true, order: 4, isSystemDefault: true, color: 'blue' },
-  { id: 't5', category: 'TRIBE', code: '5', label: '卑南族', isActive: true, order: 5, isSystemDefault: true, color: 'blue' },
-  { id: 't6', category: 'TRIBE', code: '6', label: '鄒族', isActive: true, order: 6, isSystemDefault: true, color: 'blue' },
-  { id: 't7', category: 'TRIBE', code: '7', label: '魯凱族', isActive: true, order: 7, isSystemDefault: true, color: 'blue' },
-  { id: 't8', category: 'TRIBE', code: '8', label: '賽夏族', isActive: true, order: 8, isSystemDefault: true, color: 'blue' },
-  { id: 't9', category: 'TRIBE', code: '9', label: '雅美族(達悟族)', isActive: true, order: 9, isSystemDefault: true, color: 'blue' },
-  { id: 'tA', category: 'TRIBE', code: 'A', label: '邵族', isActive: true, order: 10, isSystemDefault: true, color: 'blue' },
-  { id: 'tB', category: 'TRIBE', code: 'B', label: '噶瑪蘭族', isActive: true, order: 11, isSystemDefault: true, color: 'blue' },
-  { id: 'tC', category: 'TRIBE', code: 'C', label: '太魯閣族', isActive: true, order: 12, isSystemDefault: true, color: 'blue' },
-  { id: 'tD', category: 'TRIBE', code: 'D', label: '撒奇萊雅族', isActive: true, order: 13, isSystemDefault: true, color: 'blue' },
-  { id: 'tE', category: 'TRIBE', code: 'E', label: '賽德克族', isActive: true, order: 14, isSystemDefault: true, color: 'blue' },
-  { id: 'tF', category: 'TRIBE', code: 'F', label: '拉阿魯哇族', isActive: true, order: 15, isSystemDefault: true, color: 'blue' },
-  { id: 'tG', category: 'TRIBE', code: 'G', label: '卡那卡那富族', isActive: true, order: 16, isSystemDefault: true, color: 'blue' },
-  { id: 't0', category: 'TRIBE', code: '0', label: '尚未申報', isActive: true, order: 99, isSystemDefault: true, color: 'gray' },
-
-  // --- 2. 原鄉縣市 (INDIGENOUS_CITY) ---
-  { id: 'ic1', category: 'INDIGENOUS_CITY', code: 'NTPC', label: '新北市', isActive: true, order: 1, isSystemDefault: true },
-  { id: 'ic2', category: 'INDIGENOUS_CITY', code: 'TYN', label: '桃園市', isActive: true, order: 2, isSystemDefault: true },
-  { id: 'ic3', category: 'INDIGENOUS_CITY', code: 'HCH', label: '新竹縣', isActive: true, order: 3, isSystemDefault: true },
-  { id: 'ic4', category: 'INDIGENOUS_CITY', code: 'MLI', label: '苗栗縣', isActive: true, order: 4, isSystemDefault: true },
-  { id: 'ic5', category: 'INDIGENOUS_CITY', code: 'TCH', label: '臺中市', isActive: true, order: 5, isSystemDefault: true },
-  { id: 'ic6', category: 'INDIGENOUS_CITY', code: 'NTO', label: '南投縣', isActive: true, order: 6, isSystemDefault: true },
-  { id: 'ic7', category: 'INDIGENOUS_CITY', code: 'CHY', label: '嘉義縣', isActive: true, order: 7, isSystemDefault: true },
-  { id: 'ic8', category: 'INDIGENOUS_CITY', code: 'KHH', label: '高雄市', isActive: true, order: 8, isSystemDefault: true },
-  { id: 'ic9', category: 'INDIGENOUS_CITY', code: 'PTH', label: '屏東縣', isActive: true, order: 9, isSystemDefault: true },
-  { id: 'ic10', category: 'INDIGENOUS_CITY', code: 'ILN', label: '宜蘭縣', isActive: true, order: 10, isSystemDefault: true },
-  { id: 'ic11', category: 'INDIGENOUS_CITY', code: 'HUA', label: '花蓮縣', isActive: true, order: 11, isSystemDefault: true },
-  { id: 'ic12', category: 'INDIGENOUS_CITY', code: 'TTT', label: '臺東縣', isActive: true, order: 12, isSystemDefault: true },
-  { id: 'ic99', category: 'INDIGENOUS_CITY', code: 'UNK', label: '無法提供、界定或追溯等', isActive: true, order: 99, isSystemDefault: true },
-
-  // --- 3. 原鄉鄉鎮 (INDIGENOUS_DISTRICT) ---
-  // 新北
-  { id: 'id1', category: 'INDIGENOUS_DISTRICT', parentCode: 'NTPC', code: 'WULAI', label: '烏來區', isActive: true, order: 1, isSystemDefault: true },
-  // 桃園
-  { id: 'id2', category: 'INDIGENOUS_DISTRICT', parentCode: 'TYN', code: 'FUXING', label: '復興區', isActive: true, order: 1, isSystemDefault: true },
-  // 新竹
-  { id: 'id3', category: 'INDIGENOUS_DISTRICT', parentCode: 'HCH', code: 'WUFENG', label: '五峰鄉', isActive: true, order: 1, isSystemDefault: true },
-  { id: 'id4', category: 'INDIGENOUS_DISTRICT', parentCode: 'HCH', code: 'JIANSHI', label: '尖石鄉', isActive: true, order: 2, isSystemDefault: true },
-  { id: 'id5', category: 'INDIGENOUS_DISTRICT', parentCode: 'HCH', code: 'GUANXI', label: '關西鎮', isActive: true, order: 3, isSystemDefault: true },
-  // 苗栗
-  { id: 'id6', category: 'INDIGENOUS_DISTRICT', parentCode: 'MLI', code: 'TAIAN', label: '泰安鄉', isActive: true, order: 1, isSystemDefault: true },
-  { id: 'id7', category: 'INDIGENOUS_DISTRICT', parentCode: 'MLI', code: 'NANZHUANG', label: '南庄鄉', isActive: true, order: 2, isSystemDefault: true },
-  { id: 'id8', category: 'INDIGENOUS_DISTRICT', parentCode: 'MLI', code: 'SHITAN', label: '獅潭鄉', isActive: true, order: 3, isSystemDefault: true },
-  // 台中
-  { id: 'id9', category: 'INDIGENOUS_DISTRICT', parentCode: 'TCH', code: 'HEPING', label: '和平區', isActive: true, order: 1, isSystemDefault: true },
-  // 南投
-  { id: 'id10', category: 'INDIGENOUS_DISTRICT', parentCode: 'NTO', code: 'YUCHI', label: '魚池鄉', isActive: true, order: 1, isSystemDefault: true },
-  { id: 'id11', category: 'INDIGENOUS_DISTRICT', parentCode: 'NTO', code: 'REN_AI', label: '仁愛鄉', isActive: true, order: 2, isSystemDefault: true },
-  { id: 'id12', category: 'INDIGENOUS_DISTRICT', parentCode: 'NTO', code: 'XINYI', label: '信義鄉', isActive: true, order: 3, isSystemDefault: true },
-  // 嘉義
-  { id: 'id13', category: 'INDIGENOUS_DISTRICT', parentCode: 'CHY', code: 'ALISHAN', label: '阿里山鄉', isActive: true, order: 1, isSystemDefault: true },
-  // 高雄
-  { id: 'id14', category: 'INDIGENOUS_DISTRICT', parentCode: 'KHH', code: 'NAMAXIA', label: '那瑪夏區', isActive: true, order: 1, isSystemDefault: true },
-  { id: 'id15', category: 'INDIGENOUS_DISTRICT', parentCode: 'KHH', code: 'TAOYUAN', label: '桃源區', isActive: true, order: 2, isSystemDefault: true },
-  { id: 'id16', category: 'INDIGENOUS_DISTRICT', parentCode: 'KHH', code: 'MAOLIN', label: '茂林區', isActive: true, order: 3, isSystemDefault: true },
-  // 屏東
-  { id: 'id17', category: 'INDIGENOUS_DISTRICT', parentCode: 'PTH', code: 'MANZHOU', label: '滿州鄉', isActive: true, order: 1, isSystemDefault: true },
-  { id: 'id18', category: 'INDIGENOUS_DISTRICT', parentCode: 'PTH', code: 'TAIWU', label: '泰武鄉', isActive: true, order: 2, isSystemDefault: true },
-  { id: 'id19', category: 'INDIGENOUS_DISTRICT', parentCode: 'PTH', code: 'CHUNRI', label: '春日鄉', isActive: true, order: 3, isSystemDefault: true },
-  { id: 'id20', category: 'INDIGENOUS_DISTRICT', parentCode: 'PTH', code: 'SHIZI', label: '獅子鄉', isActive: true, order: 4, isSystemDefault: true },
-  { id: 'id21', category: 'INDIGENOUS_DISTRICT', parentCode: 'PTH', code: 'MUDAN', label: '牡丹鄉', isActive: true, order: 5, isSystemDefault: true },
-  { id: 'id22', category: 'INDIGENOUS_DISTRICT', parentCode: 'PTH', code: 'WUTAI', label: '霧臺鄉', isActive: true, order: 6, isSystemDefault: true },
-  { id: 'id23', category: 'INDIGENOUS_DISTRICT', parentCode: 'PTH', code: 'SANDIMEN', label: '三地門鄉', isActive: true, order: 7, isSystemDefault: true },
-  { id: 'id24', category: 'INDIGENOUS_DISTRICT', parentCode: 'PTH', code: 'LAIYI', label: '來義鄉', isActive: true, order: 8, isSystemDefault: true },
-  { id: 'id25', category: 'INDIGENOUS_DISTRICT', parentCode: 'PTH', code: 'MAJIA', label: '瑪家鄉', isActive: true, order: 9, isSystemDefault: true },
-  // 宜蘭
-  { id: 'id26', category: 'INDIGENOUS_DISTRICT', parentCode: 'ILN', code: 'DATONG', label: '大同鄉', isActive: true, order: 1, isSystemDefault: true },
-  { id: 'id27', category: 'INDIGENOUS_DISTRICT', parentCode: 'ILN', code: 'NANAO', label: '南澳鄉', isActive: true, order: 2, isSystemDefault: true },
-  // 花蓮
-  { id: 'id28', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'FENGLIN', label: '鳳林鎮', isActive: true, order: 1, isSystemDefault: true },
-  { id: 'id29', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'SHOUFENG', label: '壽豐鄉', isActive: true, order: 2, isSystemDefault: true },
-  { id: 'id30', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'GUANGFU', label: '光復鄉', isActive: true, order: 3, isSystemDefault: true },
-  { id: 'id31', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'RUISUI', label: '瑞穗鄉', isActive: true, order: 4, isSystemDefault: true },
-  { id: 'id32', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'FULI', label: '富里鄉', isActive: true, order: 5, isSystemDefault: true },
-  { id: 'id33', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'XIULIN', label: '秀林鄉', isActive: true, order: 6, isSystemDefault: true },
-  { id: 'id34', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'ZHUOXI', label: '卓溪鄉', isActive: true, order: 7, isSystemDefault: true },
-  { id: 'id35', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'WANRONG', label: '萬榮鄉', isActive: true, order: 8, isSystemDefault: true },
-  { id: 'id36', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'FENGBIN', label: '豐濱鄉', isActive: true, order: 9, isSystemDefault: true },
-  { id: 'id37', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'YULI', label: '玉里鎮', isActive: true, order: 10, isSystemDefault: true },
-  { id: 'id38', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'JIAN', label: '吉安鄉', isActive: true, order: 11, isSystemDefault: true },
-  { id: 'id39', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'HUALIEN', label: '花蓮市', isActive: true, order: 12, isSystemDefault: true },
-  { id: 'id40', category: 'INDIGENOUS_DISTRICT', parentCode: 'HUA', code: 'XINCHENG', label: '新城鄉', isActive: true, order: 13, isSystemDefault: true },
-  // 台東
-  { id: 'id41', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'HAIDUAN', label: '海端鄉', isActive: true, order: 1, isSystemDefault: true },
-  { id: 'id42', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'YANPING', label: '延平鄉', isActive: true, order: 2, isSystemDefault: true },
-  { id: 'id43', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'JINFENG', label: '金峰鄉', isActive: true, order: 3, isSystemDefault: true },
-  { id: 'id44', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'DAREN', label: '達仁鄉', isActive: true, order: 4, isSystemDefault: true },
-  { id: 'id45', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'LANYU', label: '蘭嶼鄉', isActive: true, order: 5, isSystemDefault: true },
-  { id: 'id46', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'LUYE', label: '鹿野鄉', isActive: true, order: 6, isSystemDefault: true },
-  { id: 'id47', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'BEINAN', label: '卑南鄉', isActive: true, order: 7, isSystemDefault: true },
-  { id: 'id48', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'DAWU', label: '大武鄉', isActive: true, order: 8, isSystemDefault: true },
-  { id: 'id49', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'DONGHE', label: '東河鄉', isActive: true, order: 9, isSystemDefault: true },
-  { id: 'id50', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'CHANGKUN', label: '長濱鄉', isActive: true, order: 10, isSystemDefault: true },
-  { id: 'id51', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'CHENGGONG', label: '成功鎮', isActive: true, order: 11, isSystemDefault: true },
-  { id: 'id52', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'CHISHANG', label: '池上鄉', isActive: true, order: 12, isSystemDefault: true },
-  { id: 'id53', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'TAIMALI', label: '太麻里鄉', isActive: true, order: 13, isSystemDefault: true },
-  { id: 'id54', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'TAITUNG', label: '台東市', isActive: true, order: 14, isSystemDefault: true },
-  { id: 'id55', category: 'INDIGENOUS_DISTRICT', parentCode: 'TTT', code: 'GUANSHAN', label: '關山鎮', isActive: true, order: 15, isSystemDefault: true },
-
-  // --- 4. 族語/方言 (LANGUAGE_DIALECT) ---
-  // 阿美
-  { id: 'lang1', category: 'LANGUAGE_DIALECT', code: 'AMI_N', label: '南勢阿美語', isActive: true, order: 1, isSystemDefault: true },
-  { id: 'lang2', category: 'LANGUAGE_DIALECT', code: 'AMI_SK', label: '秀姑巒阿美語', isActive: true, order: 2, isSystemDefault: true },
-  { id: 'lang3', category: 'LANGUAGE_DIALECT', code: 'AMI_C', label: '海岸阿美語', isActive: true, order: 3, isSystemDefault: true },
-  { id: 'lang4', category: 'LANGUAGE_DIALECT', code: 'AMI_M', label: '馬蘭阿美語', isActive: true, order: 4, isSystemDefault: true },
-  { id: 'lang5', category: 'LANGUAGE_DIALECT', code: 'AMI_H', label: '恆春阿美語', isActive: true, order: 5, isSystemDefault: true },
-  // 泰雅
-  { id: 'lang6', category: 'LANGUAGE_DIALECT', code: 'ATA_S', label: '賽考利克泰雅語', isActive: true, order: 6, isSystemDefault: true },
-  { id: 'lang7', category: 'LANGUAGE_DIALECT', code: 'ATA_SI', label: '四季泰雅語', isActive: true, order: 7, isSystemDefault: true },
-  { id: 'lang8', category: 'LANGUAGE_DIALECT', code: 'ATA_IZ', label: '宜蘭澤敖利泰雅語', isActive: true, order: 8, isSystemDefault: true },
-  { id: 'lang9', category: 'LANGUAGE_DIALECT', code: 'ATA_Z', label: '澤敖利泰雅語', isActive: true, order: 9, isSystemDefault: true },
-  { id: 'lang10', category: 'LANGUAGE_DIALECT', code: 'ATA_W', label: '汶水泰雅語', isActive: true, order: 10, isSystemDefault: true },
-  { id: 'lang11', category: 'LANGUAGE_DIALECT', code: 'ATA_M', label: '萬大泰雅語', isActive: true, order: 11, isSystemDefault: true },
-  // 排灣
-  { id: 'lang12', category: 'LANGUAGE_DIALECT', code: 'PAI_E', label: '東排灣語', isActive: true, order: 12, isSystemDefault: true },
-  { id: 'lang13', category: 'LANGUAGE_DIALECT', code: 'PAI_N', label: '北排灣語', isActive: true, order: 13, isSystemDefault: true },
-  { id: 'lang14', category: 'LANGUAGE_DIALECT', code: 'PAI_C', label: '中排灣語', isActive: true, order: 14, isSystemDefault: true },
-  { id: 'lang15', category: 'LANGUAGE_DIALECT', code: 'PAI_S', label: '南排灣語', isActive: true, order: 15, isSystemDefault: true },
-  // 布農
-  { id: 'lang16', category: 'LANGUAGE_DIALECT', code: 'BUN_T', label: '卓群布農語', isActive: true, order: 16, isSystemDefault: true },
-  { id: 'lang17', category: 'LANGUAGE_DIALECT', code: 'BUN_K', label: '卡群布農語', isActive: true, order: 17, isSystemDefault: true },
-  { id: 'lang18', category: 'LANGUAGE_DIALECT', code: 'BUN_D', label: '丹群布農語', isActive: true, order: 18, isSystemDefault: true },
-  { id: 'lang19', category: 'LANGUAGE_DIALECT', code: 'BUN_L', label: '巒群布農語', isActive: true, order: 19, isSystemDefault: true },
-  { id: 'lang20', category: 'LANGUAGE_DIALECT', code: 'BUN_J', label: '郡群布農語', isActive: true, order: 20, isSystemDefault: true },
-  // 卑南
-  { id: 'lang21', category: 'LANGUAGE_DIALECT', code: 'PUM_Z', label: '知本卑南語', isActive: true, order: 21, isSystemDefault: true },
-  { id: 'lang22', category: 'LANGUAGE_DIALECT', code: 'PUM_N', label: '南王卑南語', isActive: true, order: 22, isSystemDefault: true },
-  { id: 'lang23', category: 'LANGUAGE_DIALECT', code: 'PUM_W', label: '西群卑南語', isActive: true, order: 23, isSystemDefault: true },
-  { id: 'lang24', category: 'LANGUAGE_DIALECT', code: 'PUM_J', label: '建和卑南語', isActive: true, order: 24, isSystemDefault: true },
-  // 其他單一方言
-  { id: 'lang25', category: 'LANGUAGE_DIALECT', code: 'COU', label: '鄒語', isActive: true, order: 25, isSystemDefault: true },
-  { id: 'lang26', category: 'LANGUAGE_DIALECT', code: 'SAI', label: '賽夏語', isActive: true, order: 26, isSystemDefault: true },
-  { id: 'lang27', category: 'LANGUAGE_DIALECT', code: 'YAM', label: '雅美語', isActive: true, order: 27, isSystemDefault: true },
-  { id: 'lang28', category: 'LANGUAGE_DIALECT', code: 'THAO', label: '邵語', isActive: true, order: 28, isSystemDefault: true },
-  { id: 'lang29', category: 'LANGUAGE_DIALECT', code: 'KAV', label: '噶瑪蘭語', isActive: true, order: 29, isSystemDefault: true },
-  { id: 'lang30', category: 'LANGUAGE_DIALECT', code: 'TRU', label: '太魯閣語', isActive: true, order: 30, isSystemDefault: true },
-  { id: 'lang31', category: 'LANGUAGE_DIALECT', code: 'SAK', label: '撒奇萊雅語', isActive: true, order: 31, isSystemDefault: true },
-  // 賽德克
-  { id: 'lang32', category: 'LANGUAGE_DIALECT', code: 'SED_T', label: '都達賽德克語', isActive: true, order: 32, isSystemDefault: true },
-  { id: 'lang33', category: 'LANGUAGE_DIALECT', code: 'SED_D', label: '德固達雅賽德克語', isActive: true, order: 33, isSystemDefault: true },
-  { id: 'lang34', category: 'LANGUAGE_DIALECT', code: 'SED_L', label: '德鹿谷賽德克語', isActive: true, order: 34, isSystemDefault: true },
-  // 南方
-  { id: 'lang35', category: 'LANGUAGE_DIALECT', code: 'HLA', label: '拉阿魯哇語', isActive: true, order: 35, isSystemDefault: true },
-  { id: 'lang36', category: 'LANGUAGE_DIALECT', code: 'KAN', label: '卡那卡那富語', isActive: true, order: 36, isSystemDefault: true },
-  { id: 'lang0', category: 'LANGUAGE_DIALECT', code: 'NONE', label: '尚未考取認證', isActive: true, order: 99, isSystemDefault: true, color: 'gray' },
-
-  // --- 5. 休學原因 (SUSPENSION_REASON) ---
-  { id: 'sus1', category: 'SUSPENSION_REASON', code: 'ILLNESS', label: '學生罹病(經醫師出具證明書)', isActive: true, order: 1, isSystemDefault: true, color: 'red' },
-  { id: 'sus2', category: 'SUSPENSION_REASON', code: 'WORK', label: '工作因素', isActive: true, order: 2, isSystemDefault: true, color: 'yellow' },
-  { id: 'sus3', category: 'SUSPENSION_REASON', code: 'ECON', label: '經濟因素', isActive: true, order: 3, isSystemDefault: true, color: 'yellow' },
-  { id: 'sus4', category: 'SUSPENSION_REASON', code: 'DELAY', label: '延修生只須修下學期學分', isActive: true, order: 4, isSystemDefault: true, color: 'blue' },
-  { id: 'sus5', category: 'SUSPENSION_REASON', code: 'INTEREST', label: '志趣不合', isActive: true, order: 5, isSystemDefault: true, color: 'purple' },
-  { id: 'sus6', category: 'SUSPENSION_REASON', code: 'LEARNING', label: '學習困難', isActive: true, order: 6, isSystemDefault: true, color: 'purple' },
-  { id: 'sus7', category: 'SUSPENSION_REASON', code: 'MILITARY', label: '服役', isActive: true, order: 7, isSystemDefault: true, color: 'blue' },
-  { id: 'sus8', category: 'SUSPENSION_REASON', code: 'PREGNANCY', label: '懷孕', isActive: true, order: 8, isSystemDefault: true, color: 'blue' },
-  { id: 'sus9', category: 'SUSPENSION_REASON', code: 'PARENTING', label: '育嬰', isActive: true, order: 9, isSystemDefault: true, color: 'blue' },
-  { id: 'sus99', category: 'SUSPENSION_REASON', code: 'OTHER', label: '其他事故', isActive: true, order: 10, isSystemDefault: true, color: 'gray' },
-
-  // --- 6. 退學原因 (DROPOUT_REASON) ---
-  { id: 'dr1', category: 'DROPOUT_REASON', code: 'TRANSFER', label: '轉學', isActive: true, order: 1, isSystemDefault: true, color: 'purple' },
-  { id: 'dr2', category: 'DROPOUT_REASON', code: 'INTEREST', label: '志趣不合', isActive: true, order: 2, isSystemDefault: true, color: 'purple' },
-  { id: 'dr3', category: 'DROPOUT_REASON', code: 'WORK', label: '工作因素', isActive: true, order: 3, isSystemDefault: true, color: 'yellow' },
-  { id: 'dr4', category: 'DROPOUT_REASON', code: 'ECON', label: '經濟因素', isActive: true, order: 4, isSystemDefault: true, color: 'yellow' },
-  { id: 'dr5', category: 'DROPOUT_REASON', code: 'PLAN', label: '生涯規劃', isActive: true, order: 5, isSystemDefault: true, color: 'green' },
-  { id: 'dr6', category: 'DROPOUT_REASON', code: 'ILLNESS', label: '因病', isActive: true, order: 6, isSystemDefault: true, color: 'red' },
-  { id: 'dr7', category: 'DROPOUT_REASON', code: 'PREGNANCY', label: '懷孕', isActive: true, order: 7, isSystemDefault: true, color: 'blue' },
-  { id: 'dr8', category: 'DROPOUT_REASON', code: 'PARENTING', label: '育嬰', isActive: true, order: 8, isSystemDefault: true, color: 'blue' },
-  { id: 'dr99', category: 'DROPOUT_REASON', code: 'OTHER', label: '其他', isActive: true, order: 9, isSystemDefault: true, color: 'gray' },
-
-  // --- 7. 入學管道 (ADMISSION_CHANNEL) ---
-  { id: 'ac1', category: 'ADMISSION_CHANNEL', code: 'STAR', label: '繁星推薦', isActive: true, order: 1, isSystemDefault: true, color: 'yellow' },
-  { id: 'ac2', category: 'ADMISSION_CHANNEL', code: 'INDIVIDUAL', label: '個人申請', isActive: true, order: 2, isSystemDefault: true, color: 'blue' },
-  { id: 'ac3', category: 'ADMISSION_CHANNEL', code: 'EXAM', label: '考試分發', isActive: true, order: 3, isSystemDefault: true, color: 'gray' },
-  { id: 'ac4', category: 'ADMISSION_CHANNEL', code: 'SPORT', label: '運動績優', isActive: true, order: 4, isSystemDefault: true, color: 'green' },
-  { id: 'ac5', category: 'ADMISSION_CHANNEL', code: 'INDIGENOUS_SPEC', label: '原住民專班', isActive: true, order: 5, isSystemDefault: true, color: 'red' },
-  { id: 'ac6', category: 'ADMISSION_CHANNEL', code: 'OTHER', label: '其他', isActive: true, order: 99, isSystemDefault: true, color: 'gray' },
-
-  // --- 8. 語言級別 (LANGUAGE_LEVEL) ---
-  { id: 'll1', category: 'LANGUAGE_LEVEL', code: 'BEGINNER', label: '初級', isActive: true, order: 1, isSystemDefault: true, color: 'gray' },
-  { id: 'll2', category: 'LANGUAGE_LEVEL', code: 'INTERMEDIATE', label: '中級', isActive: true, order: 2, isSystemDefault: true, color: 'blue' },
-  { id: 'll3', category: 'LANGUAGE_LEVEL', code: 'UPPER_INT', label: '中高級', isActive: true, order: 3, isSystemDefault: true, color: 'green' },
-  { id: 'll4', category: 'LANGUAGE_LEVEL', code: 'ADVANCED', label: '高級', isActive: true, order: 4, isSystemDefault: true, color: 'purple' },
-  { id: 'll5', category: 'LANGUAGE_LEVEL', code: 'SUPERIOR', label: '優級', isActive: true, order: 5, isSystemDefault: true, color: 'red' },
-
-  // --- 9. 系所 (DEPT) (Examples) ---
-  { id: 'd1', category: 'DEPT', code: 'CSIE', label: '資訊工程學系', isActive: true, order: 1, isSystemDefault: true, color: 'blue' },
-  { id: 'd2', category: 'DEPT', code: 'IM', label: '資訊管理學系', isActive: true, order: 2, isSystemDefault: true, color: 'blue' },
-  { id: 'd3', category: 'DEPT', code: 'EE', label: '電機工程學系', isActive: true, order: 3, isSystemDefault: true, color: 'blue' },
-  { id: 'd4', category: 'DEPT', code: 'BA', label: '企業管理學系', isActive: true, order: 4, isSystemDefault: true, color: 'green' },
-  { id: 'd5', category: 'DEPT', code: 'NUR', label: '護理學系', isActive: true, order: 5, isSystemDefault: true, color: 'red' },
-  { id: 'd6', category: 'DEPT', code: 'SW', label: '社會工作學系', isActive: true, order: 6, isSystemDefault: true, color: 'purple' },
-
-  // --- 10. 輔導方式 (COUNSEL_METHOD) ---
-  { id: 'cm1', category: 'COUNSEL_METHOD', code: 'FACE', label: '面談', isActive: true, order: 1, isSystemDefault: true, color: 'green' },
-  { id: 'cm2', category: 'COUNSEL_METHOD', code: 'PHONE', label: '電話', isActive: true, order: 2, isSystemDefault: true, color: 'blue' },
-  { id: 'cm3', category: 'COUNSEL_METHOD', code: 'LINE', label: '通訊軟體 (Line/FB)', isActive: true, order: 3, isSystemDefault: true, color: 'blue' },
-  { id: 'cm4', category: 'COUNSEL_METHOD', code: 'HOME', label: '家庭訪視', isActive: true, order: 4, isSystemDefault: true, color: 'purple' },
-  { id: 'cm5', category: 'COUNSEL_METHOD', code: 'OTHER', label: '其他', isActive: true, order: 99, isSystemDefault: true, color: 'gray' },
-
-  // --- 11. 輔導類別 (COUNSEL_CATEGORY) ---
-  { id: 'cc1', category: 'COUNSEL_CATEGORY', code: 'ACADEMIC', label: '課業學習', isActive: true, order: 1, isSystemDefault: true, color: 'blue' },
-  { id: 'cc2', category: 'COUNSEL_CATEGORY', code: 'LIFE', label: '生活適應', isActive: true, order: 2, isSystemDefault: true, color: 'green' },
-  { id: 'cc3', category: 'COUNSEL_CATEGORY', code: 'CAREER', label: '生涯規劃', isActive: true, order: 3, isSystemDefault: true, color: 'purple' },
-  { id: 'cc4', category: 'COUNSEL_CATEGORY', code: 'FINANCE', label: '經濟扶助', isActive: true, order: 4, isSystemDefault: true, color: 'yellow' },
-  { id: 'cc5', category: 'COUNSEL_CATEGORY', code: 'RELATION', label: '人際情感', isActive: true, order: 5, isSystemDefault: true, color: 'red' },
-  { id: 'cc6', category: 'COUNSEL_CATEGORY', code: 'OTHER', label: '其他', isActive: true, order: 99, isSystemDefault: true, color: 'gray' },
-
-  // --- 12. 後續建議 (COUNSEL_RECOMMENDATION) ---
-  { id: 'cr1', category: 'COUNSEL_RECOMMENDATION', code: 'CONTINUE', label: '持續追蹤', isActive: true, order: 1, isSystemDefault: true, color: 'blue' },
-  { id: 'cr2', category: 'COUNSEL_RECOMMENDATION', code: 'REFERRAL', label: '轉介諮商中心', isActive: true, order: 2, isSystemDefault: true, color: 'red' },
-  { id: 'cr3', category: 'COUNSEL_RECOMMENDATION', code: 'CLOSE', label: '結案', isActive: true, order: 3, isSystemDefault: true, color: 'green' },
-  { id: 'cr4', category: 'COUNSEL_RECOMMENDATION', code: 'OTHER', label: '其他', isActive: true, order: 99, isSystemDefault: true, color: 'gray' },
-
-  // --- 13. 獎學金名稱 (SCHOLARSHIP_NAME) ---
-  { id: 'sn1', category: 'SCHOLARSHIP_NAME', code: 'INDIGENOUS_SCHOLARSHIP', label: '原住民學生獎助學金', isActive: true, order: 1, isSystemDefault: true, color: 'blue' },
-  { id: 'sn2', category: 'SCHOLARSHIP_NAME', code: 'EMERGENCY', label: '急難救助金', isActive: true, order: 2, isSystemDefault: true, color: 'red' },
-  { id: 'sn3', category: 'SCHOLARSHIP_NAME', code: 'LIVING', label: '生活助學金', isActive: true, order: 3, isSystemDefault: true, color: 'green' },
+export const MOCK_ANNOUNCEMENTS: Announcement[] = [
+    { id: 'ann_1', title: '112-2 獎助學金申請開跑', content: '請同學留意申請期限至 12/31 截止，逾期不候。', date: '2023-12-01', target: 'ALL', priority: 'URGENT', author: '陳專員' },
+    { id: 'ann_2', title: '系統維護通知', content: '本週六凌晨 02:00-04:00 進行系統維護，暫停服務。', date: '2023-12-05', target: 'ALL', priority: 'NORMAL', author: '系統管理員' }
 ];
+

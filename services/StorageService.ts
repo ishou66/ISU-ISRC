@@ -1,3 +1,4 @@
+
 import { SystemLog } from '../types';
 import CryptoJS from 'crypto-js';
 
@@ -39,7 +40,8 @@ export class StorageService {
       ROLES: `${APP_PREFIX}ROLES`,
       METADATA: `${APP_PREFIX}METADATA`,
       REDEMPTIONS: `${APP_PREFIX}REDEMPTIONS`,
-      SURPLUS: `${APP_PREFIX}SURPLUS`
+      SURPLUS: `${APP_PREFIX}SURPLUS`,
+      ANNOUNCEMENTS: `${APP_PREFIX}ANNOUNCEMENTS`
     };
   }
 
