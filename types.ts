@@ -1,8 +1,3 @@
-
-
-
-
-
 export enum ModuleId {
   DASHBOARD = 'DASHBOARD',
   STUDENTS = 'STUDENTS',
@@ -13,7 +8,7 @@ export enum ModuleId {
   SYSTEM_SETTINGS = 'SYSTEM_SETTINGS',
   USER_MANAGEMENT = 'USER_MANAGEMENT',
   AUDIT_LOGS = 'AUDIT_LOGS',
-  REDEMPTION = 'REDEMPTION' // Keeping ID for permission legacy, but UI is merged
+  REDEMPTION = 'REDEMPTION'
 }
 
 export interface PermissionDetails {
@@ -176,10 +171,13 @@ export interface Student {
   maritalStatus?: '未婚' | '已婚' | '其他';
   
   // Account Fields (New)
-  username?: string; // Usually studentId
+  username?: string; // usually 'isu' + studentId
   passwordHash?: string; 
   isActive?: boolean;
+  isFirstLogin?: boolean; // For forced password change logic
   lastLogin?: string;
+  lastLoginIp?: string;
+  lastLoginDevice?: string;
   passwordCreatedAt?: string;
   passwordResetToken?: string;
   passwordResetExpires?: string;
@@ -206,6 +204,10 @@ export interface Student {
   hometownDistrict?: string;
 
   highRisk: HighRiskStatus;
+  riskFactors?: string[]; // Auto-detected reasons
+  manualRiskOverride?: boolean; // If true, ignore auto calc
+  manualRiskReason?: string;
+
   careStatus?: 'OPEN' | 'PROCESSING' | 'CLOSED'; 
   
   emails: {

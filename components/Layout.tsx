@@ -1,5 +1,4 @@
 
-
 import React, { useState, useRef } from 'react';
 import { ICONS } from '../constants';
 import { User, RoleDefinition, ModuleId } from '../types';
@@ -95,9 +94,6 @@ export const Layout: React.FC<LayoutProps> = ({
       e.target.value = '';
   };
 
-  // Check if user is "Student Role"
-  const isStudent = currentUser.roleId === 'role_assistant' || currentUser.account.startsWith('student');
-
   return (
     <div className="flex h-screen w-full overflow-hidden bg-neutral-bg font-sans text-neutral-text">
       {/* Mobile Overlay */}
@@ -127,32 +123,15 @@ export const Layout: React.FC<LayoutProps> = ({
 
         {/* Navigation Links */}
         <nav className="flex-1 py-6 space-y-1 overflow-y-auto">
-          {!isStudent && (
-             <>
-              <div className="px-6 pb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Main Menu</div>
-              <NavItem view="DASHBOARD" moduleId={ModuleId.DASHBOARD} label="儀表板概覽" icon={ICONS.Dashboard} />
-              <NavItem view="SCHOLARSHIP" moduleId={ModuleId.SCHOLARSHIP} label="獎助學金管理" icon={ICONS.Financial} />
-              <NavItem view="STUDENTS" moduleId={ModuleId.STUDENTS} label="學生資料管理" icon={ICONS.Students} />
-              <NavItem view="COUNSELING_MANAGER" moduleId={ModuleId.COUNSELING_MANAGER} label="輔導關懷紀錄" icon={ICONS.CounselingManager} />
-              <NavItem view="ACTIVITY" moduleId={ModuleId.ACTIVITY} label="活動參與紀錄" icon={ICONS.Activity} />
-             </>
-          )}
-
-          {isStudent && (
-              <>
-                  <div className="px-6 pb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Student Portal</div>
-                  <button 
-                    onClick={() => handleNavigate('STUDENT_PORTAL')} 
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-200 border-l-4 ${currentView === 'STUDENT_PORTAL' ? 'bg-black/20 border-primary text-white' : 'border-transparent text-gray-400 hover:bg-white/5 hover:text-white'}`}
-                  >
-                      <ICONS.Money size={18} className={currentView === 'STUDENT_PORTAL' ? 'text-primary' : 'text-gray-400'}/>
-                      <span>學生兌換中心</span>
-                  </button>
-                  <NavItem view="ACTIVITY" moduleId={ModuleId.ACTIVITY} label="活動簽到" icon={ICONS.Activity} />
-              </>
-          )}
+          <div className="px-6 pb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Main Menu</div>
+          <NavItem view="DASHBOARD" moduleId={ModuleId.DASHBOARD} label="儀表板概覽" icon={ICONS.Dashboard} />
+          <NavItem view="SCHOLARSHIP" moduleId={ModuleId.SCHOLARSHIP} label="獎助學金管理" icon={ICONS.Financial} />
+          <NavItem view="STUDENTS" moduleId={ModuleId.STUDENTS} label="學生資料管理" icon={ICONS.Students} />
+          <NavItem view="COUNSELING_MANAGER" moduleId={ModuleId.COUNSELING_MANAGER} label="輔導關懷紀錄" icon={ICONS.CounselingManager} />
+          <NavItem view="ACTIVITY" moduleId={ModuleId.ACTIVITY} label="活動參與紀錄" icon={ICONS.Activity} />
+          <NavItem view="REDEMPTION_MANAGER" moduleId={ModuleId.REDEMPTION} label="兌換核銷中心" icon={ICONS.Money} />
           
-          {(can(ModuleId.SYSTEM_SETTINGS, 'view') || can(ModuleId.USER_MANAGEMENT, 'view') || can(ModuleId.AUDIT_LOGS, 'view')) && !isStudent && (
+          {(can(ModuleId.SYSTEM_SETTINGS, 'view') || can(ModuleId.USER_MANAGEMENT, 'view') || can(ModuleId.AUDIT_LOGS, 'view')) && (
              <>
                 <div className="mt-8 px-6 pb-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
                     System Admin
@@ -206,6 +185,7 @@ export const Layout: React.FC<LayoutProps> = ({
         {/* Top Header */}
         <header className="h-16 bg-white border-b border-neutral-border flex items-center justify-between px-6 shadow-sm z-30 shrink-0 print:hidden">
             <div className="flex items-center gap-4">
+               {/* Hamburger */}
                <button 
                  onClick={() => setIsMobileMenuOpen(true)}
                  className="md:hidden text-gray-500 hover:text-primary p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -225,7 +205,6 @@ export const Layout: React.FC<LayoutProps> = ({
                      {currentView === 'SETTINGS' && 'System Settings'}
                      {currentView === 'USER_MANAGEMENT' && 'User Access'}
                      {currentView === 'AUDIT_LOGS' && 'Audit Logs'}
-                     {currentView === 'STUDENT_PORTAL' && 'My Portal'}
                      {currentView === 'ACTIVITY' && 'Activities'}
                    </h1>
                </div>

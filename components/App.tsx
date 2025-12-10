@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Login } from './components/Login';
@@ -13,7 +12,8 @@ import { AuditLogManager } from './components/AuditLogManager';
 import { RoleManager } from './components/RoleManager';
 import { UserManager } from './components/UserManager';
 import { CounselingManager } from './components/CounselingManager';
-import { StudentRedemption } from './components/StudentRedemption'; // New
+import { StudentPortal } from './components/StudentPortal'; // Updated
+import { RedemptionManager } from './components/RedemptionManager';
 
 // Context Providers
 import { PermissionProvider, usePermissionContext } from './contexts/PermissionContext';
@@ -23,7 +23,7 @@ import { ActivityProvider } from './contexts/ActivityContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SystemProvider, useSystem } from './contexts/SystemContext';
-import { RedemptionProvider } from './contexts/RedemptionContext'; // New
+import { RedemptionProvider } from './contexts/RedemptionContext';
 
 import { Student } from './types';
 import { StorageService } from './services/StorageService';
@@ -41,6 +41,15 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState('DASHBOARD');
   const [navParams, setNavParams] = useState<any>(null); 
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  // Auto-route to Student Portal if user is student
+  useEffect(() => {
+      if (currentUser?.roleId === 'role_assistant' || currentUser?.account.match(/^\d{9}[A-Z]$/)) {
+          setCurrentView('STUDENT_PORTAL');
+      } else if (currentView === 'STUDENT_PORTAL') {
+          setCurrentView('DASHBOARD');
+      }
+  }, [currentUser]);
 
   const handleNavigate = (view: string, params?: any) => {
       setCurrentView(view);
@@ -97,7 +106,10 @@ const AppContent: React.FC = () => {
         return <ActivityManager />;
         
       case 'STUDENT_PORTAL':
-        return <StudentRedemption currentUser={currentUser} />;
+        return <StudentPortal currentUser={currentUser} />;
+        
+      case 'REDEMPTION_MANAGER':
+        return <RedemptionManager />;
         
       default:
         return <div>Not Found</div>;
@@ -106,6 +118,11 @@ const AppContent: React.FC = () => {
 
   if (!currentUser) {
       return <Login />;
+  }
+
+  // If student, render portal directly without standard layout
+  if (currentView === 'STUDENT_PORTAL') {
+      return renderContent();
   }
 
   return (

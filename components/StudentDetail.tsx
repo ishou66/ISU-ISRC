@@ -69,7 +69,7 @@ interface StudentDetailProps {
 }
 
 export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack }) => {
-  const { updateStudent, counselingLogs } = useStudents();
+  const { updateStudent, counselingLogs, calculateRiskLevel, resetStudentPassword, toggleStudentAccount } = useStudents();
   const { scholarships } = useScholarships();
   const { activities, events } = useActivities();
   const { configs } = useSystem();
@@ -77,7 +77,7 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
   const { notify } = useToast();
 
   // --- Local State ---
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'IDENTITY' | 'CONTACT' | 'FAMILY' | 'BANK' | 'MONEY' | 'COUNSEL' | 'ACTIVITY'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'IDENTITY' | 'CONTACT' | 'FAMILY' | 'ACCOUNT' | 'MONEY' | 'COUNSEL' | 'ACTIVITY'>('DASHBOARD');
   const [isEditing, setIsEditing] = useState(false); // Controls View/Edit Mode
   const [formData, setFormData] = useState<Student>(student);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -94,6 +94,9 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
   const [targetStatus, setTargetStatus] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-Risk Calculation
+  const calculatedRisk = useMemo(() => calculateRiskLevel(student), [student, counselingLogs]);
 
   // Reset form data when student prop changes or when cancelling edit
   useEffect(() => { 
@@ -405,7 +408,15 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
            
            {/* Navigation Tabs (Hidden on Print) */}
            <div className="flex mt-6 overflow-x-auto gap-1 no-print">
-                {[{ id: 'DASHBOARD', label: '總覽', icon: ICONS.Dashboard }, { id: 'IDENTITY', label: '學籍資料', icon: ICONS.UserCheck }, { id: 'CONTACT', label: '通訊聯絡', icon: ICONS.Phone }, { id: 'FAMILY', label: '家庭經濟', icon: ICONS.Home }, { id: 'BANK', label: '學生帳戶', icon: ICONS.Bank }, { id: 'MONEY', label: '獎助學金', icon: ICONS.Money }, { id: 'COUNSEL', label: '輔導紀錄', icon: ICONS.Counseling }, { id: 'ACTIVITY', label: '活動紀錄', icon: ICONS.Activity }].map(t => (
+                {[{ id: 'DASHBOARD', label: '總覽', icon: ICONS.Dashboard }, 
+                  { id: 'IDENTITY', label: '學籍資料', icon: ICONS.UserCheck }, 
+                  { id: 'CONTACT', label: '通訊聯絡', icon: ICONS.Phone }, 
+                  { id: 'FAMILY', label: '家庭經濟', icon: ICONS.Home }, 
+                  { id: 'ACCOUNT', label: '帳號管理', icon: ICONS.Key }, // NEW
+                  { id: 'MONEY', label: '獎助學金', icon: ICONS.Money }, 
+                  { id: 'COUNSEL', label: '輔導紀錄', icon: ICONS.Counseling }, 
+                  { id: 'ACTIVITY', label: '活動紀錄', icon: ICONS.Activity }
+                ].map(t => (
                     <button key={t.id} onClick={() => setActiveTab(t.id as any)} 
                         className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === t.id ? 'border-primary text-primary bg-primary-50/20' : 'border-transparent text-neutral-gray hover:text-neutral-text hover:bg-neutral-bg'}`}>
                         <t.icon size={16} /> {t.label}
@@ -420,7 +431,32 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
                    {/* Left Col: Risk Radar */}
                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 lg:col-span-1">
-                       <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><ICONS.AlertTriangle className="text-primary"/> 風險評估雷達 (Mock)</h3>
+                       <div className="flex justify-between items-center mb-4">
+                           <h3 className="font-bold text-gray-800 flex items-center gap-2"><ICONS.AlertTriangle className="text-primary"/> 風險評估</h3>
+                           {/* Risk Override UI */}
+                           <div className="flex gap-2">
+                               {isEditing && (
+                                   <select 
+                                     className="text-xs border rounded p-1" 
+                                     value={formData.manualRiskOverride ? formData.highRisk : 'AUTO'} 
+                                     onChange={e => {
+                                         const val = e.target.value;
+                                         if (val === 'AUTO') handleFieldChange('manualRiskOverride', false);
+                                         else {
+                                             handleFieldChange('manualRiskOverride', true);
+                                             handleFieldChange('highRisk', val);
+                                         }
+                                     }}
+                                   >
+                                       <option value="AUTO">自動評估</option>
+                                       <option value="一般">手動: 一般</option>
+                                       <option value="需關注">手動: 需關注</option>
+                                       <option value="高關懷">手動: 高關懷</option>
+                                   </select>
+                               )}
+                           </div>
+                       </div>
+                       
                        <div className="h-64">
                            <ResponsiveContainer width="100%" height="100%">
                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
@@ -432,8 +468,12 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                                </RadarChart>
                            </ResponsiveContainer>
                        </div>
+                       
                        <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-gray-500">
-                           <p>此圖表依據學生輔導紀錄與系統資料自動生成，僅供輔導參考。</p>
+                           <p>目前風險等級: <span className="font-bold text-primary">{formData.highRisk}</span> {formData.manualRiskOverride ? '(手動鎖定)' : '(系統自動)'}</p>
+                           {calculatedRisk !== formData.highRisk && !formData.manualRiskOverride && (
+                               <p className="text-red-500 mt-1">系統建議等級: {calculatedRisk}</p>
+                           )}
                        </div>
                    </div>
 
@@ -453,6 +493,79 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
                            ))}
                            {timelineData.length === 0 && <div className="text-center text-gray-400 py-10">尚無任何紀錄</div>}
                        </div>
+                   </div>
+               </div>
+           )}
+
+           {/* === ACCOUNT TAB (NEW) === */}
+           {activeTab === 'ACCOUNT' && (
+               <div className="bg-white p-6 rounded-lg shadow-sm border border-neutral-border space-y-6 max-w-3xl">
+                   <h3 className="font-bold text-neutral-text border-b pb-2 flex items-center gap-2">
+                       <ICONS.Key size={18} className="text-primary"/> 學生帳號管理
+                   </h3>
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="bg-gray-50 p-4 rounded border border-gray-200">
+                           <h4 className="text-sm font-bold text-gray-700 mb-3">帳號狀態</h4>
+                           <div className="flex items-center justify-between mb-2">
+                               <span className="text-sm text-gray-600">帳號啟用狀態</span>
+                               <label className="relative inline-flex items-center cursor-pointer">
+                                   <input 
+                                     type="checkbox" 
+                                     className="sr-only peer"
+                                     checked={formData.isActive}
+                                     onChange={(e) => {
+                                         toggleStudentAccount(formData.id, e.target.checked);
+                                         setFormData({...formData, isActive: e.target.checked});
+                                     }}
+                                   />
+                                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                   <span className="ml-3 text-sm font-medium text-gray-900">{formData.isActive ? '啟用中' : '已停用'}</span>
+                               </label>
+                           </div>
+                           <p className="text-xs text-gray-500">停用後學生將無法登入系統。</p>
+                       </div>
+
+                       <div className="bg-gray-50 p-4 rounded border border-gray-200">
+                           <h4 className="text-sm font-bold text-gray-700 mb-3">登入資訊</h4>
+                           <div className="text-sm space-y-2">
+                               <div className="flex justify-between">
+                                   <span className="text-gray-500">帳號 (Username):</span>
+                                   <span className="font-mono">{formData.username || `isu${formData.studentId.toLowerCase()}`}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                   <span className="text-gray-500">最後登入:</span>
+                                   <span>{formData.lastLogin || '尚未登入'}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                   <span className="text-gray-500">來源 IP:</span>
+                                   <span className="font-mono">{formData.lastLoginIp || '-'}</span>
+                               </div>
+                           </div>
+                       </div>
+                   </div>
+
+                   <div className="border-t border-gray-100 pt-4">
+                       <h4 className="text-sm font-bold text-gray-700 mb-3">密碼與安全性</h4>
+                       <div className="flex gap-4">
+                           <button 
+                               onClick={() => {
+                                   if(confirm('確定要將密碼重置為預設值嗎？\n預設密碼：isu + 學號 (小寫)')) {
+                                       resetStudentPassword(formData.id);
+                                       notify('密碼已重置');
+                                   }
+                               }}
+                               className="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 flex items-center gap-2"
+                           >
+                               <ICONS.Security size={16}/> 重置密碼 (Reset)
+                           </button>
+                           
+                           {/* Future: Send email feature */}
+                           <button className="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 flex items-center gap-2 text-gray-400 cursor-not-allowed">
+                               <ICONS.Send size={16}/> 發送啟用通知 (Email)
+                           </button>
+                       </div>
+                       <p className="text-xs text-gray-400 mt-2">注意：重置密碼後，學生下次登入時需重新進行身分驗證。</p>
                    </div>
                </div>
            )}
@@ -665,10 +778,9 @@ export const StudentDetail: React.FC<StudentDetailProps> = ({ student, onBack })
            )}
 
            {/* === OTHER TABS === */}
-           {activeTab === 'BANK' && <div className="text-center py-20 bg-white rounded border border-neutral-border text-gray-400">學生帳戶模組 (連結至 ScholarshipManager)</div>}
-           {activeTab === 'MONEY' && <div className="text-center py-20 bg-white rounded border border-neutral-border text-gray-400">獎助學金列表</div>}
-           {activeTab === 'COUNSEL' && <div className="text-center py-20 bg-white rounded border border-neutral-border text-gray-400">輔導關懷紀錄列表</div>}
-           {activeTab === 'ACTIVITY' && <div className="text-center py-20 bg-white rounded border border-neutral-border text-gray-400">活動參與紀錄列表</div>}
+           {activeTab === 'MONEY' && <div className="text-center py-20 bg-white rounded border border-neutral-border text-gray-400">獎助學金列表 (Mock)</div>}
+           {activeTab === 'COUNSEL' && <div className="text-center py-20 bg-white rounded border border-neutral-border text-gray-400">輔導關懷紀錄列表 (Mock)</div>}
+           {activeTab === 'ACTIVITY' && <div className="text-center py-20 bg-white rounded border border-neutral-border text-gray-400">活動參與紀錄列表 (Mock)</div>}
       </div>
 
       {/* --- MODAL: Status Change --- */}

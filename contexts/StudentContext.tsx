@@ -3,7 +3,7 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Student, StatusRecord, HighRiskStatus, CounselingLog, StudentStatus, CounselingBooking } from '../types';
 import { StorageService } from '../services/StorageService';
 import { usePermissionContext } from './PermissionContext';
-import { MOCK_COUNSELING_LOGS } from '../constants';
+import { MOCK_COUNSELING_LOGS, MOCK_STUDENTS } from '../constants';
 import { studentSchema } from '../lib/schemas';
 
 // --- Types ---
@@ -37,7 +37,8 @@ type StudentAction =
   | { type: 'SET_LIST_VIEW_PARAMS'; payload: ListViewParams } // New Action
   | { type: 'SET_ERROR'; payload: string }
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'BATCH_ADD_STUDENTS'; payload: Student[] };
+  | { type: 'BATCH_ADD_STUDENTS'; payload: Student[] }
+  | { type: 'BATCH_UPDATE_STUDENTS'; payload: Student[] };
 
 interface StudentContextType extends StudentState {
   addStudent: (student: Student) => Promise<boolean>;
@@ -47,6 +48,10 @@ interface StudentContextType extends StudentState {
   getStudentById: (id: string) => Student | undefined;
   setListViewParams: (params: ListViewParams) => void; 
   importStudents: (csvData: any[]) => Promise<{ success: number; failed: number; errors: string[] }>; // New
+  batchUpdateStudents: (updates: Student[]) => void;
+  calculateRiskLevel: (student: Student) => HighRiskStatus;
+  resetStudentPassword: (studentId: string) => void;
+  toggleStudentAccount: (studentId: string, isActive: boolean) => void;
 }
 
 // --- Initial State & Reducer ---
@@ -92,6 +97,12 @@ const studentReducer = (state: StudentState, action: StudentAction): StudentStat
         students: state.students.map((s) => (s.id === action.payload.id ? action.payload : s)),
         error: null,
       };
+    case 'BATCH_UPDATE_STUDENTS':
+      const updatesMap = new Map(action.payload.map(s => [s.id, s]));
+      return {
+          ...state,
+          students: state.students.map(s => updatesMap.has(s.id) ? updatesMap.get(s.id)! : s)
+      };
     case 'ADD_LOG':
       return { ...state, counselingLogs: [action.payload, ...state.counselingLogs] };
     case 'ADD_BOOKING':
@@ -121,10 +132,20 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     const loadData = () => {
       try {
-        const students = StorageService.load<Student[]>(KEYS.STUDENTS, []);
+        const students = StorageService.load<Student[]>(KEYS.STUDENTS, MOCK_STUDENTS);
         const logs = StorageService.load<CounselingLog[]>(KEYS.LOGS, MOCK_COUNSELING_LOGS);
         const bookings = StorageService.load<CounselingBooking[]>('ISU_CARE_SYS_BOOKINGS', []);
-        dispatch({ type: 'SET_DATA', payload: { students, logs, bookings } });
+        
+        // Ensure new fields exist for legacy data
+        const enrichedStudents = students.map(s => ({
+            ...s,
+            // Ensure username is consistent with strict rule: 'isu' + lowercase studentID
+            username: s.username || `isu${s.studentId.toLowerCase()}`,
+            passwordHash: s.passwordHash || `isu${s.studentId.toLowerCase()}`,
+            isFirstLogin: s.isFirstLogin === undefined ? true : s.isFirstLogin
+        }));
+
+        dispatch({ type: 'SET_DATA', payload: { students: enrichedStudents, logs, bookings } });
       } catch (err) {
         dispatch({ type: 'SET_ERROR', payload: 'Failed to load student data' });
       }
@@ -141,6 +162,31 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [state.students, state.counselingLogs, state.bookings, state.isLoading]);
 
+  // --- Helper: Risk Calculation ---
+  const calculateRiskLevel = (student: Student): HighRiskStatus => {
+      // 1. Manual Override
+      if (student.manualRiskOverride) {
+          return student.highRisk;
+      }
+
+      // 2. Auto Logic
+      const lastLog = state.counselingLogs
+          .filter(l => l.studentId === student.id)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+      
+      const lastDate = lastLog ? new Date(lastLog.date) : null;
+      const daysSince = lastDate ? Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24)) : 999;
+
+      // Has Critical History?
+      const hasCriticalHistory = state.counselingLogs.some(l => l.studentId === student.id && l.isHighRisk);
+
+      if (daysSince > 60 && hasCriticalHistory) return HighRiskStatus.CRITICAL;
+      if (daysSince > 30) return HighRiskStatus.WATCH;
+      if (student.grade === '1' && daysSince > 90) return HighRiskStatus.WATCH; // Freshmen neglect
+
+      return HighRiskStatus.NONE;
+  };
+
   // --- Actions ---
 
   const addStudent = async (newStudent: Student): Promise<boolean> => {
@@ -150,13 +196,29 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           dispatch({ type: 'SET_ERROR', payload: '學號已存在' });
           return false;
       }
-      dispatch({ type: 'ADD_STUDENT', payload: newStudent });
+      // Initialize Account info with strict format
+      const accountId = `isu${newStudent.studentId.toLowerCase()}`;
+      
+      const studentWithAccount = {
+          ...newStudent,
+          username: accountId,
+          passwordHash: accountId, // Default Password
+          isFirstLogin: true,
+          isActive: true
+      };
+
+      dispatch({ type: 'ADD_STUDENT', payload: studentWithAccount });
       logAction('CREATE', `Student: ${newStudent.name}`, 'SUCCESS');
       return true;
     } catch (err) {
       dispatch({ type: 'SET_ERROR', payload: 'Failed to add student' });
       return false;
     }
+  };
+
+  const batchUpdateStudents = (updates: Student[]) => {
+      dispatch({ type: 'BATCH_UPDATE_STUDENTS', payload: updates });
+      logAction('UPDATE', `Batch updated ${updates.length} students`, 'SUCCESS');
   };
 
   const importStudents = async (csvData: any[]): Promise<{ success: number; failed: number; errors: string[] }> => {
@@ -206,10 +268,17 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   throw new Error(errorMsg);
               }
 
-              // Create Valid Student Object
+              // Create Valid Student Object with Account defaults
+              // Strict Account Rule
+              const accountId = `isu${studentId.toLowerCase()}`;
+              
               const validStudent: Student = {
                   ...result.data as Student,
                   id: Math.random().toString(36).substr(2, 9),
+                  username: accountId,
+                  passwordHash: accountId,
+                  isFirstLogin: true,
+                  isActive: true,
                   avatarUrl: 'https://ui-avatars.com/api/?name=' + rawData.name + '&background=random',
                   statusHistory: []
               };
@@ -304,10 +373,10 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       dispatch({ type: 'ADD_LOG', payload: log });
       logAction('CREATE', `Log for Student ID: ${log.studentId}`, 'SUCCESS');
       
-      // Auto-escalate High Risk Logic
+      // Auto-escalate High Risk Logic (Simple version, complex in calcRisk)
       if (log.isHighRisk) {
           const student = state.students.find(s => s.id === log.studentId);
-          if (student && student.highRisk !== HighRiskStatus.CRITICAL) {
+          if (student) {
                const updated = { ...student, highRisk: HighRiskStatus.CRITICAL, careStatus: 'OPEN' as const };
                updateStudent(updated);
           }
@@ -323,10 +392,39 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       dispatch({ type: 'SET_LIST_VIEW_PARAMS', payload: params });
   };
 
+  const resetStudentPassword = (studentId: string) => {
+      const student = state.students.find(s => s.id === studentId);
+      if (!student) return;
+      const defaultPass = `isu${student.studentId.toLowerCase()}`;
+      updateStudent({ ...student, passwordHash: defaultPass, isFirstLogin: true });
+      logAction('UPDATE', `Reset Password for ${student.studentId}`, 'SUCCESS');
+  };
+
+  const toggleStudentAccount = (studentId: string, isActive: boolean) => {
+      const student = state.students.find(s => s.id === studentId);
+      if (student) {
+          updateStudent({ ...student, isActive });
+          logAction('UPDATE', `${isActive ? 'Activate' : 'Deactivate'} account for ${student.studentId}`, 'SUCCESS');
+      }
+  };
+
   const getStudentById = (id: string) => state.students.find(s => s.id === id);
 
   return (
-    <StudentContext.Provider value={{ ...state, addStudent, updateStudent, addCounselingLog, addBooking, getStudentById, setListViewParams, importStudents }}>
+    <StudentContext.Provider value={{ 
+        ...state, 
+        addStudent, 
+        updateStudent, 
+        addCounselingLog, 
+        addBooking, 
+        getStudentById, 
+        setListViewParams, 
+        importStudents,
+        batchUpdateStudents,
+        calculateRiskLevel,
+        resetStudentPassword,
+        toggleStudentAccount
+    }}>
       {children}
     </StudentContext.Provider>
   );

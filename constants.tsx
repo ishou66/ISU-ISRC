@@ -46,6 +46,7 @@ export const ICONS = {
   Audit: ShieldAlert,
   ShieldAlert: ShieldAlert,
   Security: Lock,
+  Lock: Lock,
   Print: Printer,
   Login: LogIn,
   Key: Key,
@@ -204,6 +205,73 @@ export const DEFAULT_USERS: User[] = [
     email: 'student@isu.edu.tw',
     isActive: true,
     avatarUrl: 'https://ui-avatars.com/api/?name=Student&background=109967&color=fff'
+  }
+];
+
+export const MOCK_STUDENTS: Student[] = [
+  {
+    id: 'std_1',
+    studentId: '11200123A',
+    nationalId: 'A123456789', // Added Mock National ID
+    username: 'isu11200123a', // Default username
+    passwordHash: 'isu11200123a', // Default password
+    isFirstLogin: true,
+    isActive: true,
+    name: '王小明',
+    gender: '男',
+    departmentCode: 'CS',
+    grade: '2',
+    enrollmentYear: '112',
+    status: StudentStatus.ACTIVE,
+    tribeCode: 'AMIS',
+    indigenousTownship: { city: 'KHH', district: 'MAOLIN' },
+    highRisk: HighRiskStatus.NONE,
+    careStatus: 'OPEN',
+    emails: { personal: 'wang@test.com', school: '11200123A@isu.edu.tw' },
+    phone: '0912345678',
+    addressOfficial: '高雄市茂林區...',
+    addressCurrent: '學校宿舍',
+    housingType: 'DORM',
+    housingInfo: 'A棟 305',
+    familyData: {
+        economicStatus: '小康',
+        father: { name: '王大明', isAlive: true, relation: '父', phone: '0900000000', education: '高中', occupation: '務農' }
+    },
+    siblings: [],
+    statusHistory: [],
+    avatarUrl: 'https://ui-avatars.com/api/?name=王小明&background=random'
+  },
+  {
+    id: 'std_2',
+    studentId: '11200456B',
+    nationalId: 'B234567890', // Added Mock National ID
+    username: 'isu11200456b',
+    passwordHash: 'isu11200456b',
+    isFirstLogin: true,
+    isActive: true,
+    name: '李小花',
+    gender: '女',
+    departmentCode: 'NUR',
+    grade: '1',
+    enrollmentYear: '112',
+    status: StudentStatus.ACTIVE,
+    tribeCode: 'PAIWAN',
+    indigenousTownship: { city: 'PTH', district: 'MUDAN' },
+    highRisk: HighRiskStatus.WATCH,
+    careStatus: 'OPEN',
+    emails: { personal: 'lee@test.com', school: '11200456B@isu.edu.tw' },
+    phone: '0987654321',
+    addressOfficial: '屏東縣牡丹鄉...',
+    addressCurrent: '校外租屋',
+    housingType: 'RENTAL',
+    housingInfo: '大社路...',
+    familyData: {
+        economicStatus: '中低收',
+        mother: { name: '李媽媽', isAlive: true, relation: '母' }
+    },
+    siblings: [],
+    statusHistory: [],
+    avatarUrl: 'https://ui-avatars.com/api/?name=李小花&background=random'
   }
 ];
 

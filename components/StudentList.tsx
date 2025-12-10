@@ -57,12 +57,15 @@ const MaskedCell: React.FC<{ value: string; label: string; onReveal: (label: str
 };
 
 export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStudent, onRevealSensitiveData, initialParams }) => {
-  const { students, addStudent, isLoading, listViewParams, setListViewParams, importStudents, counselingLogs } = useStudents();
+  const { students, addStudent, isLoading, listViewParams, setListViewParams, importStudents, counselingLogs, batchUpdateStudents, resetStudentPassword } = useStudents();
   const { notify } = useToast();
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
+  
+  // Batch Operations State
+  const [batchActionType, setBatchActionType] = useState<'' | 'UPDATE_STATUS' | 'UPDATE_GRADE' | 'RESET_PASSWORD'>('');
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -118,8 +121,11 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
       }
 
       return students.filter(student => {
-        // Text Search
-        const matchesSearch = student.name.includes(listViewParams.searchTerm) || student.studentId.includes(listViewParams.searchTerm);
+        // Text Search (Name, StudentID, NationalID)
+        const matchesSearch = 
+            student.name.includes(listViewParams.searchTerm) || 
+            student.studentId.includes(listViewParams.searchTerm) ||
+            student.nationalId?.includes(listViewParams.searchTerm);
         
         // Dropdown Filters
         const matchesDept = listViewParams.filterDept === 'ALL' || student.departmentCode === listViewParams.filterDept;
@@ -188,6 +194,37 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
       setSelectedIds(newSet);
   };
 
+  const handleBatchAction = () => {
+      if (!checkOrFail(ModuleId.STUDENTS, 'edit')) return;
+      if (selectedIds.size === 0) return;
+
+      const targets = students.filter(s => selectedIds.has(s.id));
+
+      if (batchActionType === 'UPDATE_STATUS') {
+          const newStatus = prompt('請輸入新狀態 (在學/休學/退學/畢業):', '在學');
+          if (newStatus && ['在學', '休學', '退學', '畢業'].includes(newStatus)) {
+              batchUpdateStudents(targets.map(s => ({ ...s, status: newStatus as any })));
+              notify(`已更新 ${targets.length} 筆狀態`);
+          } else if (newStatus) {
+              alert('無效的狀態');
+          }
+      } else if (batchActionType === 'UPDATE_GRADE') {
+          const newGrade = prompt('請輸入新年級 (1-4):');
+          if (newGrade && ['1','2','3','4'].includes(newGrade)) {
+              batchUpdateStudents(targets.map(s => ({ ...s, grade: newGrade })));
+              notify(`已更新 ${targets.length} 筆年級`);
+          }
+      } else if (batchActionType === 'RESET_PASSWORD') {
+          if (confirm(`確定要重置這 ${targets.length} 位學生的密碼為預設值嗎？\n預設密碼規則：isu + 學號 (小寫)`)) {
+              targets.forEach(s => resetStudentPassword(s.id));
+              notify('已批次重置密碼');
+          }
+      }
+
+      setBatchActionType('');
+      setSelectedIds(new Set());
+  };
+
   const handleBatchExport = () => {
       if (!checkOrFail(ModuleId.STUDENTS, 'export')) return;
       
@@ -195,15 +232,14 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
           ? students.filter(s => selectedIds.has(s.id))
           : filteredStudents;
 
-      const headers = ['學號', '姓名', '性別', '系所', '年級', '族別', '手機', 'Email', '狀態', '關懷等級', '最後關懷日'];
+      const headers = ['學號', '姓名', '性別', '系所', '年級', '族別', '手機', 'Email', '狀態', '關懷等級', '帳號狀態', '最後登入'];
       const csvRows = targetStudents.map(s => {
           const deptName = getLabel(s.departmentCode, 'DEPT', configs);
           const tribeName = getLabel(s.tribeCode, 'TRIBE', configs);
-          // Find last log date logic repeated for export (simplified)
-          const lastLog = counselingLogs.filter(l => l.studentId === s.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
           
           return [
-              s.studentId, s.name, s.gender, deptName, s.grade, tribeName, s.phone, s.email, s.status, s.highRisk, lastLog?.date || '無'
+              s.studentId, s.name, s.gender, deptName, s.grade, tribeName, s.phone, s.email, s.status, s.highRisk,
+              s.isActive ? '啟用' : '停用', s.lastLogin || '無'
           ].map(val => `"${val || ''}"`).join(',');
       });
       
@@ -340,7 +376,7 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
                 <ICONS.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                 <input 
                     type="text" 
-                    placeholder="搜尋姓名或學號..." 
+                    placeholder="搜尋姓名、學號或身分證..." 
                     className="pl-9 pr-3 py-2 border border-neutral-border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none w-full bg-neutral-bg transition-all"
                     value={listViewParams.searchTerm}
                     onChange={handleSearchChange}
@@ -350,45 +386,55 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
             {/* Action Buttons */}
             <div className="flex items-center gap-2 ml-auto">
                  {/* Batch Actions Toolbar */}
-                 {selectedIds.size > 0 && (
+                 {selectedIds.size > 0 ? (
                      <div className="flex items-center gap-2 mr-4 bg-primary-50 px-3 py-1.5 rounded-lg border border-primary/20 animate-fade-in">
                          <span className="text-xs font-bold text-primary">{selectedIds.size} 選取</span>
                          <div className="h-4 w-px bg-primary/20 mx-1"></div>
-                         <button onClick={handleBatchExport} className="text-xs text-primary hover:underline flex items-center gap-1"><ICONS.Download size={14}/> 匯出</button>
-                         {/* Future: <button className="text-xs text-primary hover:underline">批次通知</button> */}
+                         
+                         <select className="text-xs border rounded p-1" value={batchActionType} onChange={e => { setBatchActionType(e.target.value as any); if(e.target.value) handleBatchAction(); }}>
+                             <option value="">批次操作...</option>
+                             <option value="UPDATE_STATUS">更新學籍狀態</option>
+                             <option value="UPDATE_GRADE">更新年級</option>
+                             <option value="RESET_PASSWORD">重置密碼</option>
+                         </select>
+
+                         <button onClick={handleBatchExport} className="text-xs text-primary hover:underline flex items-center gap-1 ml-2"><ICONS.Download size={14}/> 匯出</button>
                      </div>
-                 )}
-
-                 <button 
-                    onClick={() => setIsAdvancedFilterOpen(!isAdvancedFilterOpen)}
-                    className={`px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors border ${isAdvancedFilterOpen ? 'bg-primary-50 border-primary text-primary' : 'bg-white border-neutral-border text-gray-600'}`}
-                 >
-                    <ICONS.Filter size={16} /> 進階篩選
-                 </button>
-
-                 {can(ModuleId.STUDENTS, 'export') && (
-                     <button 
-                        onClick={handleBatchExport}
-                        className="bg-white border border-neutral-border text-neutral-text px-3 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-neutral-bg transition-colors font-medium shadow-sm hidden md:flex"
-                     >
-                        <ICONS.Download size={16} /> 匯出全部
-                     </button>
-                 )}
-
-                 {can(ModuleId.STUDENTS, 'add') && (
+                 ) : (
+                     // Normal Toolbar
                      <>
                         <button 
-                            onClick={() => setIsImportModalOpen(true)}
-                            className="bg-white border border-neutral-border text-neutral-text px-3 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-neutral-bg transition-colors font-medium shadow-sm hidden md:flex"
+                            onClick={() => setIsAdvancedFilterOpen(!isAdvancedFilterOpen)}
+                            className={`px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors border ${isAdvancedFilterOpen ? 'bg-primary-50 border-primary text-primary' : 'bg-white border-neutral-border text-gray-600'}`}
                         >
-                            <ICONS.Upload size={16} /> 匯入
+                            <ICONS.Filter size={16} /> 進階篩選
                         </button>
-                        <button 
-                            onClick={() => setIsAddModalOpen(true)}
-                            className="btn-primary px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm font-bold transition-all"
-                        >
-                            <ICONS.Plus size={16} /> 新增
-                        </button>
+
+                        {can(ModuleId.STUDENTS, 'export') && (
+                            <button 
+                                onClick={handleBatchExport}
+                                className="bg-white border border-neutral-border text-neutral-text px-3 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-neutral-bg transition-colors font-medium shadow-sm hidden md:flex"
+                            >
+                                <ICONS.Download size={16} /> 匯出全部
+                            </button>
+                        )}
+
+                        {can(ModuleId.STUDENTS, 'add') && (
+                            <>
+                                <button 
+                                    onClick={() => setIsImportModalOpen(true)}
+                                    className="bg-white border border-neutral-border text-neutral-text px-3 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-neutral-bg transition-colors font-medium shadow-sm hidden md:flex"
+                                >
+                                    <ICONS.Upload size={16} /> 匯入
+                                </button>
+                                <button 
+                                    onClick={() => setIsAddModalOpen(true)}
+                                    className="btn-primary px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm font-bold transition-all"
+                                >
+                                    <ICONS.Plus size={16} /> 新增
+                                </button>
+                            </>
+                        )}
                      </>
                  )}
             </div>
@@ -655,6 +701,16 @@ export const StudentList: React.FC<StudentListProps> = ({ configs, onSelectStude
                               onChange={e => { setNewStudent({...newStudent, name: e.target.value}); setErrors({...errors, name: ''}); }} 
                           />
                           {errors.name && <p className="text-danger text-xs mt-1 font-medium">{errors.name}</p>}
+                      </div>
+                      <div className="col-span-2 md:col-span-1">
+                          <label className="block text-xs font-bold text-neutral-gray mb-1.5 uppercase">身分證字號 *</label>
+                          <input 
+                              type="text" 
+                              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+                              value={newStudent.nationalId || ''} 
+                              onChange={e => { setNewStudent({...newStudent, nationalId: e.target.value}) }} 
+                              placeholder="用於首次登入驗證"
+                          />
                       </div>
                       <div className="col-span-2 md:col-span-1">
                           <label className="block text-xs font-bold text-neutral-gray mb-1.5 uppercase">系所 *</label>
