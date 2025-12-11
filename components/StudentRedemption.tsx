@@ -7,6 +7,7 @@ import { useScholarships } from '../contexts/ScholarshipContext';
 import { useActivities } from '../contexts/ActivityContext'; 
 import { RedemptionStatus, RedemptionRecord, Student } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { CheckOutlined } from '@ant-design/icons';
 
 interface StudentRedemptionProps {
     currentUser: any; 
@@ -33,7 +34,7 @@ const WorkflowStepper = ({ status }: { status: RedemptionStatus }) => {
                     <div key={step.id} className="flex-1 flex items-center">
                         <div className="flex flex-col items-center relative">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs z-10 transition-colors ${isActive ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'} ${isRejected && index === 0 ? 'bg-red-500' : ''}`}>
-                                {isActive ? <ICONS.Check size={14}/> : index + 1}
+                                {isActive ? <CheckOutlined /> : index + 1}
                             </div>
                             <span className={`text-[10px] mt-1 font-bold absolute -bottom-5 whitespace-nowrap ${isActive ? 'text-green-600' : 'text-gray-400'}`}>
                                 {step.label}
@@ -270,3 +271,4 @@ export const StudentRedemption: React.FC<StudentRedemptionProps> = ({ currentUse
         </div>
     );
 };
+    

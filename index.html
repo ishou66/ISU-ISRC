@@ -1,171 +1,69 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>義守大學原住民族學生資源中心 | 學生輔導關懷系統</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>義守大學原住民族學生資源中心 | CloudSchool Style</title>
+    <!-- Ant Design V5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/antd@5.12.2/dist/reset.min.css" rel="stylesheet">
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
       
-      :root {
-        /* 1. Primary Brand & Interaction */
-        --color-primary: #d96a1a;
-        --color-cta: #f0822d;
-        --color-primary-hover: #ab5415;
-
-        /* 2. Functional & Status Colors */
-        --color-success: #109967;
-        --color-info: #3c7e8b;
-        --color-danger: #d9101a;
-        --color-link: #0419d4;
-        --color-link-hover: #031089;
-
-        /* 3. Neutrals & Backgrounds */
-        --color-bg-body: #f5f5f5;
-        --color-bg-card: #ffffff;
-        --color-text-main: #212529;
-        --color-border: #bbbbbb;
-        --color-bli-gray: #757575;
-      }
-
       body {
-        font-family: 'Inter', 'Noto Sans TC', sans-serif;
-        background-color: var(--color-bg-body);
-        color: var(--color-text-main);
+        font-family: 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f0f2f5; /* CloudSchool Background */
+      }
+
+      /* Print Styles */
+      @media print {
+        .ant-pro-layout-sider, .ant-pro-global-header, .no-print { display: none !important; }
+        .ant-pro-layout-content { margin: 0 !important; padding: 0 !important; }
+        .ant-card { box-shadow: none !important; border: none !important; }
       }
       
-      /* Card UI Base Style */
-      .card {
-        background: var(--color-bg-card);
-        border-radius: 0.5rem; /* Standard Bootstrap-like radius */
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        border: 1px solid var(--color-border);
-        transition: all 0.2s ease-in-out;
+      /* CloudSchool Specific Overrides */
+      .ant-pro-sider-logo {
+        background-color: #002140 !important; /* Darker Blue Logo Area */
       }
-      .card:hover {
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      }
-
-      /* Professional Table Styles */
-      .pro-table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      .pro-table thead {
-        background-color: #e9ecef; /* Light gray for header */
-        color: var(--color-text-main);
-        font-weight: 700;
-        border-bottom: 2px solid var(--color-border);
-      }
-      .pro-table th, .pro-table td {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--color-border);
-        text-align: left;
-      }
-      .pro-table tbody tr:hover {
-        background-color: rgba(217, 106, 26, 0.05); /* Very light orange tint */
-      }
-
-      /* Buttons */
-      .btn-primary {
-        background-color: var(--color-primary);
-        color: white;
-      }
-      .btn-primary:hover {
-        background-color: var(--color-primary-hover);
-      }
-
-      /* Links */
-      a {
-        color: var(--color-link);
-        text-decoration: none;
-      }
-      a:hover {
-        color: var(--color-link-hover);
-        text-decoration: underline;
-      }
-
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #e9ecef; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: var(--color-bli-gray); 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: var(--color-text-main); 
-      }
-
-      /* PRINT STYLES */
-      @media print {
-        @page { size: A4; margin: 1cm; }
-        body { background-color: white; color: black; }
-        .no-print, aside, header, button, input, select { display: none !important; }
-        .card { border: none; box-shadow: none; }
+      .ant-btn-primary {
+        box-shadow: 0 2px 0 rgba(0,0,0,0.045);
       }
     </style>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: {
-                DEFAULT: 'var(--color-primary)',
-                hover: 'var(--color-primary-hover)',
-                cta: 'var(--color-cta)',
-                50: '#fff3e0', // Light Orange tint
-                100: '#ffe0b2',
-                500: 'var(--color-primary)',
-                600: 'var(--color-primary-hover)',
-                700: '#ab5415',
-              },
-              success: {
-                DEFAULT: 'var(--color-success)',
-                50: '#e8f5e9', // Light Green tint
-                600: 'var(--color-success)',
-              },
-              info: {
-                DEFAULT: 'var(--color-info)',
-                50: '#e0f7fa',
-              },
-              danger: {
-                DEFAULT: 'var(--color-danger)',
-                50: '#ffebee',
-              },
-              neutral: {
-                bg: 'var(--color-bg-body)',
-                card: 'var(--color-bg-card)',
-                text: 'var(--color-text-main)',
-                border: 'var(--color-border)',
-                gray: 'var(--color-bli-gray)',
-                dark: '#212529', // Using Text Color as Dark Background
-              }
-            }
-          }
-        }
-      }
-    </script>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
-    "zod": "https://aistudiocdn.com/zod@^4.1.13",
-    "crypto-js": "https://aistudiocdn.com/crypto-js@^4.2.0"
+    "react": "https://esm.sh/react@18.2.0",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+    "antd": "https://esm.sh/antd@5.12.2?external=react,react-dom",
+    "antd/": "https://esm.sh/antd@5.12.2/",
+    "@ant-design/icons": "https://esm.sh/@ant-design/icons@5.2.6?external=react,react-dom",
+    "@ant-design/icons/": "https://esm.sh/@ant-design/icons@5.2.6/",
+    "@ant-design/icons/ArrowLeftOutlined": "https://esm.sh/@ant-design/icons@5.2.6/es/icons/ArrowLeftOutlined.js?external=react,react-dom",
+    "@ant-design/icons/ArrowRightOutlined": "https://esm.sh/@ant-design/icons@5.2.6/es/icons/ArrowRightOutlined.js?external=react,react-dom",
+    "@ant-design/icons/MenuFoldOutlined": "https://esm.sh/@ant-design/icons@5.2.6/es/icons/MenuFoldOutlined.js?external=react,react-dom",
+    "@ant-design/icons/MenuUnfoldOutlined": "https://esm.sh/@ant-design/icons@5.2.6/es/icons/MenuUnfoldOutlined.js?external=react,react-dom",
+    "@ant-design/pro-components": "https://esm.sh/@ant-design/pro-components@2.6.43?bundle&external=react,react-dom,antd,@ant-design/icons,dayjs,rc-util",
+    "dayjs": "https://esm.sh/dayjs@1.11.10",
+    "dayjs/": "https://esm.sh/dayjs@1.11.10/",
+    "lucide-react": "https://esm.sh/lucide-react@0.294.0?external=react",
+    "recharts": "https://esm.sh/recharts@2.10.3?external=react,react-dom",
+    "zod": "https://esm.sh/zod@3.22.4",
+    "crypto-js": "https://esm.sh/crypto-js@4.2.0",
+    "rc-util/": "https://esm.sh/rc-util@5.38.1/?external=react,react-dom",
+    "rc-resize-observer": "https://esm.sh/rc-resize-observer@1.4.0?external=react,react-dom"
   }
 }
 </script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
   </body>
 </html>
+    

@@ -5,6 +5,7 @@ import { useTickets } from '../contexts/TicketContext';
 import { useAuth } from '../contexts/AuthContext';
 import { TicketStatus, TicketCategory, Ticket } from '../types';
 import { ResizableHeader } from './ui/ResizableHeader';
+import { ChevronRightOutlined, SendOutlined } from '@ant-design/icons';
 
 export const TicketManager: React.FC = () => {
     const { tickets, replies, replyToTicket, updateTicketStatus, assignTicket, getTicketReplies } = useTickets();
@@ -94,7 +95,7 @@ export const TicketManager: React.FC = () => {
                     <>
                         {/* Header */}
                         <div className="p-4 bg-white border-b border-gray-200 flex justify-between items-center shadow-sm">
-                            <button onClick={() => setSelectedTicketId(null)} className="md:hidden text-gray-500 mr-2"><ICONS.ChevronRight className="rotate-180"/></button>
+                            <button onClick={() => setSelectedTicketId(null)} className="md:hidden text-gray-500 mr-2"><ChevronRightOutlined className="rotate-180"/></button>
                             <div className="flex-1">
                                 <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
                                     {selectedTicket.subject}
@@ -168,7 +169,7 @@ export const TicketManager: React.FC = () => {
                                         onChange={e => setReplyText(e.target.value)}
                                     ></textarea>
                                     <button onClick={handleSendReply} className="h-24 px-6 bg-primary text-white rounded-lg font-bold hover:bg-primary-hover shadow-md flex flex-col items-center justify-center gap-1">
-                                        <ICONS.Send size={20}/> 發送
+                                        <SendOutlined /> 發送
                                     </button>
                                 </div>
                             </div>
@@ -184,3 +185,4 @@ export const TicketManager: React.FC = () => {
         </div>
     );
 };
+    

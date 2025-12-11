@@ -6,6 +6,7 @@ import { useActivities } from '../contexts/ActivityContext';
 import { useStudents } from '../contexts/StudentContext';
 import { useAuth } from '../contexts/AuthContext';
 import { ResizableHeader } from './ui/ResizableHeader';
+import { PlusOutlined, SettingOutlined, DownloadOutlined, CameraOutlined, CheckCircleOutlined, EnvironmentOutlined } from '@ant-design/icons';
 
 // --- Dynamic QR Code Component ---
 const DynamicQRCode = ({ eventId, generateToken }: { eventId: string, generateToken: (id: string) => string }) => {
@@ -30,7 +31,7 @@ const DynamicQRCode = ({ eventId, generateToken }: { eventId: string, generateTo
     return (
         <div className="bg-white p-6 rounded-lg shadow-inner border border-gray-200 flex flex-col items-center justify-center mx-auto max-w-xs">
             <div className="w-48 h-48 bg-gray-900 flex flex-col items-center justify-center text-white p-2 text-center rounded aspect-square">
-                <ICONS.Camera size={48} className="mb-2 opacity-50"/>
+                <CameraOutlined style={{ fontSize: '48px', marginBottom: '8px', opacity: 0.5 }} />
                 <span className="text-[10px] font-mono break-all line-clamp-3">{token.substring(0,20)}...</span>
             </div>
             <div className="mt-4 flex items-center gap-2 text-sm text-gray-500 font-mono">
@@ -180,7 +181,7 @@ export const ActivityManager: React.FC = () => {
                       <button onClick={() => setAdminTab('EVENTS')} className={`font-bold pb-2 border-b-2 transition-colors ${adminTab === 'EVENTS' ? 'text-primary border-primary' : 'text-gray-500 border-transparent'}`}>活動管理</button>
                       <button onClick={() => setAdminTab('LIVE')} className={`font-bold pb-2 border-b-2 transition-colors ${adminTab === 'LIVE' ? 'text-primary border-primary' : 'text-gray-500 border-transparent'}`}>現場控台 (Live)</button>
                   </div>
-                  {adminTab === 'EVENTS' && <button onClick={() => setIsCreateModalOpen(true)} className="btn-primary px-3 py-1.5 rounded text-sm flex items-center gap-1"><ICONS.Plus size={14}/> 建立活動</button>}
+                  {adminTab === 'EVENTS' && <button onClick={() => setIsCreateModalOpen(true)} className="btn-primary px-3 py-1.5 rounded text-sm flex items-center gap-1"><PlusOutlined /> 建立活動</button>}
               </div>
 
               {/* Content */}
@@ -211,7 +212,7 @@ export const ActivityManager: React.FC = () => {
                                       </div>
                                       <div className="flex justify-end pt-3 border-t border-gray-100">
                                           <button onClick={() => { setSelectedEventId(event.id); setAdminTab('LIVE'); }} className="text-primary hover:underline text-xs flex items-center gap-1">
-                                              <ICONS.Settings size={12}/> 管理/控台
+                                              <SettingOutlined /> 管理/控台
                                           </button>
                                       </div>
                                   </div>
@@ -251,14 +252,14 @@ export const ActivityManager: React.FC = () => {
                                               </div>
                                           </div>
                                           <button onClick={handleExportList} className="text-xs border px-3 py-1.5 rounded hover:bg-gray-50 flex items-center gap-1">
-                                              <ICONS.Download size={14}/> 匯出名單
+                                              <DownloadOutlined /> 匯出名單
                                           </button>
                                       </div>
 
                                       <div className="flex-1 flex overflow-hidden">
                                           {/* QR Display Panel */}
                                           <div className="w-80 bg-gray-50 p-6 flex flex-col items-center border-r border-gray-200 overflow-y-auto">
-                                              <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2"><ICONS.Camera size={18}/> 簽到 QR Code</h3>
+                                              <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2"><CameraOutlined /> 簽到 QR Code</h3>
                                               <DynamicQRCode eventId={selectedEvent.id} generateToken={generateQrToken} />
                                               <div className="mt-6 text-sm text-gray-500 text-center px-4">
                                                   <p>請將此畫面投影至大螢幕。</p>
@@ -390,7 +391,7 @@ export const ActivityManager: React.FC = () => {
                                       
                                       <div className="flex-1 w-full">
                                           <h3 className="font-bold text-lg text-gray-800 line-clamp-1">{event.name}</h3>
-                                          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2"><ICONS.MapPin size={14}/> {event.location}</p>
+                                          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2"><EnvironmentOutlined /> {event.location}</p>
                                           
                                           {/* Capacity Progress Bar */}
                                           <div className="mt-3 w-full max-w-xs">
@@ -408,7 +409,7 @@ export const ActivityManager: React.FC = () => {
                                   <div className="flex items-center">
                                       {isRegistered ? (
                                           <span className="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold w-full text-center md:w-auto flex items-center justify-center gap-2">
-                                              <ICONS.CheckCircle size={16}/> {getStatusBadge(record!.status)}
+                                              <CheckCircleOutlined /> {getStatusBadge(record!.status)}
                                           </span>
                                       ) : (
                                           <button 
@@ -475,7 +476,7 @@ export const ActivityManager: React.FC = () => {
                   <div className="p-4 flex flex-col items-center justify-center h-full">
                       <div className="w-full max-w-sm bg-white p-6 rounded-xl shadow-lg border border-gray-200 text-center">
                           <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
-                              <ICONS.Camera size={32} />
+                              <CameraOutlined style={{ fontSize: '32px' }} />
                           </div>
                           <h3 className="font-bold text-gray-800 text-lg mb-2">掃描活動 QR Code</h3>
                           <p className="text-xs text-gray-500 mb-6">請對準活動現場大螢幕的 QR Code 進行簽到/簽退。</p>
@@ -526,3 +527,4 @@ export const ActivityManager: React.FC = () => {
       </div>
   );
 };
+    

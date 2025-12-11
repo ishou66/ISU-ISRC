@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 import { useStudents } from '../contexts/StudentContext';
@@ -616,7 +615,7 @@ export const StudentPortal: React.FC<{ currentUser: any }> = ({ currentUser }) =
                                 {isEditingProfile ? (
                                     <div className="space-y-4">
                                         <div><label className="text-xs text-gray-500 block mb-1">手機號碼</label><input className="border rounded-lg w-full p-3 text-sm outline-none focus:border-primary" value={profileForm.phone} onChange={e => setProfileForm({...profileForm, phone: e.target.value})} /></div>
-                                        <div><label className="text-xs text-gray-500 block mb-1">Email</label><input className="border rounded-lg w-full p-3 text-sm outline-none focus:border-primary" value={profileForm.emails?.school} onChange={e => setProfileForm({...profileForm, emails: {...profileForm.emails, school: e.target.value}})} /></div>
+                                        <div><label className="text-xs text-gray-500 block mb-1">Email</label><input className="border rounded-lg w-full p-3 text-sm outline-none focus:border-primary" value={profileForm.emailSchool} onChange={e => setProfileForm({...profileForm, emailSchool: e.target.value})} /></div>
                                         <div className="flex gap-2">
                                             <button onClick={() => setIsEditingProfile(false)} className="flex-1 py-2 border rounded-lg text-gray-600">取消</button>
                                             <button onClick={handleProfileSave} className="flex-1 py-2 bg-primary text-white rounded-lg font-bold">儲存</button>
@@ -625,7 +624,7 @@ export const StudentPortal: React.FC<{ currentUser: any }> = ({ currentUser }) =
                                 ) : (
                                     <div className="space-y-4">
                                         <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl"><span className="text-gray-500 text-sm">手機</span><span className="font-medium text-gray-800">{student.phone}</span></div>
-                                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl"><span className="text-gray-500 text-sm">Email</span><span className="font-medium text-gray-800">{student.emails?.school}</span></div>
+                                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl"><span className="text-gray-500 text-sm">Email</span><span className="font-medium text-gray-800">{student.emailSchool}</span></div>
                                         <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl"><span className="text-gray-500 text-sm">系級</span><span className="font-medium text-gray-800">{configs.find(c => c.code === student.departmentCode && c.category === 'DEPT')?.label}</span></div>
                                         <button onClick={() => { setProfileForm(student); setIsEditingProfile(true); }} className="w-full py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold hover:bg-gray-50">編輯聯絡資料</button>
                                     </div>

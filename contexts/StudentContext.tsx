@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Student, StatusRecord, HighRiskStatus, CounselingLog, StudentStatus, CounselingBooking } from '../types';
 import { StorageService } from '../services/StorageService';
@@ -295,14 +294,60 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
               // Create Valid Student Object with Account defaults
               // Strict Account Rule
               const accountId = `isu${studentId.toLowerCase()}`;
-              
+              const data = result.data; // Zod parsed data (StudentSchema)
+
               const validStudent: Student = {
-                  ...result.data as Student,
                   id: Math.random().toString(36).substr(2, 9),
+                  studentId: data.studentId,
+                  nationalId: data.nationalId,
+                  name: data.name,
+                  
+                  // Account
                   username: accountId,
                   passwordHash: accountId,
                   isFirstLogin: true,
                   isActive: true,
+
+                  // Basic Academic
+                  departmentCode: data.departmentCode,
+                  grade: data.grade,
+                  enrollYear: data.enrollmentYear,
+                  admissionChannel: 'EXAM', // Default as it's missing in CSV/Schema usually
+                  status: data.status,
+                  
+                  // Personal
+                  gender: data.gender,
+                  marriageStatus: (data.maritalStatus as any) || '未婚',
+                  
+                  // Indigenous Details
+                  tribeCode: data.tribeCode,
+                  indigenousName: data.indigenousName,
+                  hometownCity: data.indigenousTownship?.city,
+                  hometownDistrict: data.indigenousTownship?.district,
+
+                  // Risk Management
+                  highRisk: data.highRisk,
+                  careStatus: data.careStatus as any,
+
+                  // Contact
+                  emailPersonal: data.emails?.personal,
+                  emailSchool: data.emails?.school,
+                  phone: data.phone || '',
+                  addressOfficial: data.addressOfficial || '',
+                  addressCurrent: data.addressCurrent || '',
+                  
+                  // Housing
+                  housingType: data.housingType,
+                  
+                  // Family
+                  familyData: {
+                      economicStatus: data.familyData?.economicStatus || '小康',
+                      father: (data.familyData?.father as any) || { name: '', status: '存', edu: '', job: '', workplace: '', phone: '' },
+                      mother: (data.familyData?.mother as any) || { name: '', status: '存', edu: '', job: '', workplace: '', phone: '' },
+                      guardian: (data.familyData?.guardian as any),
+                      siblings: []
+                  },
+
                   avatarUrl: 'https://ui-avatars.com/api/?name=' + rawData.name + '&background=random',
                   statusHistory: []
               };
@@ -443,7 +488,7 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addBooking, 
         getStudentById, 
         setListViewParams, 
-        importStudents,
+        importStudents, 
         batchUpdateStudents,
         calculateRiskLevel,
         resetStudentPassword,
